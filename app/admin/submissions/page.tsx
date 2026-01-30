@@ -85,29 +85,40 @@ async function AdminSubmissionsInner({
           {(subs ?? []).map((s) => (
             <div
               key={s.id}
-              className="grid grid-cols-12 items-center px-4 py-3 border-b last:border-b-0"
+              className="flex flex-col gap-2 border-b px-4 py-3 last:border-b-0 md:grid md:grid-cols-12 md:items-center md:gap-0"
             >
-              <div className="col-span-4">
-                <div className="text-sm">
-                  {new Date(s.created_at).toLocaleString()}
+              <div className="flex justify-between items-start md:col-span-4 md:block">
+                <div>
+                  <div className="hidden md:block text-sm">
+                    {new Date(s.created_at).toLocaleString()}
+                  </div>
+                  <div className="md:hidden text-sm font-medium">
+                    {new Date(s.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Activity date: {s.activity_date}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Activity date: {s.activity_date}
+                {/* Mobile Points Displayed Early */}
+                <div className="md:hidden font-medium text-sm">
+                  {s.points_awarded} pts
                 </div>
               </div>
 
-              <div className="col-span-4">
-                <div className="text-sm font-medium">{s.activity_key}</div>
-                <div className="text-xs text-muted-foreground">
-                  With teammate: {s.did_with_teammate ? "yes" : "no"}
+              <div className="flex justify-between items-center md:col-span-4 md:block">
+                <div>
+                  <div className="text-sm md:font-medium">{s.activity_key}</div>
+                  <div className="text-xs text-muted-foreground">
+                    With teammate: {s.did_with_teammate ? "yes" : "no"}
+                  </div>
                 </div>
               </div>
 
-              <div className="col-span-2 text-sm font-medium">
+              <div className="hidden md:block md:col-span-2 text-sm font-medium">
                 {s.points_awarded}
               </div>
 
-              <div className="col-span-2 flex justify-end gap-2">
+              <div className="mt-2 flex justify-end gap-2 md:mt-0 md:col-span-2">
                 <Link
                   href={`/admin/submissions/${encodeURIComponent(
                     s.id,

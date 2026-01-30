@@ -143,7 +143,7 @@ export default function SubmitFormClient({
           name="activity_date"
           type="date"
           defaultValue={today}
-          className="h-11 w-full rounded-md border bg-background px-3 text-sm cursor-pointer"
+          className="h-11 w-full max-w-full appearance-none rounded-md border bg-background px-3 text-sm cursor-pointer"
           required
           onClick={(e) => e.currentTarget.showPicker()}
         />
