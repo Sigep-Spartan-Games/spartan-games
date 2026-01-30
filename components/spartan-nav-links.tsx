@@ -19,7 +19,7 @@ function NavLink({
   const base =
     variant === "desktop"
       ? "sg-nav-link rounded-md px-3 py-2"
-      : "sg-nav-link flex items-center justify-center rounded-md px-2 py-2 text-xs";
+      : "sg-nav-link flex-1 min-w-0 flex items-center justify-center rounded-md px-2 py-2 text-xs";
 
   return (
     <Link

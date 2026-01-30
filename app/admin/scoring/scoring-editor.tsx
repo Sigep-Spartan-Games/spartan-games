@@ -55,7 +55,7 @@ export default function ScoringEditor({
         <div>
           <h2 className="text-lg font-semibold">Scoring Rules</h2>
           <p className="text-sm text-muted-foreground">
-            Points are enforced server-side. Edit values here and click{" "}
+            Edit values here and click{" "}
             <span className="font-medium text-foreground">Save all</span>.
           </p>
         </div>

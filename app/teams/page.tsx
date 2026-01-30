@@ -139,7 +139,7 @@ async function TeamsContent({ sp }: { sp?: SP }) {
           Create a team, invite your teammate, and track points.
         </p>
       </div>
-      {registrationOpen && (
+      {registrationOpen && !myTeam && (
         <div className="grid gap-3 md:grid-cols-2">
           {/* Create */}
           <div className="rounded-2xl border p-4">

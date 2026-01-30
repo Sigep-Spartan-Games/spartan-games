@@ -58,46 +58,73 @@ export default async function LeaderboardPage() {
         </div>
       )}
 
-      {/* MOBILE */}
-      <div className="space-y-3 md:hidden">
+      {/* MOBILE (table-like, with pinned "Your team" + full list below) */}
+      <div className="md:hidden overflow-hidden rounded-2xl border">
+        {/* Header */}
+        <div className="grid grid-cols-[72px_1fr_84px] items-center bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
+          <div>Rank</div>
+          <div>Team</div>
+          <div className="text-right">Points</div>
+        </div>
+
+        {/* Pinned "Your team" row */}
         {myTeam && myRank && (
-          <div className="rounded-2xl border border-primary/40 bg-background p-4 ">
-            <div className="flex items-center justify-between gap-3 ">
-              <div>
-                <div className="text-xs text-primary">Your Team</div>
-                <div className="font-semibold">{myTeam.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  Rank #{myRank}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">Points</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {myTeam.points ?? 0}
-                </div>
-              </div>
+          <div className="grid grid-cols-[72px_1fr_84px] items-center border-t border-l-4 border-l-primary bg-background px-4 py-3 dark:bg-primary/20">
+            <div className="font-medium">#{myRank}</div>
+
+            <div className="min-w-0">
+              <div className="truncate font-semibold">{myTeam.name}</div>
+              <div className="text-xs text-primary">Your team</div>
+            </div>
+
+            <div className="text-right font-semibold tabular-nums">
+              {myTeam.points ?? 0}
             </div>
           </div>
         )}
 
-        {teams.map((t, idx) => (
-          <div key={t.id} className="rounded-2xl border p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs text-muted-foreground">
-                  Rank #{idx + 1}
-                </div>
-                <div className="font-semibold">{t.name}</div>
+        {/* Full leaderboard list (including your team at its real rank) */}
+        {teams.map((t, idx) => {
+          const rank = idx + 1;
+          const isMine = myTeam?.id === t.id;
+
+          return (
+            <div
+              key={t.id}
+              className={[
+                "grid grid-cols-[72px_1fr_84px] items-center border-t px-4 py-3",
+                isMine ? "bg-primary/5 dark:bg-primary/10" : "",
+              ].join(" ")}
+            >
+              <div className={isMine ? "font-medium" : "text-muted-foreground"}>
+                #{rank}
               </div>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">Points</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {t.points ?? 0}
+
+              <div className="min-w-0">
+                <div
+                  className={
+                    isMine ? "truncate font-semibold" : "truncate font-medium"
+                  }
+                >
+                  {t.name}
                 </div>
+                {isMine && (
+                  <div className="text-xs text-primary">Your team</div>
+                )}
+              </div>
+
+              <div
+                className={
+                  isMine
+                    ? "text-right font-semibold tabular-nums"
+                    : "text-right tabular-nums"
+                }
+              >
+                {t.points ?? 0}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* DESKTOP */}

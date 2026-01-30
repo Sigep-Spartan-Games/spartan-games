@@ -2,23 +2,29 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteSubmission } from "./actions";
+import TeamFilter from "./team-filter";
+
+type SearchParams = { [key: string]: string | string[] | undefined };
 
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams?: Promise<SearchParams>;
 }) {
   noStore();
+
   const sp = (await searchParams) ?? {};
   const teamId = typeof sp.team === "string" ? sp.team : "";
 
   const { supabase } = await requireAdmin("/admin/submissions");
 
-  const { data: teams } = await supabase
+  // Teams for the filter dropdown
+  const { data: teams, error: teamsError } = await supabase
     .from("teams")
     .select("id, name")
     .order("name");
 
+  // Submissions list
   let q = supabase
     .from("submissions")
     .select(
@@ -34,27 +40,14 @@ export default async function AdminSubmissionsPage({
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border p-4">
-        <form className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <div className="text-sm font-medium">Filter by team</div>
-            <select
-              name="team"
-              defaultValue={teamId}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm sm:w-80"
-            >
-              <option value="">All teams</option>
-              {(teams ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Client component handles onChange + router.replace */}
+        <TeamFilter teams={teams ?? []} teamId={teamId} />
 
-          <button className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
-            Apply
-          </button>
-        </form>
+        {teamsError ? (
+          <div className="mt-2 text-xs text-muted-foreground">
+            Error loading teams: {teamsError.message}
+          </div>
+        ) : null}
       </div>
 
       {error ? (
@@ -97,10 +90,10 @@ export default async function AdminSubmissionsPage({
 
               <div className="col-span-2 flex justify-end gap-2">
                 <Link
-                  href={`/admin/submissions/${s.id}?team=${encodeURIComponent(
-                    teamId || "",
-                  )}`}
-                  className="h-9 rounded-md border px-3 text-sm flex remind:items-center items-center"
+                  href={`/admin/submissions/${encodeURIComponent(
+                    s.id,
+                  )}?team=${encodeURIComponent(teamId || "")}`}
+                  className="h-9 rounded-md border px-3 text-sm flex items-center"
                 >
                   Edit
                 </Link>
@@ -115,6 +108,12 @@ export default async function AdminSubmissionsPage({
               </div>
             </div>
           ))}
+
+          {(subs?.length ?? 0) === 0 ? (
+            <div className="p-5 text-sm text-muted-foreground">
+              No submissions found.
+            </div>
+          ) : null}
         </div>
       )}
     </div>
