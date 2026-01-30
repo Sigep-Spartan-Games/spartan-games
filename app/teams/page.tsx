@@ -41,7 +41,6 @@ function TeamsSkeleton() {
 }
 
 // NOTE: Next (v15+) makes searchParams a Promise in some setups.
-// So we unwrap it here.
 export default async function TeamsPage({
   searchParams,
 }: {
@@ -64,6 +63,18 @@ async function TeamsContent({ sp }: { sp?: SP }) {
   const { data: auth } = await supabase.auth.getUser();
   const me = auth.user;
 
+  // ✅ registration gate
+  const { data: settings, error: settingsError } = await supabase
+    .from("game_settings")
+    .select("registration_open")
+    .eq("id", true)
+    .single();
+
+  // If settings row is missing/misconfigured, default to open (so app doesn't brick)
+  const registrationOpen = settingsError
+    ? true
+    : Boolean(settings?.registration_open);
+
   const { data, error } = await supabase
     .from("teams")
     .select(
@@ -81,6 +92,12 @@ async function TeamsContent({ sp }: { sp?: SP }) {
       null)
     : null;
 
+  // Create/join should be disabled if:
+  // - not logged in
+  // - already on a team
+  // - registration is closed
+  const canRegister = Boolean(me) && !myTeam && registrationOpen;
+
   return (
     <div className="space-y-6">
       {(success || errorMsg) && (
@@ -94,83 +111,109 @@ async function TeamsContent({ sp }: { sp?: SP }) {
         </div>
       )}
 
+      {/* ✅ show when registration is closed */}
+      {!registrationOpen && (
+        <div className="rounded-xl border bg-muted/30 p-4 text-sm">
+          <div className="font-medium">Team registration is closed</div>
+          <div className="mt-1 text-muted-foreground">
+            You can still view teams. Registration will reopen when the games
+            end.
+          </div>
+        </div>
+      )}
+
+      {/* If settings table had an error, mention it (but don't block usage) */}
+      {settingsError && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <div className="font-medium">Settings warning</div>
+          <div className="mt-1 text-muted-foreground">
+            Couldn’t load game settings: {settingsError.message}. Defaulting
+            registration to open.
+          </div>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
         <p className="text-sm text-muted-foreground">
           Create a team, invite your teammate, and track points.
         </p>
       </div>
+      {registrationOpen && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {/* Create */}
+          <div className="rounded-2xl border p-4">
+            <div className="text-sm font-medium">Register a team</div>
+            {myTeam ? (
+              ""
+            ) : (
+              <form action={createTeamAction} className="mt-3 flex gap-2">
+                <input
+                  name="teamName"
+                  placeholder="Team name"
+                  className="h-10 w-full rounded-xl border bg-transparent px-3 text-sm outline-none"
+                  maxLength={40}
+                  required
+                  disabled={!canRegister}
+                />
+                <button
+                  className="h-10 shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
+                  type="submit"
+                  disabled={!canRegister}
+                >
+                  Create
+                </button>
+              </form>
+            )}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {/* Create */}
-        <div className="rounded-2xl border p-4">
-          <div className="text-sm font-medium">Register a team</div>
-          {myTeam ? (
-            ""
-          ) : (
-            <form action={createTeamAction} className="mt-3 flex gap-2">
-              <input
-                name="teamName"
-                placeholder="Team name"
-                className="h-10 w-full rounded-xl border bg-transparent px-3 text-sm outline-none"
-                maxLength={40}
-                required
-                disabled={!me || Boolean(myTeam)}
-              />
-              <button
-                className="h-10 shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
-                type="submit"
-                disabled={!me || Boolean(myTeam)}
-              >
-                Create
-              </button>{" "}
-            </form>
-          )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {!me
+                ? "Sign in to create a team."
+                : myTeam
+                  ? "You’re already on a team. Leave it to create a new one."
+                  : registrationOpen
+                    ? "Creating a team auto-joins you and generates an invite code."
+                    : "Registration is closed right now."}
+            </p>
+          </div>
 
-          <p className="mt-2 text-xs text-muted-foreground">
-            {me
-              ? myTeam
-                ? "You’re already on a team. Leave it to create a new one."
-                : "Creating a team auto-joins you and generates an invite code."
-              : "Sign in to create a team."}
-          </p>
+          {/* Join */}
+          <div className="rounded-2xl border p-4">
+            <div className="text-sm font-medium">Join a team</div>
+            {myTeam ? (
+              ""
+            ) : (
+              <form action={joinByCodeAction} className="mt-3 flex gap-2">
+                <input
+                  name="inviteCode"
+                  placeholder="Invite code"
+                  className="h-10 w-full rounded-xl border bg-transparent px-3 text-sm uppercase tracking-wider outline-none"
+                  maxLength={16}
+                  required
+                  disabled={!canRegister}
+                />
+                <button
+                  className="h-10 shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
+                  type="submit"
+                  disabled={!canRegister}
+                >
+                  Join
+                </button>
+              </form>
+            )}
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              {!me
+                ? "Sign in to join a team."
+                : myTeam
+                  ? "Leave your current team to join another."
+                  : registrationOpen
+                    ? "Enter an invite code your teammate gives you."
+                    : "Registration is closed right now."}
+            </p>
+          </div>
         </div>
-
-        {/* Join */}
-        <div className="rounded-2xl border p-4">
-          <div className="text-sm font-medium">Join a team</div>
-          {myTeam ? (
-            ""
-          ) : (
-            <form action={joinByCodeAction} className="mt-3 flex gap-2">
-              <input
-                name="inviteCode"
-                placeholder="Invite code"
-                className="h-10 w-full rounded-xl border bg-transparent px-3 text-sm uppercase tracking-wider outline-none"
-                maxLength={16}
-                required
-                disabled={!me || Boolean(myTeam)}
-              />
-              <button
-                className="h-10 shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
-                type="submit"
-                disabled={!me || Boolean(myTeam)}
-              >
-                Join
-              </button>
-            </form>
-          )}
-
-          <p className="mt-2 text-xs text-muted-foreground">
-            {me
-              ? myTeam
-                ? "Leave your current team to join another."
-                : "Enter an invite code your teammate gives you."
-              : "Sign in to join a team."}
-          </p>
-        </div>
-      </div>
-
+      )}
       {error && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
           <div className="font-medium">Supabase error</div>
@@ -203,6 +246,7 @@ async function TeamsContent({ sp }: { sp?: SP }) {
             </div>
 
             <div className="flex flex-col gap-2">
+              {/* Rename still allowed (you can choose to block this too if you want) */}
               {myTeam.member1_id === me.id && (
                 <form action={renameTeamAction} className="flex gap-2">
                   <input type="hidden" name="teamId" value={myTeam.id} />

@@ -29,6 +29,35 @@ export default async function SubmitPage({
     );
   }
 
+  // ✅ Check if submissions are open
+  const { data: settings, error: settingsError } = await supabase
+    .from("game_settings")
+    .select("submissions_open")
+    .eq("id", true)
+    .single();
+
+  if (settingsError) {
+    return (
+      <div className="rounded-2xl border p-5">
+        <h1 className="text-xl font-semibold">Submit</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Error loading game settings: {settingsError.message}
+        </p>
+      </div>
+    );
+  }
+
+  if (!settings?.submissions_open) {
+    return (
+      <div className="rounded-2xl border p-5">
+        <h1 className="text-xl font-semibold">Submit</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Submissions are currently closed.
+        </p>
+      </div>
+    );
+  }
+
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .select("id, name")

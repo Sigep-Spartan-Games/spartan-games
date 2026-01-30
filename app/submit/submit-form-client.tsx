@@ -113,7 +113,6 @@ export default function SubmitFormClient({
 
   const today = useMemo(() => {
     const d = new Date();
-    // yyyy-mm-dd local
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -121,15 +120,15 @@ export default function SubmitFormClient({
   }, []);
 
   return (
-    <form action={action} className="space-y-4 rounded-2xl border p-5">
-      {/* Team locked */}
-      <div className="space-y-2">
+    <form action={action} className="space-y-3 rounded-2xl border p-4 md:p-5">
+      {/* Team */}
+      <div className="space-y-1.5">
         <label className="text-sm font-medium">Team</label>
         <input type="hidden" name="team_id" value={teamId} />
         <input
           value={teamName}
           disabled
-          className="h-12 w-full rounded-md border bg-muted px-3 text-base"
+          className="h-11 w-full rounded-md border bg-muted px-3 text-sm"
         />
         <p className="text-xs text-muted-foreground">
           You can only submit for your own team.
@@ -137,23 +136,23 @@ export default function SubmitFormClient({
       </div>
 
       {/* Date */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <label className="text-sm font-medium">Date</label>
         <input
           name="activity_date"
           type="date"
           defaultValue={today}
-          className="h-12 w-full rounded-md border bg-background px-3 text-base"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
           required
         />
       </div>
 
-      {/* Activity dropdown */}
-      <div className="space-y-2">
+      {/* Activity */}
+      <div className="space-y-1.5">
         <label className="text-sm font-medium">Activity</label>
         <select
           name="activity_key"
-          className="h-12 w-full rounded-md border bg-background px-3 text-base"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
           value={activityKey}
           onChange={(e) => setActivityKey(e.target.value as ActivityKey)}
           required
@@ -166,8 +165,8 @@ export default function SubmitFormClient({
         </select>
       </div>
 
-      {/* Dynamic value input */}
-      <div className="space-y-2">
+      {/* Value */}
+      <div className="space-y-1.5">
         <label className="text-sm font-medium">
           {def.input === "boolean"
             ? "Completed?"
@@ -185,7 +184,7 @@ export default function SubmitFormClient({
             placeholder={
               def.unitLabel ? `Enter ${def.unitLabel}…` : "Enter amount…"
             }
-            className="h-12 w-full rounded-md border bg-background px-3 text-base"
+            className="h-11 w-full rounded-md border bg-background px-3 text-sm"
             required
           />
         )}
@@ -196,17 +195,17 @@ export default function SubmitFormClient({
             placeholder={
               def.unitLabel ? `Enter ${def.unitLabel}…` : "Enter details…"
             }
-            className="h-12 w-full rounded-md border bg-background px-3 text-base"
+            className="h-11 w-full rounded-md border bg-background px-3 text-sm"
             required
           />
         )}
 
         {def.input === "boolean" && (
-          <label className="flex items-center gap-3 rounded-xl border p-4">
+          <label className="flex items-center gap-3 rounded-xl border p-3">
             <input
               type="checkbox"
               name="activity_value_bool"
-              className="h-5 w-5"
+              className="h-4 w-4"
             />
             <div>
               <div className="text-sm font-medium">
@@ -220,8 +219,9 @@ export default function SubmitFormClient({
         )}
       </div>
 
-      <label className="flex items-center gap-3 rounded-xl border p-4">
-        <input type="checkbox" name="did_with_teammate" className="h-5 w-5" />
+      {/* Teammate */}
+      <label className="flex items-center gap-3 rounded-xl border p-3">
+        <input type="checkbox" name="did_with_teammate" className="h-4 w-4" />
         <div>
           <div className="text-sm font-medium">Did this with teammate</div>
           <div className="text-xs text-muted-foreground">
@@ -230,9 +230,10 @@ export default function SubmitFormClient({
         </div>
       </label>
 
+      {/* Submit */}
       <button
         type="submit"
-        className="h-12 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground"
+        className="h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground"
       >
         Submit Activity
       </button>

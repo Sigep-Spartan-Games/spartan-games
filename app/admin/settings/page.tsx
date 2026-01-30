@@ -1,7 +1,7 @@
 // app/admin/settings/page.tsx
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { resetSpartanGames } from "./actions";
+import { resetSpartanGames, startGames, endGames } from "./actions";
 
 export default async function AdminSettingsPage({
   searchParams,
@@ -30,6 +30,40 @@ export default async function AdminSettingsPage({
           <div className="mt-1 text-muted-foreground">{ok}</div>
         </div>
       )}
+
+      <div className="rounded-2xl border p-5 space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Game Controls</h2>
+          <p className="text-sm text-muted-foreground">
+            Start Games closes team registration and opens submissions. End
+            Games does the opposite.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <form action={startGames}>
+            <button
+              type="submit"
+              className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+            >
+              Start Games
+            </button>
+          </form>
+
+          <form action={endGames}>
+            <button
+              type="submit"
+              className="h-10 rounded-md border px-4 text-sm font-medium"
+            >
+              End Games
+            </button>
+          </form>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Tip: You can still export or reset at any time.
+        </p>
+      </div>
 
       {/* Export */}
       <div className="rounded-2xl border p-5 space-y-3">

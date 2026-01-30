@@ -16,6 +16,18 @@ export async function createSubmission(formData: FormData) {
   const user = auth.user;
   if (!user) redirect("/submit?error=not_authenticated");
 
+  // ✅ Enforce submissions open (server-side)
+  const { data: settings, error: settingsError } = await supabase
+    .from("game_settings")
+    .select("submissions_open")
+    .eq("id", true)
+    .single();
+
+  if (settingsError)
+    redirect(`/submit?error=${encodeURIComponent(settingsError.message)}`);
+
+  if (!settings?.submissions_open) redirect("/submit?error=submissions_closed");
+
   // User's team from teams table
   const { data: team, error: teamError } = await supabase
     .from("teams")
@@ -45,8 +57,7 @@ export async function createSubmission(formData: FormData) {
   const numRaw = formData.get("activity_value_number");
   const textRaw = formData.get("activity_value_text");
 
-  // boolean checkbox behavior: if checkbox is rendered but unchecked, get(...) returns null
-  // so we consider bool "present" if activityKey is calorie_goal OR if you later render other bool types
+  // boolean checkbox behavior
   const boolRaw = formData.get("activity_value_bool");
   const boolChecked = boolRaw === "on";
 
@@ -58,7 +69,6 @@ export async function createSubmission(formData: FormData) {
     Number.isFinite(activityValueNumber);
   const hasText = !!activityValueText;
 
-  // For now: calorie_goal requires a "Yes" (checked). Unchecked = missing.
   const isBoolActivity = activityKey === "calorie_goal";
   const hasBool = isBoolActivity ? boolChecked : false;
 
@@ -73,26 +83,24 @@ export async function createSubmission(formData: FormData) {
     .eq("activity_key", activityKey)
     .maybeSingle();
 
-  // Defaults if rules table not seeded yet
+  if (rulesError) {
+    redirect(`/submit?error=${encodeURIComponent(rulesError.message)}`);
+  }
+
   const pointsPerUnit = Number(rules?.points_per_unit ?? 10);
   const teammateBonus = Number(rules?.teammate_bonus ?? 15);
 
   // Determine units for scoring
-  // - number activities: units = value
-  // - text activities: units = 1
-  // - calorie_goal (bool): units = 1 if checked
   let units = 0;
-
   if (hasNumber) units = Number(activityValueNumber);
   else if (hasText) units = 1;
   else if (hasBool) units = 1;
 
   if (!Number.isFinite(units) || units <= 0) {
-    // keeps compatibility with your CHECK constraints
     redirect("/submit?error=invalid_units");
   }
 
-  // Points: 10 per unit + 15 if teammate
+  // Points
   let pointsAwarded = Math.round(pointsPerUnit * units);
   if (didWithTeammate) pointsAwarded += teammateBonus;
 
@@ -100,7 +108,6 @@ export async function createSubmission(formData: FormData) {
     redirect("/submit?error=points_zero");
   }
 
-  // Keep your existing required activity column as a display string
   const activityDisplay = (() => {
     if (hasNumber) return `${activityKey}:${activityValueNumber}`;
     if (hasText) return `${activityKey}:${activityValueText}`;
@@ -108,37 +115,23 @@ export async function createSubmission(formData: FormData) {
     return activityKey;
   })();
 
-  // Keep base_points column valid; store the "per-unit component" here
-  // (admin page / future can show points_per_unit and units instead)
   const basePoints = Math.max(1, Math.round(pointsPerUnit * units));
 
   const { error } = await supabase.from("submissions").insert({
     team_id: team.id,
     submitted_by: user.id,
-
-    // required existing column
     activity: activityDisplay,
 
-    // scoring columns (server-controlled)
     base_points: basePoints,
     did_with_teammate: didWithTeammate,
-
-    // keep multiplier column valid but no longer meaningful
     multiplier: 1.0,
-
     points_awarded: pointsAwarded,
 
-    // structured fields (if you added them)
     activity_key: activityKey,
     activity_date: activityDate,
     activity_value_number: hasNumber ? activityValueNumber : null,
     activity_value_text: hasText ? activityValueText : null,
     activity_value_bool: isBoolActivity ? boolChecked : null,
-
-    // optional snapshot columns (only if you added them)
-    // points_per_unit: pointsPerUnit,
-    // teammate_bonus: teammateBonus,
-    // activity_units: units,
   });
 
   if (error) redirect(`/submit?error=${encodeURIComponent(error.message)}`);

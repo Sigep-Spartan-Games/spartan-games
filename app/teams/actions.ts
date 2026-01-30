@@ -4,6 +4,29 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 
+async function requireRegistrationOpen(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
+  const { data: settings, error } = await supabase
+    .from("game_settings")
+    .select("registration_open")
+    .eq("id", true)
+    .single();
+
+  if (error) {
+    // fail-closed is safer for admin control
+    redirect(
+      `/teams?error=${encodeURIComponent("Could not load game settings")}`,
+    );
+  }
+
+  if (!settings?.registration_open) {
+    redirect(
+      `/teams?error=${encodeURIComponent("Team registration is closed")}`,
+    );
+  }
+}
+
 export async function createTeamAction(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
@@ -14,6 +37,9 @@ export async function createTeamAction(formData: FormData): Promise<void> {
 
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/teams?error=Sign%20in%20required");
+
+  // ✅ enforce registration open
+  await requireRegistrationOpen(supabase);
 
   const { error } = await supabase.rpc("create_team", { p_name: teamName });
   if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
@@ -32,6 +58,9 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
 
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/teams?error=Sign%20in%20required");
+
+  // ✅ enforce registration open
+  await requireRegistrationOpen(supabase);
 
   const { error } = await supabase.rpc("join_team_by_code", { p_code: code });
   if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);

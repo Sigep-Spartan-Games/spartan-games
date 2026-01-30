@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { hasEnvVars } from "@/lib/utils";
@@ -8,6 +9,10 @@ import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { isAdmin } from "@/lib/is-admin";
 import { SpartanNavLinks } from "@/components/spartan-nav-links";
+import SigepEmblem from "@/app/assets/SigepEmblem.png";
+import BalancedMan from "@/app/assets/Balanced-Man-Logo-ALT.pdf-2-863x667.png";
+import Spartan from "@/app/assets/spartan.png";
+
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
@@ -32,9 +37,17 @@ function DesktopTopNav({ admin }: { admin: boolean }) {
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
           <Link
             href="/"
-            className="font-semibold tracking-tight text-amber-100 drop-shadow-[0_1px_10px_rgba(255,200,80,0.18)]"
+            className="flex items-center gap-3 font-semibold tracking-tight text-amber-100 drop-shadow-[0_1px_10px_rgba(255,200,80,0.18)]"
           >
-            Spartan Games
+            <Image
+              src={Spartan}
+              alt="SigEp Logo"
+              width={70}
+              height={70}
+              className="h-100 w-100 object-contain"
+              priority
+            />
+            <span className="whitespace-nowrap">Spartan Games</span>
           </Link>
 
           <nav className="flex items-center gap-1 text-sm">

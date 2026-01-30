@@ -38,7 +38,7 @@ export default async function LeaderboardPage() {
 
     if (myTeamData) {
       myTeam = myTeamData as TeamRow;
-      myRank = teams.findIndex((t) => t.id === myTeam.id) + 1 || null;
+      myRank = teams.findIndex((t) => t.id === myTeam!.id) + 1 || null;
     }
   }
 
@@ -61,8 +61,8 @@ export default async function LeaderboardPage() {
       {/* MOBILE */}
       <div className="space-y-3 md:hidden">
         {myTeam && myRank && (
-          <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
-            <div className="flex items-center justify-between gap-3">
+          <div className="rounded-2xl border border-primary/40 bg-background p-4 ">
+            <div className="flex items-center justify-between gap-3 ">
               <div>
                 <div className="text-xs text-primary">Your Team</div>
                 <div className="font-semibold">{myTeam.name}</div>
@@ -112,7 +112,7 @@ export default async function LeaderboardPage() {
           </thead>
           <tbody>
             {myTeam && myRank && (
-              <tr className="border-t bg-primary/5">
+              <tr className="border-t bg-background">
                 <td className="px-4 py-3 font-medium">#{myRank}</td>
                 <td className="px-4 py-3 font-semibold">
                   {myTeam.name}
