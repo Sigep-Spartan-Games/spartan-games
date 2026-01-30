@@ -27,6 +27,22 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+function DesktopNavSkeleton() {
+  return (
+    <div className="flex items-center gap-1 text-sm">
+      <div className="h-9 w-64 rounded-md bg-muted/20" />
+    </div>
+  );
+}
+
+function MobileNavSkeleton() {
+  return (
+    <div className="flex w-full max-w-sm gap-1">
+      <div className="h-10 w-full rounded-md bg-muted/20" />
+    </div>
+  );
+}
+
 function DesktopTopNav() {
   return (
     <header className="sg-nav border-b sticky top-0 z-50 hidden md:block">
@@ -47,13 +63,12 @@ function DesktopTopNav() {
             <span className="whitespace-nowrap">Spartan Games</span>
           </Link>
 
-          <nav className="flex items-center gap-1 text-sm">
-            {/* Your normal links (no server-side admin boolean) */}
-            <SpartanNavLinks admin={false} variant="desktop" />
-
-            {/* Admin link renders client-side only if admin */}
-            <AdminLink variant="desktop" />
-          </nav>
+          <Suspense fallback={<DesktopNavSkeleton />}>
+            <nav className="flex items-center gap-1 text-sm">
+              <SpartanNavLinks admin={false} variant="desktop" />
+              <AdminLink variant="desktop" />
+            </nav>
+          </Suspense>
 
           {!hasEnvVars ? (
             <EnvVarWarning />
@@ -75,16 +90,16 @@ function MobileBottomNav() {
         <div className="mx-auto max-w-4xl px-2 py-2">
           {/* Top row: main nav buttons */}
           <div className="flex items-center justify-center">
-            <div className="flex w-full max-w-sm gap-1">
-              <SpartanNavLinks admin={false} variant="mobile" />
-              <AdminLink variant="mobile" />
-            </div>
+            <Suspense fallback={<MobileNavSkeleton />}>
+              <div className="flex w-full max-w-sm gap-1">
+                <SpartanNavLinks admin={false} variant="mobile" />
+                <AdminLink variant="mobile" />
+              </div>
+            </Suspense>
           </div>
 
-          {/* Bottom row: Admin (left if admin) + Auth (right) */}
+          {/* Bottom row: Auth */}
           <div className="mt-2 flex items-center justify-center">
-            {/* Admin link is client-side gated */}
-
             {!hasEnvVars ? (
               <EnvVarWarning />
             ) : (

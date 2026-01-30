@@ -1,6 +1,7 @@
+// app/teams/page.tsx
 import { Suspense } from "react";
-import { createClient } from "../../lib/supabase/server";
 import { unstable_noStore as noStore } from "next/cache";
+import { createClient } from "../../lib/supabase/server";
 import {
   createTeamAction,
   joinByCodeAction,
@@ -40,23 +41,11 @@ function TeamsSkeleton() {
   );
 }
 
-// NOTE: Next (v15+) makes searchParams a Promise in some setups.
-export default async function TeamsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SP>;
-}) {
-  const sp = await searchParams;
-
-  return (
-    <Suspense fallback={<TeamsSkeleton />}>
-      <TeamsContent sp={sp} />
-    </Suspense>
-  );
-}
-
-async function TeamsContent({ sp }: { sp?: SP }) {
+async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
+  // IMPORTANT: keep uncached work inside Suspense
   noStore();
+
+  const sp = await searchParams;
 
   const supabase = await createClient();
 
@@ -70,7 +59,6 @@ async function TeamsContent({ sp }: { sp?: SP }) {
     .eq("id", true)
     .single();
 
-  // If settings row is missing/misconfigured, default to open (so app doesn't brick)
   const registrationOpen = settingsError
     ? true
     : Boolean(settings?.registration_open);
@@ -92,10 +80,6 @@ async function TeamsContent({ sp }: { sp?: SP }) {
       null)
     : null;
 
-  // Create/join should be disabled if:
-  // - not logged in
-  // - already on a team
-  // - registration is closed
   const canRegister = Boolean(me) && !myTeam && registrationOpen;
 
   return (
@@ -111,7 +95,6 @@ async function TeamsContent({ sp }: { sp?: SP }) {
         </div>
       )}
 
-      {/* ✅ show when registration is closed */}
       {!registrationOpen && (
         <div className="rounded-xl border bg-muted/30 p-4 text-sm">
           <div className="font-medium">Team registration is closed</div>
@@ -122,7 +105,6 @@ async function TeamsContent({ sp }: { sp?: SP }) {
         </div>
       )}
 
-      {/* If settings table had an error, mention it (but don't block usage) */}
       {settingsError && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
           <div className="font-medium">Settings warning</div>
@@ -139,6 +121,7 @@ async function TeamsContent({ sp }: { sp?: SP }) {
           Create a team, invite your teammate, and track points.
         </p>
       </div>
+
       {registrationOpen && !myTeam && (
         <div className="grid gap-3 md:grid-cols-2">
           {/* Create */}
@@ -214,6 +197,7 @@ async function TeamsContent({ sp }: { sp?: SP }) {
           </div>
         </div>
       )}
+
       {error && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
           <div className="font-medium">Supabase error</div>
@@ -246,7 +230,6 @@ async function TeamsContent({ sp }: { sp?: SP }) {
             </div>
 
             <div className="flex flex-col gap-2">
-              {/* Rename still allowed (you can choose to block this too if you want) */}
               {myTeam.member1_id === me.id && (
                 <form action={renameTeamAction} className="flex gap-2">
                   <input type="hidden" name="teamId" value={myTeam.id} />
@@ -316,5 +299,13 @@ async function TeamsContent({ sp }: { sp?: SP }) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function TeamsPage(props: { searchParams: Promise<SP> }) {
+  return (
+    <Suspense fallback={<TeamsSkeleton />}>
+      <TeamsInner {...props} />
+    </Suspense>
   );
 }

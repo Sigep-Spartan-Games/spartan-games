@@ -1,4 +1,6 @@
+// app/admin/submissions/page.tsx
 import Link from "next/link";
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteSubmission } from "./actions";
@@ -6,7 +8,27 @@ import TeamFilter from "./team-filter";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
-export default async function AdminSubmissionsPage({
+function SubmissionsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border p-4">
+        <div className="h-10 w-full rounded bg-muted/20" />
+      </div>
+      <div className="rounded-2xl border overflow-hidden">
+        <div className="border-b bg-muted/40 px-4 py-2">
+          <div className="h-4 w-64 rounded bg-muted/40" />
+        </div>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="border-b px-4 py-3">
+            <div className="h-4 w-full rounded bg-muted/25" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function AdminSubmissionsInner({
   searchParams,
 }: {
   searchParams?: Promise<SearchParams>;
@@ -18,13 +40,11 @@ export default async function AdminSubmissionsPage({
 
   const { supabase } = await requireAdmin("/admin/submissions");
 
-  // Teams for the filter dropdown
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
     .select("id, name")
     .order("name");
 
-  // Submissions list
   let q = supabase
     .from("submissions")
     .select(
@@ -40,7 +60,6 @@ export default async function AdminSubmissionsPage({
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border p-4">
-        {/* Client component handles onChange + router.replace */}
         <TeamFilter teams={teams ?? []} teamId={teamId} />
 
         {teamsError ? (
@@ -117,5 +136,15 @@ export default async function AdminSubmissionsPage({
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminSubmissionsPage(props: {
+  searchParams?: Promise<SearchParams>;
+}) {
+  return (
+    <Suspense fallback={<SubmissionsSkeleton />}>
+      <AdminSubmissionsInner {...props} />
+    </Suspense>
   );
 }

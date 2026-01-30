@@ -1,10 +1,29 @@
 // app/admin/teams/page.tsx
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteTeam } from "./actions";
 
-export default async function AdminTeamsPage() {
+function TeamsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border overflow-hidden">
+        <div className="border-b bg-muted/40 px-4 py-2">
+          <div className="h-4 w-56 rounded bg-muted/40" />
+        </div>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="border-b px-4 py-3">
+            <div className="h-4 w-full rounded bg-muted/25" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function AdminTeamsInner() {
   noStore();
+
   const { supabase } = await requireAdmin("/admin/teams");
 
   const { data: teams, error } = await supabase
@@ -39,7 +58,6 @@ export default async function AdminTeamsPage() {
               <div className="col-span-3 text-sm">{t.invite_code ?? "-"}</div>
               <div className="col-span-2 text-sm">{t.points ?? 0}</div>
               <div className="col-span-2 flex justify-end gap-2">
-                {/* TODO: add edit UI later */}
                 <form action={deleteTeam}>
                   <input type="hidden" name="id" value={t.id} />
                   <button className="h-9 rounded-md border px-3 text-sm">
@@ -52,5 +70,13 @@ export default async function AdminTeamsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminTeamsPage() {
+  return (
+    <Suspense fallback={<TeamsSkeleton />}>
+      <AdminTeamsInner />
+    </Suspense>
   );
 }

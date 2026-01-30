@@ -1,5 +1,10 @@
 // app/admin/layout.tsx
+import { Suspense } from "react";
 import AdminTabs from "./admin-tabs";
+
+function AdminTabsSkeleton() {
+  return <div className="h-12 rounded-2xl border bg-muted/20" />;
+}
 
 export default function AdminLayout({
   children,
@@ -15,7 +20,9 @@ export default function AdminLayout({
         </p>
       </div>
 
-      <AdminTabs />
+      <Suspense fallback={<AdminTabsSkeleton />}>
+        <AdminTabs />
+      </Suspense>
 
       {children}
     </div>

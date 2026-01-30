@@ -1,5 +1,7 @@
-import { createClient } from "../../lib/supabase/server";
+// app/leaderboard/page.tsx
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 
 type TeamRow = {
   id: string;
@@ -7,12 +9,35 @@ type TeamRow = {
   points: number | null;
 };
 
-export default async function LeaderboardPage() {
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="h-8 w-40 rounded bg-muted/40" />
+        <div className="mt-2 h-4 w-64 rounded bg-muted/30" />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border">
+        <div className="bg-muted/50 px-4 py-3">
+          <div className="h-4 w-56 rounded bg-muted/40" />
+        </div>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="border-t px-4 py-3">
+            <div className="h-4 w-full rounded bg-muted/30" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function LeaderboardInner() {
+  // This is the Cache Components-compatible way to opt out of caching for this render.
   noStore();
 
   const supabase = await createClient();
 
-  // Auth
+  // Auth (request-time / cookie-based)
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
 
@@ -25,7 +50,7 @@ export default async function LeaderboardPage() {
 
   const teams = (data ?? []) as TeamRow[];
 
-  // Find user's team
+  // Find user's team + rank
   let myTeam: TeamRow | null = null;
   let myRank: number | null = null;
 
@@ -38,7 +63,8 @@ export default async function LeaderboardPage() {
 
     if (myTeamData) {
       myTeam = myTeamData as TeamRow;
-      myRank = teams.findIndex((t) => t.id === myTeam!.id) + 1 || null;
+      const idx = teams.findIndex((t) => t.id === myTeamData.id);
+      myRank = idx >= 0 ? idx + 1 : null;
     }
   }
 
@@ -58,16 +84,14 @@ export default async function LeaderboardPage() {
         </div>
       )}
 
-      {/* MOBILE (table-like, with pinned "Your team" + full list below) */}
-      <div className="md:hidden overflow-hidden rounded-2xl border">
-        {/* Header */}
+      {/* MOBILE */}
+      <div className="overflow-hidden rounded-2xl border md:hidden">
         <div className="grid grid-cols-[72px_1fr_84px] items-center bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
           <div>Rank</div>
           <div>Team</div>
           <div className="text-right">Points</div>
         </div>
 
-        {/* Pinned "Your team" row */}
         {myTeam && myRank && (
           <div className="grid grid-cols-[72px_1fr_84px] items-center border-t border-l-4 border-l-primary bg-background px-4 py-3 dark:bg-primary/20">
             <div className="font-medium">#{myRank}</div>
@@ -83,7 +107,6 @@ export default async function LeaderboardPage() {
           </div>
         )}
 
-        {/* Full leaderboard list (including your team at its real rank) */}
         {teams.map((t, idx) => {
           const rank = idx + 1;
           const isMine = myTeam?.id === t.id;
@@ -164,5 +187,13 @@ export default async function LeaderboardPage() {
         </table>
       </div>
     </div>
+  );
+}
+
+export default function LeaderboardPage() {
+  return (
+    <Suspense fallback={<LeaderboardSkeleton />}>
+      <LeaderboardInner />
+    </Suspense>
   );
 }

@@ -1,9 +1,27 @@
-import { createClient } from "../../lib/supabase/server";
+// app/submit/page.tsx
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
+import { createClient } from "../../lib/supabase/server";
 import SubmitFormClient from "./submit-form-client";
 import { createSubmission } from "./actions";
 
-export default async function SubmitPage({
+function SubmitSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="h-8 w-32 rounded bg-muted/40" />
+        <div className="mt-2 h-4 w-64 rounded bg-muted/30" />
+      </div>
+      <div className="rounded-2xl border p-5">
+        <div className="h-10 w-full rounded bg-muted/20" />
+        <div className="mt-3 h-10 w-2/3 rounded bg-muted/20" />
+        <div className="mt-3 h-10 w-1/2 rounded bg-muted/20" />
+      </div>
+    </div>
+  );
+}
+
+async function SubmitInner({
   searchParams,
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -108,5 +126,15 @@ export default async function SubmitPage({
         teamName={team.name}
       />
     </div>
+  );
+}
+
+export default function SubmitPage(props: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  return (
+    <Suspense fallback={<SubmitSkeleton />}>
+      <SubmitInner {...props} />
+    </Suspense>
   );
 }

@@ -1,14 +1,36 @@
 // app/admin/scoring/page.tsx
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import ScoringEditor from "./scoring-editor";
 import { upsertActivityRulesBulk, resetActivityRulesDefaults } from "./actions";
 
-export default async function AdminScoringPage({
+function ScoringSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border p-5">
+        <div className="h-6 w-40 rounded bg-muted/40" />
+        <div className="mt-2 h-4 w-64 rounded bg-muted/30" />
+      </div>
+
+      <div className="rounded-2xl border p-5">
+        <div className="h-4 w-56 rounded bg-muted/40" />
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-10 rounded bg-muted/25" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function AdminScoringInner({
   searchParams,
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // Cache Components-compatible opt-out
   noStore();
 
   const sp = (await searchParams) ?? {};
@@ -16,6 +38,7 @@ export default async function AdminScoringPage({
   const savedParam = typeof sp.saved === "string" ? sp.saved : null;
   const resetParam = typeof sp.reset === "string" ? sp.reset : null;
 
+  // This reads auth/cookies -> must be inside Suspense
   const { supabase } = await requireAdmin("/admin/scoring");
 
   const { data: rules, error: rulesError } = await supabase
@@ -62,5 +85,15 @@ export default async function AdminScoringPage({
         />
       )}
     </div>
+  );
+}
+
+export default function AdminScoringPage(props: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  return (
+    <Suspense fallback={<ScoringSkeleton />}>
+      <AdminScoringInner {...props} />
+    </Suspense>
   );
 }

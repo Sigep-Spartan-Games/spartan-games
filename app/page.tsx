@@ -1,5 +1,7 @@
-import { createClient } from "../lib/supabase/server";
+// app/leaderboard/page.tsx
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 
 type TeamRow = {
   id: string;
@@ -7,12 +9,35 @@ type TeamRow = {
   points: number | null;
 };
 
-export default async function LeaderboardPage() {
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="h-8 w-40 rounded bg-muted/40" />
+        <div className="mt-2 h-4 w-64 rounded bg-muted/30" />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border">
+        <div className="bg-muted/50 px-4 py-3">
+          <div className="h-4 w-56 rounded bg-muted/40" />
+        </div>
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="border-t px-4 py-3">
+            <div className="h-4 w-full rounded bg-muted/30" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function LeaderboardInner() {
+  // This is the Cache Components-compatible way to opt out of caching for this render.
   noStore();
 
   const supabase = await createClient();
 
-  // Auth
+  // Auth (request-time / cookie-based)
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
 
@@ -25,7 +50,7 @@ export default async function LeaderboardPage() {
 
   const teams = (data ?? []) as TeamRow[];
 
-  // Find user's team
+  // Find user's team + rank
   let myTeam: TeamRow | null = null;
   let myRank: number | null = null;
 
@@ -38,7 +63,8 @@ export default async function LeaderboardPage() {
 
     if (myTeamData) {
       myTeam = myTeamData as TeamRow;
-      myRank = teams.findIndex((t) => t.id === myTeam!.id) + 1 || null;
+      const idx = teams.findIndex((t) => t.id === myTeamData.id);
+      myRank = idx >= 0 ? idx + 1 : null;
     }
   }
 
@@ -59,45 +85,69 @@ export default async function LeaderboardPage() {
       )}
 
       {/* MOBILE */}
-      <div className="space-y-3 md:hidden">
+      <div className="overflow-hidden rounded-2xl border md:hidden">
+        <div className="grid grid-cols-[72px_1fr_84px] items-center bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
+          <div>Rank</div>
+          <div>Team</div>
+          <div className="text-right">Points</div>
+        </div>
+
         {myTeam && myRank && (
-          <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs text-primary">Your Team</div>
-                <div className="font-semibold">{myTeam.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  Rank #{myRank}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">Points</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {myTeam.points ?? 0}
-                </div>
-              </div>
+          <div className="grid grid-cols-[72px_1fr_84px] items-center border-t border-l-4 border-l-primary bg-background px-4 py-3 dark:bg-primary/20">
+            <div className="font-medium">#{myRank}</div>
+
+            <div className="min-w-0">
+              <div className="truncate font-semibold">{myTeam.name}</div>
+              <div className="text-xs text-primary">Your team</div>
+            </div>
+
+            <div className="text-right font-semibold tabular-nums">
+              {myTeam.points ?? 0}
             </div>
           </div>
         )}
 
-        {teams.map((t, idx) => (
-          <div key={t.id} className="rounded-2xl border p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs text-muted-foreground">
-                  Rank #{idx + 1}
-                </div>
-                <div className="font-semibold">{t.name}</div>
+        {teams.map((t, idx) => {
+          const rank = idx + 1;
+          const isMine = myTeam?.id === t.id;
+
+          return (
+            <div
+              key={t.id}
+              className={[
+                "grid grid-cols-[72px_1fr_84px] items-center border-t px-4 py-3",
+                isMine ? "bg-primary/5 dark:bg-primary/10" : "",
+              ].join(" ")}
+            >
+              <div className={isMine ? "font-medium" : "text-muted-foreground"}>
+                #{rank}
               </div>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">Points</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {t.points ?? 0}
+
+              <div className="min-w-0">
+                <div
+                  className={
+                    isMine ? "truncate font-semibold" : "truncate font-medium"
+                  }
+                >
+                  {t.name}
                 </div>
+                {isMine && (
+                  <div className="text-xs text-primary">Your team</div>
+                )}
+              </div>
+
+              <div
+                className={
+                  isMine
+                    ? "text-right font-semibold tabular-nums"
+                    : "text-right tabular-nums"
+                }
+              >
+                {t.points ?? 0}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* DESKTOP */}
@@ -112,7 +162,7 @@ export default async function LeaderboardPage() {
           </thead>
           <tbody>
             {myTeam && myRank && (
-              <tr className="border-t bg-primary/5">
+              <tr className="border-t bg-background">
                 <td className="px-4 py-3 font-medium">#{myRank}</td>
                 <td className="px-4 py-3 font-semibold">
                   {myTeam.name}
@@ -137,5 +187,13 @@ export default async function LeaderboardPage() {
         </table>
       </div>
     </div>
+  );
+}
+
+export default function LeaderboardPage() {
+  return (
+    <Suspense fallback={<LeaderboardSkeleton />}>
+      \ <LeaderboardInner />
+    </Suspense>
   );
 }

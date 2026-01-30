@@ -1,9 +1,28 @@
 // app/admin/settings/page.tsx
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { resetSpartanGames, startGames, endGames } from "./actions";
 
-export default async function AdminSettingsPage({
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border p-5">
+        <div className="h-6 w-44 rounded bg-muted/40" />
+        <div className="mt-2 h-4 w-72 rounded bg-muted/30" />
+      </div>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="rounded-2xl border p-5">
+          <div className="h-5 w-40 rounded bg-muted/35" />
+          <div className="mt-3 h-10 w-full rounded bg-muted/20" />
+          <div className="mt-3 h-10 w-2/3 rounded bg-muted/20" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function AdminSettingsInner({
   searchParams,
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -138,5 +157,15 @@ export default async function AdminSettingsPage({
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AdminSettingsPage(props: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  return (
+    <Suspense fallback={<SettingsSkeleton />}>
+      <AdminSettingsInner {...props} />
+    </Suspense>
   );
 }
