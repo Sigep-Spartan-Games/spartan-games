@@ -1,7 +1,8 @@
 // app/submit/page.tsx
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/cached-data";
 import SubmitFormClient from "./submit-form-client";
 import { createSubmission } from "./actions";
 
@@ -33,8 +34,7 @@ async function SubmitInner({
 
   const supabase = await createClient();
 
-  const { data: auth } = await supabase.auth.getUser();
-  const user = auth.user;
+  const user = await getCachedUser();
 
   if (!user) {
     return (

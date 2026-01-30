@@ -10,6 +10,7 @@ import { AuthButton } from "@/components/auth-button";
 import AdminLink from "@/components/admin-link";
 import { SpartanNavLinks } from "@/components/spartan-nav-links";
 import Spartan from "@/app/assets/spartan.png";
+// import AuthRefresh from "@/components/auth-refresh";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -60,7 +61,7 @@ function DesktopTopNav() {
               className="h-100 w-100 object-contain"
               priority
             />
-            <span className="whitespace-nowrap">Spartan Games</span>
+            <span className="whitespace-nowrap text-xl">Spartan Games</span>
           </Link>
 
           <Suspense fallback={<DesktopNavSkeleton />}>
@@ -120,6 +121,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased`}>
+        {/* <AuthRefresh /> */}
         <div className="sg-bg" />
         <div className="sg-top-glow" />
         <div className="spartan-site-bg" />

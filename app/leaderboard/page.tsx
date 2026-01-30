@@ -31,6 +31,8 @@ function LeaderboardSkeleton() {
   );
 }
 
+import { getCachedUser } from "@/lib/cached-data";
+
 async function LeaderboardInner() {
   // This is the Cache Components-compatible way to opt out of caching for this render.
   noStore();
@@ -38,8 +40,7 @@ async function LeaderboardInner() {
   const supabase = await createClient();
 
   // Auth (request-time / cookie-based)
-  const { data: auth } = await supabase.auth.getUser();
-  const user = auth.user;
+  const user = await getCachedUser();
 
   // Leaderboard
   const { data, error } = await supabase

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SubmitButton } from "@/components/submit-button";
 
 type ActivityKey =
   | "sport_practice"
@@ -142,8 +143,9 @@ export default function SubmitFormClient({
           name="activity_date"
           type="date"
           defaultValue={today}
-          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm cursor-pointer"
           required
+          onClick={(e) => e.currentTarget.showPicker()}
         />
       </div>
 
@@ -231,12 +233,11 @@ export default function SubmitFormClient({
       </label>
 
       {/* Submit */}
-      <button
-        type="submit"
+      <SubmitButton
         className="h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground"
       >
         Submit Activity
-      </button>
+      </SubmitButton>
     </form>
   );
 }
