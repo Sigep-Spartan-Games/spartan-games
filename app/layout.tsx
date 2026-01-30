@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { hasEnvVars } from "@/lib/utils";
 import { Suspense } from "react";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
-
+import { isAdmin } from "@/lib/is-admin";
+import { SpartanNavLinks } from "@/components/spartan-nav-links";
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
@@ -24,114 +24,118 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-function DesktopTopNav() {
+function DesktopTopNav({ admin }: { admin: boolean }) {
   return (
-    <header className="sticky top-0 z-50 hidden border-b bg-background/80 backdrop-blur md:block">
-      <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-        <Link href="/" className="font-semibold tracking-tight">
-          Spartan Games
-        </Link>
+    <header className="sg-nav border-b sticky top-0 z-50 hidden md:block">
+      {/* keep original height/layout; only style */}
+      <div className="spartan-nav border-b border-amber-200/15">
+        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
+          <Link
+            href="/"
+            className="font-semibold tracking-tight text-amber-100 drop-shadow-[0_1px_10px_rgba(255,200,80,0.18)]"
+          >
+            Spartan Games
+          </Link>
 
-        <nav className="flex items-center gap-1 text-sm">
-          <Link
-            href="/leaderboard"
-            className="rounded-md px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Leaderboard
-          </Link>
-          <Link
-            href="/teams"
-            className="rounded-md px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Teams
-          </Link>
-          <Link
-            href="/submit"
-            className="rounded-md px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Submit
-          </Link>
-          <Link
-            href="/admin"
-            className="rounded-md px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Admin
-          </Link>
-        </nav>
-        {!hasEnvVars ? (
-          <EnvVarWarning />
-        ) : (
-          <Suspense>
-            <AuthButton />
-          </Suspense>
-        )}
+          <nav className="flex items-center gap-1 text-sm">
+            {/* <Link
+              href="/leaderboard"
+              className="spartan-link rounded-md px-3 py-2"
+            >
+              Leaderboard
+            </Link>
+            <Link href="/teams" className="spartan-link rounded-md px-3 py-2">
+              Teams
+            </Link>
+            <Link href="/submit" className="spartan-link rounded-md px-3 py-2">
+              Submit
+            </Link>
+
+            {admin && (
+              <Link
+                href="/admin"
+                className="spartan-link-strong rounded-md px-3 py-2"
+              >
+                Admin
+              </Link>
+            )} */}
+            <SpartanNavLinks admin={admin} variant="desktop" />
+          </nav>
+
+          {!hasEnvVars ? (
+            <EnvVarWarning />
+          ) : (
+            <Suspense>
+              <AuthButton />
+            </Suspense>
+          )}
+        </div>
       </div>
     </header>
   );
 }
 
-function MobileBottomNav() {
+function MobileBottomNav({ admin }: { admin: boolean }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/90 backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-4xl grid-cols-4 px-2 py-2">
-        <Link
-          href="/"
-          className="flex flex-col items-center justify-center rounded-md px-2 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          Home
-        </Link>
-        <Link
-          href="/leaderboard"
-          className="flex flex-col items-center justify-center rounded-md px-2 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          Board
-        </Link>
-        <Link
-          href="/submit"
-          className="flex flex-col items-center justify-center rounded-md px-2 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          Submit
-        </Link>
-        <Link
-          href="/teams"
-          className="flex flex-col items-center justify-center rounded-md px-2 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          Teams
-        </Link>
-        {!hasEnvVars ? (
-          <EnvVarWarning />
-        ) : (
-          <Suspense>
-            <AuthButton />
-          </Suspense>
-        )}
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+      {/* keep your original layout sizing; only style */}
+      <div className="sg-nav border-t border-amber-200/15">
+        <div className="mx-auto max-w-4xl px-2 py-2">
+          {/* Top row: centered nav (3 items) */}
+          <div className="flex items-center justify-center">
+            <div className="grid w-full max-w-sm grid-cols-3 gap-1">
+              <SpartanNavLinks admin={admin} variant="mobile" />
+            </div>
+          </div>
+
+          {/* Bottom row: Admin (left if applicable) + Auth (right) */}
+          <div className="mt-2 flex items-center justify-between">
+            {admin ? (
+              <Link
+                href="/admin"
+                className="sg-nav-link rounded-md px-3 py-2 text-xs"
+              >
+                Admin
+              </Link>
+            ) : (
+              <span />
+            )}
+
+            {!hasEnvVars ? (
+              <EnvVarWarning />
+            ) : (
+              <Suspense>
+                <AuthButton />
+              </Suspense>
+            )}
+          </div>
+        </div>
       </div>
     </nav>
   );
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
+  const admin = await isAdmin();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <DesktopTopNav />
-          <MobileBottomNav />
+        <div className="sg-bg" />
+        <div className="sg-top-glow" />
+        {/* Global background across the whole site */}
+        <div className="spartan-site-bg" />
+        <div className="spartan-site-glow" />
 
-          {/* Mobile: leave space for bottom nav */}
-          <main className="mx-auto w-full max-w-4xl px-4 pb-24 pt-5 md:pb-8 md:pt-6">
-            {children}
-          </main>
-        </ThemeProvider>
+        <DesktopTopNav admin={admin} />
+        <MobileBottomNav admin={admin} />
+
+        {/* keep your original spacing EXACTLY */}
+        <main className="mx-auto w-full max-w-4xl px-4 pb-24 pt-5 md:pb-8 md:pt-6">
+          {children}
+        </main>
       </body>
     </html>
   );

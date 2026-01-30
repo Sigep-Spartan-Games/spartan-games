@@ -220,20 +220,6 @@ export default function SubmitFormClient({
         )}
       </div>
 
-      {/* Points + teammate multiplier stays the same */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Base Points</label>
-        <input
-          name="base_points"
-          type="number"
-          min={1}
-          step={1}
-          placeholder="10"
-          className="h-12 w-full rounded-md border bg-background px-3 text-base"
-          required
-        />
-      </div>
-
       <label className="flex items-center gap-3 rounded-xl border p-4">
         <input type="checkbox" name="did_with_teammate" className="h-5 w-5" />
         <div>

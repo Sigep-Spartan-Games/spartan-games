@@ -2,67 +2,417 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================
+   Spartan single-theme tokens
+   (edit THESE to change the whole site)
+   ========================= */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    /* Core shadcn tokens */
+    --background: 345 45% 5%; /* deep maroon-black */
+    --foreground: 45 90% 90%; /* warm gold-white */
+
+    --card: 345 40% 7%;
+    --card-foreground: 45 90% 92%;
+
+    --popover: 345 40% 7%;
+    --popover-foreground: 45 90% 92%;
+
+    --primary: 45 95% 70%; /* gold */
+    --primary-foreground: 345 45% 8%;
+
+    --secondary: 345 35% 10%;
+    --secondary-foreground: 45 90% 92%;
+
+    --muted: 345 30% 10%;
+    --muted-foreground: 45 20% 70%;
+
+    --accent: 345 30% 12%;
+    --accent-foreground: 45 90% 92%;
+
+    --destructive: 0 80% 55%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+
+    --border: 45 70% 40%;
+    --input: 45 30% 35%;
+    --ring: 45 90% 70%;
+
+    --radius: 0.75rem;
+
+    /* Spartan extras (used by background + nav) */
+    --spartan-bg-0: #18030b;
+    --spartan-bg-1: #2b0612;
+    --spartan-bg-2: #0a0407;
+
+    --spartan-nav-a: rgba(43, 8, 16, 0.85);
+    --spartan-nav-b: rgba(91, 11, 34, 0.75);
+    --spartan-nav-c: rgba(43, 8, 16, 0.85);
+
+    --spartan-gold: rgba(246, 210, 122, 1);
+    --spartan-gold-soft: rgba(255, 207, 90, 0.65);
+
+    --spartan-glass: rgba(0, 0, 0, 0.55);
+    --spartan-border: rgba(246, 210, 122, 0.15);
   }
 }
 
+/* =========================
+   Base element styling
+   ========================= */
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* =========================
+   Spartan global background
+   Use <div class="spartan-site-bg" /> in layout
+   ========================= */
+.spartan-site-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+}
+
+.spartan-site-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    var(--spartan-bg-0),
+    var(--spartan-bg-1),
+    var(--spartan-bg-2)
+  );
+}
+
+.spartan-site-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 25% 35%, rgba(255, 0, 90, 0.18), transparent 55%),
+    radial-gradient(
+      circle at 70% 55%,
+      rgba(255, 140, 0, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(circle at 60% 70%, rgba(170, 0, 255, 0.1), transparent 55%);
+  box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.92);
+}
+
+/* Warm “sun” glow */
+.spartan-site-glow {
+  position: fixed;
+  left: 50%;
+  top: -10rem;
+  transform: translateX(-50%);
+  width: 52rem;
+  height: 28rem;
+  border-radius: 9999px;
+  background: rgba(255, 185, 80, 0.18);
+  filter: blur(64px);
+  z-index: -9;
+  pointer-events: none;
+}
+
+/* =========================
+   Spartan nav styling
+   Apply className="spartan-nav" to the header/nav wrapper
+   ========================= */
+.spartan-nav {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    var(--spartan-nav-a),
+    var(--spartan-nav-b),
+    var(--spartan-nav-c)
+  );
+  backdrop-filter: blur(10px);
+}
+
+.spartan-nav::before {
+  /* faint top line */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(246, 210, 122, 0.35),
+    transparent
+  );
+}
+
+.spartan-nav::after {
+  /* gold bottom divider */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--spartan-gold-soft),
+    transparent
+  );
+}
+
+/* Nav link helpers */
+.spartan-link {
+  color: rgba(255, 236, 190, 0.75);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.spartan-link:hover {
+  background: rgba(255, 207, 90, 0.1);
+  color: rgba(255, 236, 190, 0.95);
+}
+.spartan-link-strong {
+  color: rgba(255, 220, 140, 0.95);
+}
+.spartan-link-strong:hover {
+  background: rgba(255, 207, 90, 0.14);
+}
+/* Gradient and glowing */
+/* ===== Spartan Background: nebula + particles ===== */
+
+:root {
+  /* tweak these 3 for overall background hue */
+  --sg-bg-0: #1a030c;
+  --sg-bg-1: #3a0618;
+  --sg-bg-2: #14040c;
+
+  /* tweak these for dust colors */
+  --sg-dust-gold: rgba(255, 204, 92, 0.16);
+  --sg-dust-red: rgba(255, 40, 110, 0.14);
+  --sg-dust-purple: rgba(170, 0, 255, 0.1);
+
+  /* glow + borders */
+  --sg-gold: rgba(255, 207, 90, 0.9);
+  --sg-gold-soft: rgba(255, 207, 90, 0.55);
+  --sg-border: rgba(255, 207, 90, 0.18);
+
+  /* active underline */
+  --sg-active: rgba(255, 207, 90, 0.95);
+}
+
+/* fixed full-site background layer */
+.sg-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+}
+
+/* base nebula */
+.sg-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 55% 10%,
+      rgba(255, 160, 50, 0.28),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 78% 55%,
+      rgba(190, 0, 255, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(circle at 18% 52%, rgba(255, 0, 90, 0.22), transparent 58%),
+    linear-gradient(135deg, var(--sg-bg-0), var(--sg-bg-1), var(--sg-bg-2));
+}
+
+/* particles + vignette */
+.sg-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    /* gold dust field */
+    radial-gradient(circle at 20% 30%, var(--sg-dust-gold), transparent 55%),
+    radial-gradient(circle at 70% 55%, var(--sg-dust-gold), transparent 60%),
+    /* red/purple haze */
+    radial-gradient(circle at 25% 40%, var(--sg-dust-red), transparent 58%),
+    radial-gradient(circle at 80% 60%, var(--sg-dust-purple), transparent 62%),
+    /* “particle speckles” (tiny dots) */
+    radial-gradient(
+        1px 1px at 12% 18%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 52%
+      ),
+    radial-gradient(
+      1px 1px at 25% 68%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 52%
+    ),
+    radial-gradient(
+      1px 1px at 45% 35%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 52%
+    ),
+    radial-gradient(
+      1px 1px at 62% 72%,
+      rgba(255, 255, 255, 0.09) 50%,
+      transparent 52%
+    ),
+    radial-gradient(
+      1px 1px at 78% 22%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 52%
+    ),
+    radial-gradient(
+      1px 1px at 90% 58%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 52%
+    ),
+    /* vignette */
+    radial-gradient(circle at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.85) 95%);
+
+  box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.92);
+  mix-blend-mode: screen;
+  opacity: 0.95;
+}
+
+/* Extra top “sunrise” glow (like your mock) */
+.sg-top-glow {
+  position: fixed;
+  left: 50%;
+  top: -5.5rem;
+  transform: translateX(-50%);
+  width: 52rem;
+  height: 18rem;
+  border-radius: 9999px;
+  background: rgba(255, 185, 80, 0.3);
+  filter: blur(64px);
+  z-index: -9;
+  pointer-events: none;
+}
+
+/* ===== Spartan Nav styling + active underline glow ===== */
+
+.sg-nav {
+  position: relative;
+  backdrop-filter: blur(10px);
+  background: linear-gradient(
+    90deg,
+    rgba(40, 6, 14, 0.82),
+    rgba(90, 8, 30, 0.7),
+    rgba(40, 6, 14, 0.82)
+  );
+  border-color: var(--sg-border);
+}
+
+/* top + bottom thin gold lines */
+.sg-nav::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 207, 90, 0.35),
+    transparent
+  );
+}
+.sg-nav::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--sg-gold-soft),
+    transparent
+  );
+}
+
+/* nav item base */
+.sg-nav-link {
+  position: relative;
+  color: rgba(255, 236, 190, 0.78);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+.sg-nav-link:hover {
+  color: rgba(255, 236, 190, 0.95);
+  background: rgba(255, 207, 90, 0.1);
+}
+
+/* ACTIVE underline + glow (works when aria-current="page") */
+.sg-nav-link[aria-current="page"] {
+  color: rgba(255, 236, 190, 0.98);
+}
+
+/* underline bar */
+.sg-nav-link[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -9px;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--sg-active),
+    transparent
+  );
+  box-shadow:
+    0 0 16px rgba(255, 207, 90, 0.55),
+    0 0 30px rgba(255, 140, 60, 0.25);
+}
+
+/* “hot spot” glow above active item */
+.sg-nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 60px;
+  border-radius: 9999px;
+  background: rgba(255, 185, 80, 0.18);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+/* ===== Mobile nav: active indicator inside the tab (no clipping) ===== */
+
+@media (max-width: 767px) {
+  /* remove desktop-style underline positioning for mobile */
+  .sg-nav-link[aria-current="page"]::after {
+    left: 10px;
+    right: 10px;
+    bottom: 6px; /* inside the button */
+    height: 3px;
+  }
+
+  .sg-nav-link[aria-current="page"]::before {
+    top: -10px; /* smaller hotspot */
+    width: 120px;
+    height: 46px;
+    opacity: 0.9;
   }
 }
