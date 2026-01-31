@@ -18,7 +18,7 @@ export default async function AdminLink({
   const cls =
     variant === "desktop"
       ? "sg-nav-link rounded-md px-3 py-2"
-      : "sg-nav-link flex items-center justify-center rounded-md px-2 py-2 text-xs";
+      : "sg-nav-link flex items-center justify-center rounded-md px-2 py-3 text-sm font-medium";
 
   return (
     <Link href="/admin" className={cls}>

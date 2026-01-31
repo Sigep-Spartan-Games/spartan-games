@@ -39,7 +39,7 @@ function DesktopNavSkeleton() {
 function MobileNavSkeleton() {
   return (
     <div className="flex w-full max-w-sm gap-1">
-      <div className="h-10 w-full rounded-md bg-muted/20" />
+      <div className="h-12 w-full rounded-md bg-muted/20" />
     </div>
   );
 }
@@ -88,7 +88,7 @@ function MobileBottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div className="sg-nav border-t border-amber-200/15">
-        <div className="mx-auto max-w-4xl px-2 py-2">
+        <div className="mx-auto max-w-4xl px-2 py-4">
           {/* Top row: main nav buttons */}
           <div className="flex items-center justify-center">
             <Suspense fallback={<MobileNavSkeleton />}>
@@ -130,7 +130,7 @@ export default function RootLayout({
         <DesktopTopNav />
         <MobileBottomNav />
 
-        <main className="mx-auto w-full max-w-4xl px-4 pb-24 pt-5 md:pb-8 md:pt-6">
+        <main className="mx-auto w-full max-w-4xl px-4 pb-32 pt-5 md:pb-8 md:pt-6">
           {children}
         </main>
       </body>
