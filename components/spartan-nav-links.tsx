@@ -42,8 +42,8 @@ export function SpartanNavLinks({
   if (variant === "desktop") {
     const desktopItems = [
       { href: "/leaderboard", label: "Leaderboard" },
-      { href: "/teams", label: "Teams" },
       { href: "/submit", label: "Submit" },
+      { href: "/teams", label: "Teams" },
     ];
 
     return (
