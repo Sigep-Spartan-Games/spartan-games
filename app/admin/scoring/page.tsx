@@ -3,7 +3,12 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import ScoringEditor from "./scoring-editor";
-import { upsertActivityRulesBulk, resetActivityRulesDefaults } from "./actions";
+import {
+  upsertActivityRulesBulk,
+  resetActivityRulesDefaults,
+  addActivityRule,
+  deleteActivityRule,
+} from "./actions";
 
 function ScoringSkeleton() {
   return (
@@ -82,6 +87,8 @@ async function AdminScoringInner({
           rules={(rules ?? []) as any}
           saveAllAction={upsertActivityRulesBulk}
           resetDefaultsAction={resetActivityRulesDefaults}
+          addAction={addActivityRule}
+          deleteAction={deleteActivityRule}
         />
       )}
     </div>

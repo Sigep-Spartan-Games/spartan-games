@@ -139,3 +139,55 @@ export async function resetActivityRulesDefaults() {
 
   redirect("/admin?reset=1");
 }
+
+export async function addActivityRule(formData: FormData) {
+  const supabase = await requireAdmin();
+
+  const activityKey = String(formData.get("activity_key") ?? "").trim();
+  const pointsPerUnit = toNumber(formData.get("points_per_unit"));
+  const teammateBonus = toNumber(formData.get("teammate_bonus"));
+
+  if (!activityKey) redirect("/admin?error=missing_activity_key");
+  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
+    redirect("/admin?error=invalid_points_per_unit");
+  if (!Number.isFinite(teammateBonus) || teammateBonus < 0)
+    redirect("/admin?error=invalid_teammate_bonus");
+
+  // Check if it already exists
+  const { data: existing } = await supabase
+    .from("activity_rules")
+    .select("activity_key")
+    .eq("activity_key", activityKey)
+    .single();
+
+  if (existing) {
+    redirect("/admin?error=activity_already_exists");
+  }
+
+  const { error } = await supabase.from("activity_rules").insert({
+    activity_key: activityKey,
+    points_per_unit: pointsPerUnit,
+    teammate_bonus: Math.trunc(teammateBonus),
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+
+  redirect("/admin?saved=1");
+}
+
+export async function deleteActivityRule(formData: FormData) {
+  const supabase = await requireAdmin();
+
+  const activityKey = String(formData.get("activity_key") ?? "").trim();
+  if (!activityKey) redirect("/admin?error=missing_activity_key");
+
+  const { error } = await supabase
+    .from("activity_rules")
+    .delete()
+    .eq("activity_key", activityKey);
+
+  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+
+  redirect("/admin?saved=1");
+}
