@@ -12,7 +12,7 @@ import {
 type TeamRow = {
   id: string;
   name: string;
-  points: number;
+  weekly_points: number;
   member1_name?: string | null;
   member2_name?: string | null;
   member1_id?: string | null;
@@ -66,7 +66,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
   const { data, error } = await supabase
     .from("teams")
     .select(
-      "id,name,points,member1_name,member2_name,member1_id,member2_id,invite_code",
+      "id,name,weekly_points,member1_name,member2_name,member1_id,member2_id,invite_code",
     )
     .order("name", { ascending: true });
 
@@ -287,9 +287,9 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <div className="text-xs text-muted-foreground">Points</div>
+                    <div className="text-xs text-muted-foreground">Weekly Pts</div>
                     <div className="text-base font-semibold tabular-nums">
-                      {t.points ?? 0}
+                      {t.weekly_points ?? 0}
                     </div>
                   </div>
                 </div>

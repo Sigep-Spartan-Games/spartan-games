@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { resetSpartanGames, startGames, endGames } from "./actions";
+import { resetSpartanGames, startGames, endGames, finalizeWeek } from "./actions";
 
 function SettingsSkeleton() {
   return (
@@ -77,6 +77,20 @@ async function AdminSettingsInner({
               End Games
             </button>
           </form>
+        </div>
+
+        <div className="mt-4">
+          <form action={finalizeWeek}>
+            <button
+              type="submit"
+              className="h-10 rounded-md bg-amber-500 px-4 text-sm font-medium text-white hover:bg-amber-600"
+            >
+              Finalize Week (Process Weekly Results)
+            </button>
+          </form>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Triggers the weekly rollover: finds the winner, awards the week, resets weekly points, and starts the new week.
+          </p>
         </div>
 
         <p className="text-xs text-muted-foreground">

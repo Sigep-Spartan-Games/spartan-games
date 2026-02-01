@@ -22,9 +22,9 @@ export async function startGames() {
 
   redirect(
     "/admin/settings?ok=" +
-      encodeURIComponent(
-        "Games started: registration closed, submissions opened.",
-      ),
+    encodeURIComponent(
+      "Games started: registration closed, submissions opened.",
+    ),
   );
 }
 
@@ -45,9 +45,30 @@ export async function endGames() {
 
   redirect(
     "/admin/settings?ok=" +
-      encodeURIComponent(
-        "Games ended: registration opened, submissions closed.",
-      ),
+    encodeURIComponent(
+      "Games ended: registration opened, submissions closed.",
+    ),
+  );
+}
+
+export async function finalizeWeek() {
+  const { supabase } = await requireAdmin("/admin/settings");
+
+  const { error } = await supabase
+    .from("game_settings")
+    .update({
+      finalize_requested: true,
+    })
+    .eq("id", true);
+
+  if (error)
+    redirect("/admin/settings?error=" + encodeURIComponent(error.message));
+
+  redirect(
+    "/admin/settings?ok=" +
+    encodeURIComponent(
+      "Weekly finalization requested. The background job will process it shortly.",
+    ),
   );
 }
 
@@ -58,7 +79,7 @@ export async function resetSpartanGames(formData: FormData) {
   if (confirm !== "RESET") {
     redirect(
       "/admin/settings?error=" +
-        encodeURIComponent("Confirmation text must be RESET."),
+      encodeURIComponent("Confirmation text must be RESET."),
     );
   }
 
@@ -79,6 +100,6 @@ export async function resetSpartanGames(formData: FormData) {
 
   redirect(
     "/admin/settings?ok=" +
-      encodeURIComponent("All teams and submissions deleted."),
+    encodeURIComponent("All teams and submissions deleted."),
   );
 }

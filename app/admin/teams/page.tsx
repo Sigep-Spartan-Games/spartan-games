@@ -28,7 +28,7 @@ async function AdminTeamsInner() {
 
   const { data: teams, error } = await supabase
     .from("teams")
-    .select("id, name, points, invite_code")
+    .select("id, name, weekly_points, total_points, invite_code")
     .order("name");
 
   return (
@@ -40,10 +40,11 @@ async function AdminTeamsInner() {
       ) : (
         <div className="rounded-2xl border overflow-hidden">
           <div className="grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-            <div className="col-span-5">Team</div>
+            <div className="col-span-4">Team</div>
             <div className="col-span-3">Invite</div>
-            <div className="col-span-2">Points</div>
-            <div className="col-span-2 text-right">Actions</div>
+            <div className="col-span-2 text-right">Weekly</div>
+            <div className="col-span-2 text-right">Total</div>
+            <div className="col-span-1 text-right"></div>
           </div>
 
           {(teams ?? []).map((t) => (
@@ -51,17 +52,18 @@ async function AdminTeamsInner() {
               key={t.id}
               className="grid grid-cols-12 items-center px-4 py-3 border-b last:border-b-0"
             >
-              <div className="col-span-5">
+              <div className="col-span-4">
                 <div className="text-sm font-medium">{t.name}</div>
                 <div className="text-xs text-muted-foreground">{t.id}</div>
               </div>
               <div className="col-span-3 text-sm">{t.invite_code ?? "-"}</div>
-              <div className="col-span-2 text-sm">{t.points ?? 0}</div>
-              <div className="col-span-2 flex justify-end gap-2">
+              <div className="col-span-2 text-sm text-right">{t.weekly_points ?? 0}</div>
+              <div className="col-span-2 text-sm text-right text-muted-foreground">{t.total_points ?? 0}</div>
+              <div className="col-span-1 flex justify-end gap-2">
                 <form action={deleteTeam}>
                   <input type="hidden" name="id" value={t.id} />
-                  <button className="h-9 rounded-md border px-3 text-sm">
-                    Delete
+                  <button className="h-9 rounded-md border px-3 text-sm text-destructive hover:bg-destructive/10">
+                    X
                   </button>
                 </form>
               </div>

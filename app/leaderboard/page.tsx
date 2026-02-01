@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 type TeamRow = {
   id: string;
   name: string;
-  points: number | null;
+  weekly_points: number | null;
+  total_points: number | null;
 };
 
 function LeaderboardSkeleton() {
@@ -45,8 +46,9 @@ async function LeaderboardInner() {
   // Leaderboard
   const { data, error } = await supabase
     .from("teams")
-    .select("id,name,points")
-    .order("points", { ascending: false })
+    .select("id,name,weekly_points,total_points")
+    .order("weekly_points", { ascending: false })
+    .order("total_points", { ascending: false })
     .order("name", { ascending: true });
 
   const teams = (data ?? []) as TeamRow[];
@@ -58,7 +60,7 @@ async function LeaderboardInner() {
   if (user) {
     const { data: myTeamData } = await supabase
       .from("teams")
-      .select("id,name,points")
+      .select("id,name,weekly_points,total_points")
       .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
       .maybeSingle();
 
@@ -103,7 +105,8 @@ async function LeaderboardInner() {
             </div>
 
             <div className="text-right font-semibold tabular-nums">
-              {myTeam.points ?? 0}
+              {myTeam.weekly_points ?? 0}
+              <div className="text-[10px] text-muted-foreground font-normal">Week</div>
             </div>
           </div>
         )}
@@ -144,7 +147,7 @@ async function LeaderboardInner() {
                     : "text-right tabular-nums"
                 }
               >
-                {t.points ?? 0}
+                {t.weekly_points ?? 0}
               </div>
             </div>
           );
@@ -158,7 +161,8 @@ async function LeaderboardInner() {
             <tr>
               <th className="px-4 py-3 text-left">Rank</th>
               <th className="px-4 py-3 text-left">Team</th>
-              <th className="px-4 py-3 text-right">Points</th>
+              <th className="px-4 py-3 text-right">Weekly Pts</th>
+              <th className="px-4 py-3 text-right text-muted-foreground">Total Pts</th>
             </tr>
           </thead>
           <tbody>
@@ -170,7 +174,10 @@ async function LeaderboardInner() {
                   <span className="ml-2 text-xs text-primary">(Your team)</span>
                 </td>
                 <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                  {myTeam.points ?? 0}
+                  {myTeam.weekly_points ?? 0}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                  {myTeam.total_points ?? 0}
                 </td>
               </tr>
             )}
@@ -180,7 +187,10 @@ async function LeaderboardInner() {
                 <td className="px-4 py-3">{idx + 1}</td>
                 <td className="px-4 py-3 font-medium">{t.name}</td>
                 <td className="px-4 py-3 text-right tabular-nums">
-                  {t.points ?? 0}
+                  {t.weekly_points ?? 0}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                  {t.total_points ?? 0}
                 </td>
               </tr>
             ))}
