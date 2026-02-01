@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/admin";
 import ScoringEditor from "./scoring-editor";
 import {
   upsertActivityRulesBulk,
+  updateActivityRule,
   resetActivityRulesDefaults,
   addActivityRule,
   deleteActivityRule,
@@ -48,7 +49,7 @@ async function AdminScoringInner({
 
   const { data: rules, error: rulesError } = await supabase
     .from("activity_rules")
-    .select("activity_key, points_per_unit, teammate_bonus")
+    .select("*")
     .order("activity_key");
 
   return (
@@ -86,6 +87,7 @@ async function AdminScoringInner({
         <ScoringEditor
           rules={(rules ?? []) as any}
           saveAllAction={upsertActivityRulesBulk}
+          updateAction={updateActivityRule}
           resetDefaultsAction={resetActivityRulesDefaults}
           addAction={addActivityRule}
           deleteAction={deleteActivityRule}

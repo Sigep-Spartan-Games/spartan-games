@@ -2,39 +2,16 @@
 
 import { createClient } from "../../../lib/supabase/server";
 import { redirect } from "next/navigation";
-
-type DefaultRule = {
-  activity_key: string;
-  points_per_unit: number;
-  teammate_bonus: number;
-};
-
-const DEFAULT_RULES: DefaultRule[] = [
-  { activity_key: "sport_practice", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "running", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "cycling", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "gyming", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "swimming", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "sporting", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "calorie_goal", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "races", points_per_unit: 10, teammate_bonus: 15 },
-  {
-    activity_key: "powerlifting_meet",
-    points_per_unit: 10,
-    teammate_bonus: 15,
-  },
-  {
-    activity_key: "bodybuilding_show",
-    points_per_unit: 10,
-    teammate_bonus: 15,
-  },
-  { activity_key: "win_tournament", points_per_unit: 10, teammate_bonus: 15 },
-  { activity_key: "sleep", points_per_unit: 10, teammate_bonus: 15 },
-];
+import { ActivityRule } from "@/lib/types";
 
 function toNumber(v: FormDataEntryValue | null) {
   const n = Number(v);
   return Number.isFinite(n) ? n : NaN;
+}
+
+function toStringOrNull(v: FormDataEntryValue | null) {
+  const s = String(v ?? "").trim();
+  return s === "" ? null : s;
 }
 
 async function requireAdmin() {
@@ -56,34 +33,8 @@ async function requireAdmin() {
   return supabase;
 }
 
-export async function upsertActivityRule(formData: FormData) {
-  const supabase = await requireAdmin();
-
-  const activityKey = String(formData.get("activity_key") ?? "").trim();
-  const pointsPerUnit = toNumber(formData.get("points_per_unit"));
-  const teammateBonus = toNumber(formData.get("teammate_bonus"));
-
-  if (!activityKey) redirect("/admin?error=missing_activity_key");
-  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
-    redirect("/admin?error=invalid_points_per_unit");
-  if (!Number.isFinite(teammateBonus) || teammateBonus < 0)
-    redirect("/admin?error=invalid_teammate_bonus");
-
-  const { error } = await supabase.from("activity_rules").upsert(
-    {
-      activity_key: activityKey,
-      points_per_unit: pointsPerUnit,
-      teammate_bonus: Math.trunc(teammateBonus),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "activity_key" },
-  );
-
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
-
-  redirect("/admin?saved=1");
-}
-
+// NOTE: This bulk function is simplified as managing full complex objects in bulk is difficult UI-wise.
+// We'll rely on individual updates for complex edits.
 export async function upsertActivityRulesBulk(formData: FormData) {
   const supabase = await requireAdmin();
 
@@ -123,29 +74,63 @@ export async function upsertActivityRulesBulk(formData: FormData) {
   redirect("/admin?saved=1");
 }
 
-export async function resetActivityRulesDefaults() {
+export async function updateActivityRule(formData: FormData) {
   const supabase = await requireAdmin();
 
-  const payload = DEFAULT_RULES.map((r) => ({
-    ...r,
-    updated_at: new Date().toISOString(),
-  }));
+  const originalKey = String(formData.get("original_activity_key") ?? "").trim();
+  const activityKey = String(formData.get("activity_key") ?? "").trim();
 
-  const { error } = await supabase
-    .from("activity_rules")
-    .upsert(payload, { onConflict: "activity_key" });
+  const pointsPerUnit = toNumber(formData.get("points_per_unit"));
+  const teammateBonus = toNumber(formData.get("teammate_bonus"));
+
+  const label = toStringOrNull(formData.get("label"));
+  const inputType = toStringOrNull(formData.get("input_type"));
+  const unitLabel = toStringOrNull(formData.get("unit_label"));
+
+  const active = formData.get("active") === "on";
+
+  if (!activityKey) redirect("/admin?error=missing_activity_key");
+  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
+    redirect("/admin?error=invalid_points_per_unit");
+  if (!Number.isFinite(teammateBonus) || teammateBonus < 0)
+    redirect("/admin?error=invalid_teammate_bonus");
+
+  const payload: Partial<ActivityRule> = {
+    points_per_unit: pointsPerUnit,
+    teammate_bonus: Math.trunc(teammateBonus),
+    label: label,
+    input_type: inputType as any,
+    unit_label: unitLabel,
+    active: active,
+    updated_at: new Date().toISOString(),
+  };
+
+  const targetKey = originalKey || activityKey;
+
+  const { error } = await supabase.from("activity_rules")
+    .update(payload)
+    .eq("activity_key", targetKey);
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
 
-  redirect("/admin?reset=1");
+  redirect("/admin?saved=1");
+}
+
+export async function resetActivityRulesDefaults() {
+  redirect("/admin?error=not_implemented");
 }
 
 export async function addActivityRule(formData: FormData) {
   const supabase = await requireAdmin();
 
-  const activityKey = String(formData.get("activity_key") ?? "").trim();
+  let activityKey = String(formData.get("activity_key") ?? "").trim();
   const pointsPerUnit = toNumber(formData.get("points_per_unit"));
   const teammateBonus = toNumber(formData.get("teammate_bonus"));
+  const label = toStringOrNull(formData.get("label"));
+  const inputType = toStringOrNull(formData.get("input_type"));
+  const unitLabel = toStringOrNull(formData.get("unit_label"));
+
+  activityKey = activityKey.replace(/\s+/g, "_").toLowerCase();
 
   if (!activityKey) redirect("/admin?error=missing_activity_key");
   if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
@@ -168,7 +153,13 @@ export async function addActivityRule(formData: FormData) {
     activity_key: activityKey,
     points_per_unit: pointsPerUnit,
     teammate_bonus: Math.trunc(teammateBonus),
+    label: label ?? activityKey,
+    input_type: inputType,
+    unit_label: unitLabel,
+    active: true, // Default to active
     updated_at: new Date().toISOString(),
+    min_value: 0,
+    step_value: inputType === 'number' ? 1 : null,
   });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);

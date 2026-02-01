@@ -1,116 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { SubmitButton } from "@/components/submit-button";
-
-type ActivityKey =
-  | "sport_practice"
-  | "running"
-  | "cycling"
-  | "gyming"
-  | "swimming"
-  | "sporting"
-  | "calorie_goal"
-  | "races"
-  | "powerlifting_meet"
-  | "bodybuilding_show"
-  | "win_tournament"
-  | "sleep";
-
-type ActivityDef = {
-  label: string;
-  unitLabel?: string;
-  input: "number" | "text" | "boolean";
-  min?: number;
-  step?: number;
-};
-
-const ACTIVITY_DEFS: Record<ActivityKey, ActivityDef> = {
-  sport_practice: {
-    label: "Sport practice",
-    unitLabel: "hours",
-    input: "number",
-    min: 0,
-    step: 0.25,
-  },
-  running: {
-    label: "Running",
-    unitLabel: "miles",
-    input: "number",
-    min: 0,
-    step: 0.1,
-  },
-  cycling: {
-    label: "Cycling",
-    unitLabel: "miles",
-    input: "number",
-    min: 0,
-    step: 0.1,
-  },
-  gyming: {
-    label: "Gyming",
-    unitLabel: "hours",
-    input: "number",
-    min: 0,
-    step: 0.25,
-  },
-  swimming: {
-    label: "Swimming",
-    unitLabel: "laps",
-    input: "number",
-    min: 0,
-    step: 1,
-  },
-  sporting: {
-    label: "Sporting",
-    unitLabel: "games",
-    input: "number",
-    min: 0,
-    step: 1,
-  },
-  calorie_goal: { label: "Hitting Calorie Goal for Day", input: "boolean" },
-  races: {
-    label: "Races",
-    unitLabel: "races",
-    input: "number",
-    min: 0,
-    step: 1,
-  },
-  powerlifting_meet: {
-    label: "Powerlifting meet",
-    unitLabel: "name of meet",
-    input: "text",
-  },
-  bodybuilding_show: {
-    label: "Body building show",
-    unitLabel: "name of show",
-    input: "text",
-  },
-  win_tournament: {
-    label: "Win a tournament",
-    unitLabel: "name of tournament",
-    input: "text",
-  },
-  sleep: {
-    label: "Sleep",
-    unitLabel: "hours",
-    input: "number",
-    min: 0,
-    step: 0.25,
-  },
-};
+import { ActivityRule } from "@/lib/types";
 
 export default function SubmitFormClient({
   action,
   teamId,
   teamName,
+  activityRules,
 }: {
   action: (formData: FormData) => Promise<void>;
   teamId: string;
   teamName: string;
+  activityRules: ActivityRule[];
 }) {
-  const [activityKey, setActivityKey] = useState<ActivityKey>("running");
-  const def = useMemo(() => ACTIVITY_DEFS[activityKey], [activityKey]);
+  const [activityKey, setActivityKey] = useState<string>("");
+
+  // Default to first activity if available
+  useEffect(() => {
+    if (activityRules.length > 0 && !activityKey) {
+      setActivityKey(activityRules[0].activity_key);
+    }
+  }, [activityRules, activityKey]);
+
+  const rule = useMemo(
+    () => activityRules.find((r) => r.activity_key === activityKey),
+    [activityRules, activityKey],
+  );
 
   const today = useMemo(() => {
     const d = new Date();
@@ -119,6 +36,14 @@ export default function SubmitFormClient({
     const dd = String(d.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   }, []);
+
+  if (activityRules.length === 0) {
+    return (
+      <div className="rounded-2xl border p-5 text-center text-muted-foreground">
+        No activities available to submit.
+      </div>
+    );
+  }
 
   return (
     <form action={action} className="space-y-3 rounded-2xl border p-4 md:p-5">
@@ -156,70 +81,81 @@ export default function SubmitFormClient({
           name="activity_key"
           className="h-11 w-full rounded-md border bg-background px-3 text-sm"
           value={activityKey}
-          onChange={(e) => setActivityKey(e.target.value as ActivityKey)}
+          onChange={(e) => setActivityKey(e.target.value)}
           required
         >
-          {Object.entries(ACTIVITY_DEFS).map(([key, v]) => (
-            <option key={key} value={key}>
-              {v.label}
+          {activityRules.map((r) => (
+            <option key={r.activity_key} value={r.activity_key}>
+              {r.label ?? r.activity_key}
             </option>
           ))}
         </select>
+        {rule && (
+          <p className="text-xs text-muted-foreground">
+            {rule.points_per_unit} pts{rule.unit_label ? `/${rule.unit_label}` : ''} • +{rule.teammate_bonus} bonus
+          </p>
+        )}
       </div>
 
       {/* Value */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">
-          {def.input === "boolean"
-            ? "Completed?"
-            : def.unitLabel
-              ? `Amount (${def.unitLabel})`
-              : "Details"}
-        </label>
-
-        {def.input === "number" && (
-          <input
-            name="activity_value_number"
-            type="number"
-            min={def.min ?? 0}
-            step={def.step ?? 1}
-            placeholder={
-              def.unitLabel ? `Enter ${def.unitLabel}…` : "Enter amount…"
-            }
-            className="h-11 w-full rounded-md border bg-background px-3 text-sm"
-            required
-          />
-        )}
-
-        {def.input === "text" && (
-          <input
-            name="activity_value_text"
-            placeholder={
-              def.unitLabel ? `Enter ${def.unitLabel}…` : "Enter details…"
-            }
-            className="h-11 w-full rounded-md border bg-background px-3 text-sm"
-            required
-          />
-        )}
-
-        {def.input === "boolean" && (
-          <label className="flex items-center gap-3 rounded-xl border p-3">
-            <input
-              type="checkbox"
-              name="activity_value_bool"
-              className="h-4 w-4"
-            />
-            <div>
-              <div className="text-sm font-medium">
-                Yes, I hit my calorie goal
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Leave unchecked for “No”.
-              </div>
-            </div>
+      {rule && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">
+            {rule.input_type === "boolean"
+              ? "Completed?"
+              : rule.unit_label
+                ? `Amount (${rule.unit_label})`
+                : "Details"}
           </label>
-        )}
-      </div>
+
+          {rule.input_type === "number" && (
+            <input
+              name="activity_value_number"
+              type="number"
+              min={rule.min_value ?? 0}
+              step={rule.step_value ?? 1}
+              placeholder={
+                rule.unit_label
+                  ? `Enter ${rule.unit_label}…`
+                  : "Enter amount…"
+              }
+              className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+              required
+            />
+          )}
+
+          {rule.input_type === "text" && (
+            <input
+              name="activity_value_text"
+              placeholder={
+                rule.unit_label
+                  ? `Enter ${rule.unit_label}…`
+                  : "Enter details…"
+              }
+              className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+              required
+            />
+          )}
+
+          {rule.input_type === "boolean" && (
+            <label className="flex items-center gap-3 rounded-xl border p-3">
+              <input
+                type="checkbox"
+                name="activity_value_bool"
+                className="h-4 w-4"
+              />
+              <div>
+                <div className="text-sm font-medium">
+                  {rule.label || "Completed"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Check if completed.
+                </div>
+              </div>
+            </label>
+          )}
+        </div>
+      )}
 
       {/* Teammate */}
       <label className="flex items-center gap-3 rounded-xl border p-3">
@@ -227,7 +163,7 @@ export default function SubmitFormClient({
         <div>
           <div className="text-sm font-medium">Did this with teammate</div>
           <div className="text-xs text-muted-foreground">
-            Applies multiplier automatically.
+            Applies roommate/teammate multiplier automatically.
           </div>
         </div>
       </label>

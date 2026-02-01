@@ -53,48 +53,64 @@ export async function createSubmission(formData: FormData) {
     redirect("/submit?error=missing_fields");
   }
 
-  // dynamic values
-  const numRaw = formData.get("activity_value_number");
-  const textRaw = formData.get("activity_value_text");
-
-  // boolean checkbox behavior
-  const boolRaw = formData.get("activity_value_bool");
-  const boolChecked = boolRaw === "on";
-
-  const activityValueNumber = numRaw !== null ? safeFloat(numRaw) : null;
-  const activityValueText = textRaw !== null ? String(textRaw).trim() : null;
-
-  const hasNumber =
-    typeof activityValueNumber === "number" &&
-    Number.isFinite(activityValueNumber);
-  const hasText = !!activityValueText;
-
-  const isBoolActivity = activityKey === "calorie_goal";
-  const hasBool = isBoolActivity ? boolChecked : false;
-
-  if (!hasNumber && !hasText && !hasBool) {
-    redirect("/submit?error=missing_activity_value");
-  }
 
   // Fetch scoring rules (admin-controlled). Default fallback if row missing.
   const { data: rules, error: rulesError } = await supabase
     .from("activity_rules")
-    .select("points_per_unit, teammate_bonus")
+    .select("points_per_unit, teammate_bonus, input_type, active")
     .eq("activity_key", activityKey)
-    .maybeSingle();
+    .single();
 
-  if (rulesError) {
-    redirect(`/submit?error=${encodeURIComponent(rulesError.message)}`);
+  if (rulesError || !rules) {
+    redirect(`/submit?error=invalid_activity`);
   }
 
-  const pointsPerUnit = Number(rules?.points_per_unit ?? 10);
-  const teammateBonus = Number(rules?.teammate_bonus ?? 15);
+  if (!rules.active) {
+    redirect(`/submit?error=activity_disabled`);
+  }
+
+  const pointsPerUnit = Number(rules.points_per_unit);
+  const teammateBonus = Number(rules.teammate_bonus);
 
   // Determine units for scoring
   let units = 0;
-  if (hasNumber) units = Number(activityValueNumber);
-  else if (hasText) units = 1;
-  else if (hasBool) units = 1;
+  let hasNumber = false;
+  let hasText = false;
+  let hasBool = false;
+
+  // Validate based on input_type
+  if (rules.input_type === 'number') {
+    const val = formData.get("activity_value_number");
+    const n = Number(val);
+    if (val === null || !Number.isFinite(n) || n < 0) { // strict non-negative check
+      redirect("/submit?error=invalid_number");
+    }
+    units = n;
+    hasNumber = true;
+  } else if (rules.input_type === 'text') {
+    const val = formData.get("activity_value_text");
+    const s = String(val ?? "").trim();
+    if (!s) {
+      redirect("/submit?error=missing_text");
+    }
+    units = 1; // Flat points usually
+    hasText = true;
+  } else if (rules.input_type === 'boolean') {
+    const val = formData.get("activity_value_bool");
+    const checked = val === "on";
+    if (!checked) {
+      // If boolean is strictly "must do it", maybe 0 points? 
+      // But usually submission implies "I did it".
+      // If they unchecked it, maybe we shouldn't submit?
+      // The form implies "Yes I hit my goal".
+      // If unchecked, units = 0.
+    }
+    units = checked ? 1 : 0;
+    hasBool = true;
+  } else {
+    // Fallback or legacy
+    units = 1;
+  }
 
   if (!Number.isFinite(units) || units <= 0) {
     redirect("/submit?error=invalid_units");
@@ -109,8 +125,8 @@ export async function createSubmission(formData: FormData) {
   }
 
   const activityDisplay = (() => {
-    if (hasNumber) return `${activityKey}:${activityValueNumber}`;
-    if (hasText) return `${activityKey}:${activityValueText}`;
+    if (hasNumber) return `${activityKey}:${units}`;
+    if (hasText) return `${activityKey}:${String(formData.get("activity_value_text")).trim()}`;
     if (hasBool) return `${activityKey}:yes`;
     return activityKey;
   })();
@@ -129,9 +145,9 @@ export async function createSubmission(formData: FormData) {
 
     activity_key: activityKey,
     activity_date: activityDate,
-    activity_value_number: hasNumber ? activityValueNumber : null,
-    activity_value_text: hasText ? activityValueText : null,
-    activity_value_bool: isBoolActivity ? boolChecked : null,
+    activity_value_number: hasNumber ? units : null,
+    activity_value_text: hasText ? String(formData.get("activity_value_text")).trim() : null,
+    activity_value_bool: hasBool ? true : null,
   });
 
   if (error) redirect(`/submit?error=${encodeURIComponent(error.message)}`);

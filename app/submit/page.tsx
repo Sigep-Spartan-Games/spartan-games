@@ -104,6 +104,23 @@ async function SubmitInner({
     );
   }
 
+  const { data: rules, error: rulesError } = await supabase
+    .from("activity_rules")
+    .select("*")
+    .eq("active", true)
+    .order("activity_key");
+
+  if (rulesError) {
+    return (
+      <div className="rounded-2xl border p-5">
+        <h1 className="text-xl font-semibold">Submit</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Error loading activities: {rulesError.message}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -124,6 +141,7 @@ async function SubmitInner({
         action={createSubmission}
         teamId={team.id}
         teamName={team.name}
+        activityRules={rules ?? []}
       />
     </div>
   );
