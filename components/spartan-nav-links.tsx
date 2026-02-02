@@ -44,6 +44,7 @@ export function SpartanNavLinks({
       { href: "/leaderboard", label: "Leaderboard" },
       { href: "/submit", label: "Submit" },
       { href: "/teams", label: "Teams" },
+      { href: "/rules", label: "Rules" },
     ];
 
     return (
@@ -66,6 +67,7 @@ export function SpartanNavLinks({
     { href: "/leaderboard", label: "Board" },
     { href: "/submit", label: "Submit" },
     { href: "/teams", label: "Teams" },
+    { href: "/rules", label: "Rules" },
   ];
 
   return (
