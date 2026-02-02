@@ -145,6 +145,12 @@ export async function createSubmission(formData: FormData) {
 
     activity_key: activityKey,
     activity_date: activityDate,
+
+    // New schema fields
+    points_per_unit: pointsPerUnit,
+    teammate_bonus: teammateBonus,
+    activity_units: units,
+
     activity_value_number: hasNumber ? units : null,
     activity_value_text: hasText ? String(formData.get("activity_value_text")).trim() : null,
     activity_value_bool: hasBool ? true : null,

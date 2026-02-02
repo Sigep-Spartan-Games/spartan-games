@@ -44,5 +44,10 @@ export type Submission = {
     inserted_at: string;
     activity_key: string;
     activity_date: string; // date
-    // ... other activity_value fields
+    activity_units: number | null;
+    points_per_unit: number | null;
+    teammate_bonus: number | null;
+    activity_value_number: number | null;
+    activity_value_text: string | null;
+    activity_value_bool: boolean | null;
 };

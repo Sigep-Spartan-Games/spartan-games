@@ -41,7 +41,17 @@ export async function createTeamAction(formData: FormData): Promise<void> {
   // ✅ enforce registration open
   await requireRegistrationOpen(supabase);
 
-  const { error } = await supabase.rpc("create_team", { p_name: teamName });
+  // Generate a random 6-char invite code
+  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  // Create team directly
+  const { error } = await supabase.from("teams").insert({
+    name: teamName,
+    member1_id: auth.user.id,
+    invite_code: inviteCode,
+    // defaults: weekly_points=0, total_points=0, etc.
+  });
+
   if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath("/teams");
@@ -62,8 +72,38 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
   // ✅ enforce registration open
   await requireRegistrationOpen(supabase);
 
-  const { error } = await supabase.rpc("join_team_by_code", { p_code: code });
-  if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
+  // 1. Find the team
+  const { data: team, error: findError } = await supabase
+    .from("teams")
+    .select("id, member1_id, member2_id")
+    .eq("invite_code", code)
+    .single();
+
+  if (findError || !team) {
+    redirect("/teams?error=Invalid%20invite%20code");
+  }
+
+  // 2. Check if full
+  if (team.member1_id && team.member2_id) {
+    redirect("/teams?error=Team%20is%20full");
+  }
+
+  // 3. Determine which slot to take
+  // The constraint implies member1!=member2. 
+  // If member1 is empty (rare but possible if creator left), take it. Else take member2.
+  const updateData: { member1_id?: string; member2_id?: string } = {};
+  if (!team.member1_id) {
+    updateData.member1_id = auth.user.id;
+  } else if (!team.member2_id) {
+    updateData.member2_id = auth.user.id;
+  }
+
+  const { error: updateError } = await supabase
+    .from("teams")
+    .update(updateData)
+    .eq("id", team.id);
+
+  if (updateError) redirect(`/teams?error=${encodeURIComponent(updateError.message)}`);
 
   revalidatePath("/teams");
   redirect("/teams?success=Joined%20team");
@@ -82,10 +122,11 @@ export async function renameTeamAction(formData: FormData): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/teams?error=Sign%20in%20required");
 
-  const { error } = await supabase.rpc("rename_team", {
-    p_team_id: teamId,
-    p_new_name: newName,
-  });
+  const { error } = await supabase
+    .from("teams")
+    .update({ name: newName })
+    .eq("id", teamId);
+
   if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath("/teams");
@@ -98,8 +139,37 @@ export async function leaveTeamAction(teamId: string): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/teams?error=Sign%20in%20required");
 
-  const { error } = await supabase.rpc("leave_team", { p_team_id: teamId });
-  if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
+  // Fetch current membership
+  const { data: team, error: fetchError } = await supabase
+    .from("teams")
+    .select("id, member1_id, member2_id")
+    .eq("id", teamId)
+    .single();
+
+  if (fetchError || !team) redirect("/teams?error=Team%20not%20found");
+
+  const userId = auth.user.id;
+  const isMember1 = team.member1_id === userId;
+  const isMember2 = team.member2_id === userId;
+
+  if (!isMember1 && !isMember2) redirect("/teams?error=Not%20a%20member");
+
+  // If this is the last member, delete the team? Or just leave it empty?
+  // Usually if last member leaves, we destroy the team to clean up.
+  // If not last member, we just set our slot to null.
+
+  const otherMemberExists = isMember1 ? !!team.member2_id : !!team.member1_id;
+
+  if (!otherMemberExists) {
+    // We are the last one. Delete the team.
+    const { error: delError } = await supabase.from("teams").delete().eq("id", teamId);
+    if (delError) redirect(`/teams?error=${encodeURIComponent(delError.message)}`);
+  } else {
+    // Just vacate our slot
+    const updateData = isMember1 ? { member1_id: null } : { member2_id: null };
+    const { error: upError } = await supabase.from("teams").update(updateData).eq("id", teamId);
+    if (upError) redirect(`/teams?error=${encodeURIComponent(upError.message)}`);
+  }
 
   revalidatePath("/teams");
   redirect("/teams?success=Left%20team");
