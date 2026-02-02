@@ -88,26 +88,26 @@ function MobileBottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div className="sg-nav border-t border-amber-200/15">
-        <div className="mx-auto max-w-4xl px-2 py-4">
-          {/* Top row: main nav buttons */}
-          <div className="flex items-center justify-center">
+        <div className="mx-auto max-w-lg px-3 py-2">
+          {/* Single row: nav buttons + auth */}
+          <div className="flex items-center gap-2">
             <Suspense fallback={<MobileNavSkeleton />}>
-              <div className="flex w-full max-w-sm gap-1">
+              <div className="flex flex-1 gap-1">
                 <SpartanNavLinks admin={false} variant="mobile" />
                 <AdminLink variant="mobile" />
               </div>
             </Suspense>
-          </div>
 
-          {/* Bottom row: Auth */}
-          <div className="mt-2 flex items-center justify-center">
-            {!hasEnvVars ? (
-              <EnvVarWarning />
-            ) : (
-              <Suspense>
-                <AuthButton />
-              </Suspense>
-            )}
+            {/* Auth button inline */}
+            <div className="shrink-0 border-l border-amber-200/15 pl-2">
+              {!hasEnvVars ? (
+                <EnvVarWarning />
+              ) : (
+                <Suspense>
+                  <AuthButton />
+                </Suspense>
+              )}
+            </div>
           </div>
         </div>
       </div>

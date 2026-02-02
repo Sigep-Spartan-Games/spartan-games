@@ -19,7 +19,7 @@ function NavLink({
   const base =
     variant === "desktop"
       ? "sg-nav-link rounded-md px-3 py-2"
-      : "sg-nav-link flex-1 min-w-0 flex items-center justify-center rounded-md px-2 py-4 text-base font-medium";
+      : "sg-nav-link flex-1 flex flex-col items-center justify-center rounded-lg py-2.5 text-sm font-medium min-w-0";
 
   return (
     <Link
@@ -62,12 +62,11 @@ export function SpartanNavLinks({
     );
   }
 
-  // MOBILE: only these three (centered row)
+  // MOBILE: 3 core nav items (Rules moved to modal on Submit page)
   const mobileItems = [
     { href: "/leaderboard", label: "Board" },
     { href: "/submit", label: "Submit" },
     { href: "/teams", label: "Teams" },
-    { href: "/rules", label: "Rules" },
   ];
 
   return (

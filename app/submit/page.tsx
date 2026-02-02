@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCachedUser } from "@/lib/cached-data";
 import SubmitFormClient from "./submit-form-client";
 import { createSubmission } from "./actions";
+import { RulesModal } from "@/components/rules-modal";
 
 function SubmitSkeleton() {
   return (
@@ -123,11 +124,14 @@ async function SubmitInner({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Submit</h1>
-        <p className="text-sm text-muted-foreground">
-          Log an activity for your team.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Submit</h1>
+          <p className="text-sm text-muted-foreground">
+            Log an activity for your team.
+          </p>
+        </div>
+        <RulesModal />
       </div>
 
       {errorParam && (
