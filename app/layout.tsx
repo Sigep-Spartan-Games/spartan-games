@@ -48,36 +48,44 @@ function DesktopTopNav() {
   return (
     <header className="sg-nav border-b sticky top-0 z-50 hidden md:block">
       <div className="spartan-nav border-b border-amber-200/15">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-          <Link
-            href="/"
-            className="flex items-center gap-3 font-semibold tracking-tight text-amber-100 drop-shadow-[0_1px_10px_rgba(255,200,80,0.18)]"
-          >
-            <Image
-              src={Spartan}
-              alt="Spartan Games"
-              width={70}
-              height={70}
-              className="h-100 w-100 object-contain"
-              priority
-            />
-            <span className="whitespace-nowrap text-xl">Spartan Games</span>
-          </Link>
+        <div className="mx-auto flex h-14 max-w-5xl items-center px-4">
+          {/* Left: Logo + Auth */}
+          <div className="flex items-center gap-4 shrink-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-semibold tracking-tight text-amber-100 drop-shadow-[0_1px_10px_rgba(255,200,80,0.18)]"
+            >
+              <Image
+                src={Spartan}
+                alt="Spartan Games"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+                priority
+              />
+              <span className="whitespace-nowrap text-lg">Spartan Games</span>
+            </Link>
+
+            <div className="border-l border-amber-200/20 pl-4">
+              {!hasEnvVars ? (
+                <EnvVarWarning />
+              ) : (
+                <Suspense>
+                  <AuthButton />
+                </Suspense>
+              )}
+            </div>
+          </div>
+
+          {/* Center: Nav Links (pushed to the right with flex-1) */}
+          <div className="flex-1" />
 
           <Suspense fallback={<DesktopNavSkeleton />}>
-            <nav className="flex items-center gap-2 text-sm">
+            <nav className="flex items-center gap-1 text-sm">
               <SpartanNavLinks admin={false} variant="desktop" />
               <AdminLink variant="desktop" />
             </nav>
           </Suspense>
-
-          {!hasEnvVars ? (
-            <EnvVarWarning />
-          ) : (
-            <Suspense>
-              <AuthButton />
-            </Suspense>
-          )}
         </div>
       </div>
     </header>
