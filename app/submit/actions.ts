@@ -53,6 +53,31 @@ export async function createSubmission(formData: FormData) {
     redirect("/submit?error=missing_fields");
   }
 
+  // ✅ Enforce date is in current week (DB logic source of truth)
+  // We try to call the RPC; if it fails (doesn't exist), we might proceed but warn.
+  // Assuming function signature: is_in_current_week(date_val date)
+  const { data: isCurrent, error: weekError } = await supabase.rpc(
+    "is_in_current_week",
+    { date_val: activityDate },
+  );
+
+  if (weekError) {
+    console.error("is_in_current_week RPC error:", weekError);
+    // Optional: Fail open or closed? Failing open allows submission but might not count points.
+    // Failing closed is safer for data integrity if the week logic is strict.
+    // Let's redirect with error to alert admin/user something is wrong.
+    redirect(`/submit?error=${encodeURIComponent("Week validation failed")}`);
+  }
+
+  if (!isCurrent) {
+    redirect(
+      "/submit?error=" +
+      encodeURIComponent(
+        "Date is not in the current active week. Points would not count.",
+      ),
+    );
+  }
+
 
   // Fetch scoring rules (admin-controlled). Default fallback if row missing.
   const { data: rules, error: rulesError } = await supabase
@@ -117,7 +142,7 @@ export async function createSubmission(formData: FormData) {
   }
 
   // Points
-  let pointsAwarded = Math.round(pointsPerUnit * units);
+  let pointsAwarded = Math.floor(pointsPerUnit * units);
   if (didWithTeammate) pointsAwarded += teammateBonus;
 
   if (!Number.isFinite(pointsAwarded) || pointsAwarded <= 0) {
@@ -131,7 +156,7 @@ export async function createSubmission(formData: FormData) {
     return activityKey;
   })();
 
-  const basePoints = Math.max(1, Math.round(pointsPerUnit * units));
+  const basePoints = Math.max(1, Math.floor(pointsPerUnit * units));
 
   const { error } = await supabase.from("submissions").insert({
     team_id: team.id,
