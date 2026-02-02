@@ -87,8 +87,6 @@ export async function updateActivityRule(formData: FormData) {
   const inputType = toStringOrNull(formData.get("input_type"));
   const unitLabel = toStringOrNull(formData.get("unit_label"));
 
-  const active = formData.get("active") === "on";
-
   if (!activityKey) redirect("/admin?error=missing_activity_key");
   if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
     redirect("/admin?error=invalid_points_per_unit");
@@ -101,7 +99,6 @@ export async function updateActivityRule(formData: FormData) {
     label: label,
     input_type: inputType as any,
     unit_label: unitLabel,
-    active: active,
     updated_at: new Date().toISOString(),
   };
 

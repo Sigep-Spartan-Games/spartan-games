@@ -79,12 +79,10 @@ export default function ScoringEditor({
                       <option value="text">Text</option>
                       <option value="boolean">True/False</option>
                     </select>
-                    {r.input_type === 'number' && (
-                      <div className="space-y-1 mt-2">
-                        <label className="text-xs font-medium text-foreground/70">Unit Label</label>
-                        <input name="unit_label" defaultValue={r.unit_label ?? ""} placeholder="e.g. miles" className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-                      </div>
-                    )}
+                    <div className="space-y-1 mt-2">
+                      <label className="text-xs font-medium text-foreground/70">Unit Label</label>
+                      <input name="unit_label" defaultValue={r.unit_label ?? ""} placeholder="e.g. miles" className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
                   </div>
 
                   <div className="col-span-3 sm:col-span-2 space-y-1">
