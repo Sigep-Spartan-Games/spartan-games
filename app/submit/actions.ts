@@ -53,28 +53,28 @@ export async function createSubmission(formData: FormData) {
     redirect("/submit?error=missing_fields");
   }
 
-  // ✅ Enforce date is in current week (DB logic source of truth)
-  // We try to call the RPC; if it fails (doesn't exist), we might proceed but warn.
-  // Assuming function signature: is_in_current_week(date_val date)
-  const { data: isCurrent, error: weekError } = await supabase.rpc(
-    "is_in_current_week",
-    { date_val: activityDate },
-  );
+  // ✅ Enforce date is in current week via JS (Monday-Monday)
+  // We compute "local" current week based on server time to avoid reliance on DB RPC
+  const today = new Date();
+  const day = today.getDay(); // 0-6 Sun-Sat
+  // Calculate days to subtract to get to last Monday.
+  const deltaToMon = day === 0 ? 6 : day - 1;
 
-  if (weekError) {
-    console.error("is_in_current_week RPC error:", weekError);
-    // Optional: Fail open or closed? Failing open allows submission but might not count points.
-    // Failing closed is safer for data integrity if the week logic is strict.
-    // Let's redirect with error to alert admin/user something is wrong.
-    redirect(`/submit?error=${encodeURIComponent("Week validation failed")}`);
-  }
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - deltaToMon);
+  monday.setHours(0, 0, 0, 0);
 
-  if (!isCurrent) {
+  const nextMonday = new Date(monday);
+  nextMonday.setDate(monday.getDate() + 7);
+
+  const [y, m, d] = activityDate.split('-').map(Number);
+  // create date at midnight local
+  const subDate = new Date(y, m - 1, d);
+
+  if (subDate < monday || subDate >= nextMonday) {
     redirect(
       "/submit?error=" +
-      encodeURIComponent(
-        "Date is not in the current active week. Points would not count.",
-      ),
+      encodeURIComponent("Date is not in the current active week"),
     );
   }
 
