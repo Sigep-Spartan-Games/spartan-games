@@ -53,45 +53,55 @@ export default function ScoringEditor({
                 <form key={r.activity_key} action={async (fd) => {
                   await updateAction(fd);
                   setEditingKey(null);
-                }} className="grid grid-cols-12 gap-2 items-center px-4 py-3 bg-muted/20">
+                }} className="grid grid-cols-12 gap-2 items-start px-4 py-4 bg-muted/30 border-l-2 border-primary/50">
                   <input type="hidden" name="original_activity_key" value={r.activity_key} />
                   <input type="hidden" name="activity_key" value={r.activity_key} />
 
                   <div className="col-span-12 sm:col-span-3 space-y-1">
-                    <div className="text-xs font-mono text-muted-foreground">{r.activity_key}</div>
-                    <input name="label" defaultValue={r.label ?? ""} placeholder="Label" className="h-8 w-full rounded border px-2 text-sm" />
+                    <label className="text-xs font-medium text-foreground/70">Activity Label</label>
+                    <div className="text-xs font-mono text-muted-foreground mb-1">{r.activity_key}</div>
+                    <input name="label" defaultValue={r.label ?? ""} placeholder="Label" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
-                  <div className="col-span-6 sm:col-span-2">
-                    <label className="text-xs font-mono text-muted-foreground">Input Type</label>
-                    <select name="input_type" defaultValue={r.input_type ?? "number"} className="h-8 w-full rounded border px-2 text-sm">
+                  <div className="col-span-6 sm:col-span-2 space-y-1">
+                    <label className="text-xs font-medium text-foreground/70">Input Type</label>
+                    <select name="input_type" defaultValue={r.input_type ?? "number"} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                       <option value="number">Number</option>
                       <option value="text">Text</option>
                       <option value="boolean">True/False</option>
                     </select>
                     {r.input_type === 'number' && (
-                      <input name="unit_label" defaultValue={r.unit_label ?? ""} placeholder="Unit (e.g. miles)" className="mt-1 h-8 w-full rounded border px-2 text-xs" />
+                      <div className="space-y-1 mt-2">
+                        <label className="text-xs font-medium text-foreground/70">Unit Label</label>
+                        <input name="unit_label" defaultValue={r.unit_label ?? ""} placeholder="e.g. miles" className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                      </div>
                     )}
                   </div>
 
-                  <div className="col-span-3 sm:col-span-2">
-                    <input name="points_per_unit" type="number" step="0.25" defaultValue={r.points_per_unit} className="h-8 w-full rounded border px-2 text-sm" />
+                  <div className="col-span-3 sm:col-span-2 space-y-1">
+                    <label className="text-xs font-medium text-foreground/70">Points</label>
+                    <input name="points_per_unit" type="number" step="0.25" defaultValue={r.points_per_unit} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
-                  <div className="col-span-3 sm:col-span-2">
-                    <input name="teammate_bonus" type="number" step="1" defaultValue={r.teammate_bonus} className="h-8 w-full rounded border px-2 text-sm" />
+                  <div className="col-span-3 sm:col-span-2 space-y-1">
+                    <label className="text-xs font-medium text-foreground/70">Bonus</label>
+                    <input name="teammate_bonus" type="number" step="1" defaultValue={r.teammate_bonus} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
-                  <div className="col-span-12 sm:col-span-3 flex justify-end gap-2 mt-2 sm:mt-0">
-                    <label className="flex items-center gap-1 text-xs">
-                      <input type="checkbox" name="active" defaultChecked={r.active} /> Active
+                  <div className="col-span-12 sm:col-span-3 flex flex-col items-end gap-2 pt-5">
+                    <label className="flex items-center gap-2 text-sm text-foreground/80">
+                      <input type="checkbox" name="active" defaultChecked={r.active} className="h-4 w-4 rounded border-input accent-primary" /> Active
                     </label>
-                    <button type="submit" className="h-8 w-8 flex items-center justify-center rounded bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Save className="h-4 w-4" />
-                    </button>
-                    <button type="button" onClick={() => setEditingKey(null)} className="h-8 w-8 flex items-center justify-center rounded border hover:bg-muted">
-                      <X className="h-4 w-4" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button type="submit" className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                        <Save className="h-4 w-4" />
+                        Save
+                      </button>
+                      <button type="button" onClick={() => setEditingKey(null)} className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md border border-input bg-background text-foreground text-sm font-medium hover:bg-muted transition-colors">
+                        <X className="h-4 w-4" />
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </form>
               );
@@ -134,64 +144,69 @@ export default function ScoringEditor({
       </div>
 
       {/* Add New Rule Section */}
-      <div className="rounded-xl border bg-muted/10 p-4">
-        <h3 className="mb-3 text-sm font-medium">Add New Activity</h3>
-        <form action={addAction} className="grid grid-cols-1 gap-3 sm:grid-cols-12">
-          <div className="sm:col-span-3">
+      <div className="rounded-xl border border-primary/20 bg-muted/20 p-5">
+        <h3 className="mb-4 text-base font-semibold text-foreground">Add New Activity</h3>
+        <form action={addAction} className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-end">
+          <div className="sm:col-span-3 space-y-1">
+            <label className="text-xs font-medium text-foreground/70">Activity Key</label>
             <input
               name="activity_key"
               type="text"
-              placeholder="Key (e.g. jump_rope)"
-              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder="e.g. jump_rope"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               required
             />
           </div>
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-3 space-y-1">
+            <label className="text-xs font-medium text-foreground/70">Display Label</label>
             <input
               name="label"
               type="text"
-              placeholder="Label (e.g. Jump Rope)"
-              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder="e.g. Jump Rope"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-          <div className="sm:col-span-2">
-            <select name="input_type" className="h-9 w-full rounded-md border bg-background px-3 text-sm">
+          <div className="sm:col-span-2 space-y-1">
+            <label className="text-xs font-medium text-foreground/70">Input Type</label>
+            <select name="input_type" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="number">Number</option>
               <option value="text">Text</option>
               <option value="boolean">Boolean</option>
             </select>
           </div>
-          <div className="sm:col-span-1">
+          <div className="sm:col-span-1 space-y-1">
+            <label className="text-xs font-medium text-foreground/70">Points</label>
             <input
               name="points_per_unit"
               type="number"
               step="0.25"
               min="0"
-              placeholder="Pts"
+              placeholder="10"
               defaultValue={10}
-              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               required
             />
           </div>
-          <div className="sm:col-span-1">
+          <div className="sm:col-span-1 space-y-1">
+            <label className="text-xs font-medium text-foreground/70">Bonus</label>
             <input
               name="teammate_bonus"
               type="number"
               step="1"
               min="0"
-              placeholder="Bns"
+              placeholder="15"
               defaultValue={15}
-              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               required
             />
           </div>
           <div className="sm:col-span-2">
             <button
               type="submit"
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-secondary px-3 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus className="h-4 w-4" />
-              Add
+              Add Activity
             </button>
           </div>
         </form>
