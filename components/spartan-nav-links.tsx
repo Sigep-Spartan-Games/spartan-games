@@ -18,7 +18,7 @@ function NavLink({
 
   const base =
     variant === "desktop"
-      ? "sg-nav-link rounded-md px-3 py-2"
+      ? "sg-nav-link rounded-md px-4 py-2"
       : "sg-nav-link flex-1 flex flex-col items-center justify-center rounded-lg py-2.5 text-sm font-medium min-w-0";
 
   return (

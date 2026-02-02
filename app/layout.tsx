@@ -65,7 +65,7 @@ function DesktopTopNav() {
           </Link>
 
           <Suspense fallback={<DesktopNavSkeleton />}>
-            <nav className="flex items-center gap-1 text-sm">
+            <nav className="flex items-center gap-2 text-sm">
               <SpartanNavLinks admin={false} variant="desktop" />
               <AdminLink variant="desktop" />
             </nav>
