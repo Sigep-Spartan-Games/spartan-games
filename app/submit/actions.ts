@@ -54,8 +54,14 @@ export async function createSubmission(formData: FormData) {
   }
 
   // ✅ Enforce date is in current week via JS (Monday-Monday)
-  // We compute "local" current week based on server time to avoid reliance on DB RPC
-  const today = new Date();
+  // ✅ Enforce date is in current week via JS (Monday-Monday)
+  // We compute "local" current week based on US/Eastern time to ensure consistency
+  // regardless of where the server is hosted (e.g. UTC).
+  const now = new Date();
+  const timeZone = "America/New_York";
+  const gameDateString = now.toLocaleString("en-US", { timeZone });
+  const today = new Date(gameDateString); // "Floating" date matching NY time
+
   const day = today.getDay(); // 0-6 Sun-Sat
   // Calculate days to subtract to get to last Monday.
   const deltaToMon = day === 0 ? 6 : day - 1;
