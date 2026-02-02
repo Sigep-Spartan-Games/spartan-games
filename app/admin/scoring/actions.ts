@@ -130,7 +130,16 @@ export async function addActivityRule(formData: FormData) {
   const inputType = toStringOrNull(formData.get("input_type"));
   const unitLabel = toStringOrNull(formData.get("unit_label"));
 
-  activityKey = activityKey.replace(/\s+/g, "_").toLowerCase();
+  // If activity_key is empty, generate it from the label
+  if (!activityKey && label) {
+    activityKey = label
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "") // remove special chars
+      .replace(/\s+/g, "_"); // spaces to underscores
+  } else {
+    activityKey = activityKey.replace(/\s+/g, "_").toLowerCase();
+  }
 
   if (!activityKey) redirect("/admin?error=missing_activity_key");
   if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)

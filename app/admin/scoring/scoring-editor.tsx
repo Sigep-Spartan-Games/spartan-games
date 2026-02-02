@@ -1,8 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { Plus, Trash2, Edit2, Save, X } from "lucide-react";
 import { ActivityRule } from "@/lib/types";
+
+// Helper to generate activity_key from label
+function generateActivityKey(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "") // remove special chars
+    .replace(/\s+/g, "_"); // spaces to underscores
+}
 
 export default function ScoringEditor({
   rules,
@@ -88,20 +97,15 @@ export default function ScoringEditor({
                     <input name="teammate_bonus" type="number" step="1" defaultValue={r.teammate_bonus} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
-                  <div className="col-span-12 sm:col-span-3 flex flex-col items-end gap-2 pt-5">
-                    <label className="flex items-center gap-2 text-sm text-foreground/80">
-                      <input type="checkbox" name="active" defaultChecked={r.active} className="h-4 w-4 rounded border-input accent-primary" /> Active
-                    </label>
-                    <div className="flex gap-2">
-                      <button type="submit" className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                        <Save className="h-4 w-4" />
-                        Save
-                      </button>
-                      <button type="button" onClick={() => setEditingKey(null)} className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md border border-input bg-background text-foreground text-sm font-medium hover:bg-muted transition-colors">
-                        <X className="h-4 w-4" />
-                        Cancel
-                      </button>
-                    </div>
+                  <div className="col-span-12 sm:col-span-3 flex items-start justify-end gap-2 pt-6">
+                    <button type="submit" className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                      <Save className="h-4 w-4" />
+                      Save
+                    </button>
+                    <button type="button" onClick={() => setEditingKey(null)} className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md border border-input bg-background text-foreground text-sm font-medium hover:bg-muted transition-colors">
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </button>
                   </div>
                 </form>
               );
@@ -144,73 +148,107 @@ export default function ScoringEditor({
       </div>
 
       {/* Add New Rule Section */}
-      <div className="rounded-xl border border-primary/20 bg-muted/20 p-5">
-        <h3 className="mb-4 text-base font-semibold text-foreground">Add New Activity</h3>
-        <form action={addAction} className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-end">
-          <div className="sm:col-span-3 space-y-1">
-            <label className="text-xs font-medium text-foreground/70">Activity Key</label>
-            <input
-              name="activity_key"
-              type="text"
-              placeholder="e.g. jump_rope"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              required
-            />
-          </div>
-          <div className="sm:col-span-3 space-y-1">
-            <label className="text-xs font-medium text-foreground/70">Display Label</label>
-            <input
-              name="label"
-              type="text"
-              placeholder="e.g. Jump Rope"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div className="sm:col-span-2 space-y-1">
-            <label className="text-xs font-medium text-foreground/70">Input Type</label>
-            <select name="input_type" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="number">Number</option>
-              <option value="text">Text</option>
-              <option value="boolean">Boolean</option>
-            </select>
-          </div>
-          <div className="sm:col-span-1 space-y-1">
-            <label className="text-xs font-medium text-foreground/70">Points</label>
-            <input
-              name="points_per_unit"
-              type="number"
-              step="0.25"
-              min="0"
-              placeholder="10"
-              defaultValue={10}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              required
-            />
-          </div>
-          <div className="sm:col-span-1 space-y-1">
-            <label className="text-xs font-medium text-foreground/70">Bonus</label>
-            <input
-              name="teammate_bonus"
-              type="number"
-              step="1"
-              min="0"
-              placeholder="15"
-              defaultValue={15}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              required
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Add Activity
-            </button>
-          </div>
-        </form>
-      </div>
+      <AddNewActivityForm addAction={addAction} />
+    </div>
+  );
+}
+
+// Separate component for Add New Activity to manage state for auto-generating activity_key
+function AddNewActivityForm({ addAction }: { addAction: (formData: FormData) => Promise<void> }) {
+  const [label, setLabel] = useState("");
+  const activityKeyRef = useRef<HTMLInputElement>(null);
+
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newLabel = e.target.value;
+    setLabel(newLabel);
+    // Update the hidden activity_key field
+    if (activityKeyRef.current) {
+      activityKeyRef.current.value = generateActivityKey(newLabel);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/20 bg-muted/20 p-5">
+      <h3 className="mb-4 text-base font-semibold text-foreground">Add New Activity</h3>
+      <form action={addAction} className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-end">
+        {/* Hidden field for auto-generated activity_key */}
+        <input
+          ref={activityKeyRef}
+          type="hidden"
+          name="activity_key"
+          defaultValue=""
+        />
+        <div className="sm:col-span-4 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">Activity Name</label>
+          <input
+            name="label"
+            type="text"
+            placeholder="e.g. Karate Tournament"
+            value={label}
+            onChange={handleLabelChange}
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            required
+          />
+          {label && (
+            <p className="text-xs text-muted-foreground">
+              Key: <span className="font-mono">{generateActivityKey(label)}</span>
+            </p>
+          )}
+        </div>
+        <div className="sm:col-span-2 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">Input Type</label>
+          <select name="input_type" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="number">Number</option>
+            <option value="text">Text</option>
+            <option value="boolean">Boolean</option>
+          </select>
+        </div>
+        <div className="sm:col-span-2 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">Unit (optional)</label>
+          <input
+            name="unit_label"
+            type="text"
+            placeholder="e.g. miles"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="sm:col-span-1 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">Points</label>
+          <input
+            name="points_per_unit"
+            type="number"
+            step="0.25"
+            min="0"
+            placeholder="10"
+            defaultValue={10}
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            required
+          />
+        </div>
+        <div className="sm:col-span-1 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">Bonus</label>
+          <input
+            name="teammate_bonus"
+            type="number"
+            step="1"
+            min="0"
+            placeholder="15"
+            defaultValue={15}
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            required
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <button
+            type="submit"
+            disabled={!label.trim()}
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="h-4 w-4" />
+            Add Activity
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
