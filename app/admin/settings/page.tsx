@@ -79,7 +79,7 @@ async function AdminSettingsInner({
           </form>
         </div>
 
-        <div className="mt-4">
+        {/* <div className="mt-4">
           <form action={finalizeWeek}>
             <button
               type="submit"
@@ -91,7 +91,7 @@ async function AdminSettingsInner({
           <p className="mt-2 text-xs text-muted-foreground">
             Triggers the weekly rollover: finds the winner, awards the week, resets weekly points, and starts the new week.
           </p>
-        </div>
+        </div> */}
 
         <p className="text-xs text-muted-foreground">
           Tip: You can still export or reset at any time.

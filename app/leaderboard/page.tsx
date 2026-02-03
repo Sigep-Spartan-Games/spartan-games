@@ -8,6 +8,7 @@ type TeamRow = {
   name: string;
   weekly_points: number | null;
   total_points: number | null;
+  weeks_won: string[] | null;
 };
 
 function LeaderboardSkeleton() {
@@ -46,7 +47,7 @@ async function LeaderboardInner() {
   // Leaderboard
   const { data, error } = await supabase
     .from("teams")
-    .select("id,name,weekly_points,total_points")
+    .select("id,name,weekly_points,total_points,weeks_won")
     .order("weekly_points", { ascending: false })
     .order("total_points", { ascending: false })
     .order("name", { ascending: true });
@@ -60,7 +61,7 @@ async function LeaderboardInner() {
   if (user) {
     const { data: myTeamData } = await supabase
       .from("teams")
-      .select("id,name,weekly_points,total_points")
+      .select("id,name,weekly_points,total_points,weeks_won")
       .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
       .maybeSingle();
 
@@ -89,14 +90,15 @@ async function LeaderboardInner() {
 
       {/* MOBILE */}
       <div className="overflow-hidden rounded-2xl border md:hidden">
-        <div className="grid grid-cols-[72px_1fr_84px] items-center bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
+        <div className="grid grid-cols-[56px_1fr_48px_72px] items-center bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
           <div>Rank</div>
           <div>Team</div>
+          <div className="text-center">Wins</div>
           <div className="text-right">Points</div>
         </div>
 
         {myTeam && myRank && (
-          <div className="grid grid-cols-[72px_1fr_84px] items-center border-t border-l-4 border-l-primary bg-background px-4 py-3 dark:bg-primary/20">
+          <div className="grid grid-cols-[56px_1fr_48px_72px] items-center border-t border-l-4 border-l-primary bg-background px-4 py-3 dark:bg-primary/20">
             <div className="font-medium">#{myRank}</div>
 
             <div className="min-w-0">
@@ -104,9 +106,13 @@ async function LeaderboardInner() {
               <div className="text-xs text-primary">Your team</div>
             </div>
 
+            <div className="text-center font-semibold tabular-nums">
+              {myTeam.weeks_won?.length ?? 0}
+            </div>
+
             <div className="text-right font-semibold tabular-nums">
               {myTeam.weekly_points ?? 0}
-              <div className="text-[10px] text-muted-foreground font-normal">Week</div>
+              <div className="text-[10px] text-muted-foreground font-normal">Total: {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}</div>
             </div>
           </div>
         )}
@@ -114,12 +120,13 @@ async function LeaderboardInner() {
         {teams.map((t, idx) => {
           const rank = idx + 1;
           const isMine = myTeam?.id === t.id;
+          const effectiveTotal = (t.total_points ?? 0) + (t.weekly_points ?? 0);
 
           return (
             <div
               key={t.id}
               className={[
-                "grid grid-cols-[72px_1fr_84px] items-center border-t px-4 py-3",
+                "grid grid-cols-[56px_1fr_48px_72px] items-center border-t px-4 py-3",
                 isMine ? "bg-primary/5 dark:bg-primary/10" : "",
               ].join(" ")}
             >
@@ -140,6 +147,10 @@ async function LeaderboardInner() {
                 )}
               </div>
 
+              <div className={isMine ? "text-center font-semibold tabular-nums" : "text-center tabular-nums text-muted-foreground"}>
+                {t.weeks_won?.length ?? 0}
+              </div>
+
               <div
                 className={
                   isMine
@@ -148,6 +159,9 @@ async function LeaderboardInner() {
                 }
               >
                 {t.weekly_points ?? 0}
+                <div className="text-[10px] text-muted-foreground font-normal">
+                  Total: {effectiveTotal}
+                </div>
               </div>
             </div>
           );
@@ -161,8 +175,9 @@ async function LeaderboardInner() {
             <tr>
               <th className="px-4 py-3 text-left">Rank</th>
               <th className="px-4 py-3 text-left">Team</th>
+              <th className="px-4 py-3 text-center">Weeks Won</th>
               <th className="px-4 py-3 text-right">Weekly Pts</th>
-              <th className="px-4 py-3 text-right text-muted-foreground">Total Pts</th>
+              <th className="px-4 py-3 text-right">Total Pts</th>
             </tr>
           </thead>
           <tbody>
@@ -173,11 +188,14 @@ async function LeaderboardInner() {
                   {myTeam.name}
                   <span className="ml-2 text-xs text-primary">(Your team)</span>
                 </td>
+                <td className="px-4 py-3 text-center font-semibold tabular-nums">
+                  {myTeam.weeks_won?.length ?? 0}
+                </td>
                 <td className="px-4 py-3 text-right font-semibold tabular-nums">
                   {myTeam.weekly_points ?? 0}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                  {myTeam.total_points ?? 0}
+                <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                  {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
                 </td>
               </tr>
             )}
@@ -186,11 +204,14 @@ async function LeaderboardInner() {
               <tr key={t.id} className="border-t">
                 <td className="px-4 py-3">{idx + 1}</td>
                 <td className="px-4 py-3 font-medium">{t.name}</td>
+                <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">
+                  {t.weeks_won?.length ?? 0}
+                </td>
                 <td className="px-4 py-3 text-right tabular-nums">
                   {t.weekly_points ?? 0}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                  {t.total_points ?? 0}
+                <td className="px-4 py-3 text-right tabular-nums">
+                  {(t.total_points ?? 0) + (t.weekly_points ?? 0)}
                 </td>
               </tr>
             ))}

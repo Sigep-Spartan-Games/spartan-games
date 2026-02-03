@@ -58,7 +58,7 @@ async function AdminTeamsInner() {
               </div>
               <div className="col-span-3 text-sm">{t.invite_code ?? "-"}</div>
               <div className="col-span-2 text-sm text-right">{t.weekly_points ?? 0}</div>
-              <div className="col-span-2 text-sm text-right text-muted-foreground">{t.total_points ?? 0}</div>
+              <div className="col-span-2 text-sm text-right">{(t.total_points ?? 0) + (t.weekly_points ?? 0)}</div>
               <div className="col-span-1 flex justify-end gap-2">
                 <form action={deleteTeam}>
                   <input type="hidden" name="id" value={t.id} />

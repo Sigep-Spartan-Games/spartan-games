@@ -19,7 +19,7 @@ function NavLink({
   const base =
     variant === "desktop"
       ? "sg-nav-link rounded-md px-4 py-2"
-      : "sg-nav-link flex-1 flex flex-col items-center justify-center rounded-lg py-2.5 text-sm font-medium min-w-0";
+      : "sg-nav-link flex-1 flex flex-col items-center justify-center rounded-lg py-2 text-xs font-medium min-w-0 px-1";
 
   return (
     <Link
@@ -44,7 +44,7 @@ export function SpartanNavLinks({
       { href: "/leaderboard", label: "Leaderboard" },
       { href: "/submit", label: "Submit" },
       { href: "/teams", label: "Teams" },
-      { href: "/rules", label: "Rules" },
+      // { href: "/rules", label: "Rules" },
     ];
 
     return (

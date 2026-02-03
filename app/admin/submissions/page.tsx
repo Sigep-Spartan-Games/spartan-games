@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteSubmission } from "./actions";
-import TeamFilter from "./team-filter";
+import SubmissionFilters from "./submission-filters";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -37,6 +37,7 @@ async function AdminSubmissionsInner({
 
   const sp = (await searchParams) ?? {};
   const teamId = typeof sp.team === "string" ? sp.team : "";
+  const dateFilter = typeof sp.date === "string" ? sp.date : "";
 
   const { supabase } = await requireAdmin("/admin/submissions");
 
@@ -54,13 +55,14 @@ async function AdminSubmissionsInner({
     .limit(250);
 
   if (teamId) q = q.eq("team_id", teamId);
+  if (dateFilter) q = q.eq("activity_date", dateFilter);
 
   const { data: subs, error } = await q;
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border p-4">
-        <TeamFilter teams={teams ?? []} teamId={teamId} />
+        <SubmissionFilters teams={teams ?? []} teamId={teamId} dateFilter={dateFilter} />
 
         {teamsError ? (
           <div className="mt-2 text-xs text-muted-foreground">

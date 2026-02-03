@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { SubmitButton } from "@/components/submit-button";
+import { Combobox } from "@/components/ui/combobox";
 import { ActivityRule } from "@/lib/types";
 
 export default function SubmitFormClient({
@@ -77,19 +78,18 @@ export default function SubmitFormClient({
       {/* Activity */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Activity</label>
-        <select
+        <Combobox
           name="activity_key"
-          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+          options={activityRules.map((r) => ({
+            value: r.activity_key,
+            label: r.label ?? r.activity_key,
+            description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • +${r.teammate_bonus} bonus`,
+          }))}
           value={activityKey}
-          onChange={(e) => setActivityKey(e.target.value)}
+          onChange={setActivityKey}
+          placeholder="Search activities..."
           required
-        >
-          {activityRules.map((r) => (
-            <option key={r.activity_key} value={r.activity_key}>
-              {r.label ?? r.activity_key}
-            </option>
-          ))}
-        </select>
+        />
         {rule && (
           <p className="text-xs text-muted-foreground">
             {rule.points_per_unit} pts{rule.unit_label ? `/${rule.unit_label}` : ''} • +{rule.teammate_bonus} bonus
