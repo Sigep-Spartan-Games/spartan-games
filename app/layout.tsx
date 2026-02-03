@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Geist } from "next/font/google";
+import { Geist, Cinzel } from "next/font/google";
 import "./globals.css";
 import { hasEnvVars } from "@/lib/utils";
 import { Suspense } from "react";
@@ -26,6 +26,13 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   display: "swap",
   subsets: ["latin"],
+});
+
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
+  display: "swap",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 function DesktopNavSkeleton() {
@@ -63,7 +70,7 @@ function DesktopTopNav() {
                 className="h-10 w-10 object-contain"
                 priority
               />
-              <span className="whitespace-nowrap text-lg">Spartan Games</span>
+              <span className={`whitespace-nowrap text-lg tracking-wide ${cinzel.className}`}>Spartan Games</span>
             </Link>
 
             <div className="border-l border-amber-200/20 pl-4">
