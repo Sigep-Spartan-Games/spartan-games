@@ -43,13 +43,13 @@ export default function SubmissionFilters({
                 </select>
             </div>
 
-            <div className="space-y-1 flex-1">
+            <div className="space-y-1 flex-1 min-w-0">
                 <div className="text-sm font-medium">Filter by activity date</div>
                 <input
                     type="date"
                     value={dateFilter}
                     onChange={(e) => updateParams("date", e.target.value)}
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm cursor-pointer"
+                    className="h-10 w-full max-w-full rounded-md border bg-background px-3 text-sm cursor-pointer"
                     onClick={(e) => e.currentTarget.showPicker()}
                 />
             </div>

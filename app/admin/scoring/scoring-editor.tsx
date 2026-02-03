@@ -47,11 +47,11 @@ export default function ScoringEditor({
 
       <div className="rounded-xl border overflow-hidden">
         <div className="grid grid-cols-12 gap-2 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-          <div className="col-span-3 sm:col-span-3">Activity / Label</div>
-          <div className="col-span-2 sm:col-span-2">Input Type</div>
-          <div className="col-span-2 sm:col-span-2">Points</div>
+          <div className="col-span-5 sm:col-span-3">Activity / Label</div>
+          <div className="hidden sm:block col-span-2">Input Type</div>
+          <div className="col-span-3 sm:col-span-2">Points</div>
           <div className="col-span-2 sm:col-span-2">Bonus</div>
-          <div className="col-span-3 sm:col-span-3 text-right">Action</div>
+          <div className="col-span-2 sm:col-span-3 text-right">Action</div>
         </div>
 
         <div className="divide-y">
@@ -111,21 +111,21 @@ export default function ScoringEditor({
 
             return (
               <div key={r.activity_key} className={`grid grid-cols-12 gap-2 items-center px-4 py-3 ${!r.active ? 'opacity-50' : ''}`}>
-                <div className="col-span-3 sm:col-span-3">
+                <div className="col-span-5 sm:col-span-3">
                   <div className="font-medium text-sm">{r.label ?? r.activity_key}</div>
                   <div className="text-xs text-muted-foreground">{r.activity_key}</div>
                 </div>
-                <div className="col-span-2 sm:col-span-2 text-sm">
-                  <span className="capitalize">{r.input_type}</span>
+                <div className="hidden sm:block col-span-2 text-sm">
+                  <span className="capitalize">{r.input_type === 'boolean' ? 'True/False' : r.input_type}</span>
                   {r.unit_label && <span className="text-muted-foreground text-xs ml-1">({r.unit_label})</span>}
                 </div>
-                <div className="col-span-2 sm:col-span-2 text-sm">
+                <div className="col-span-3 sm:col-span-2 text-sm">
                   {r.points_per_unit}
                 </div>
                 <div className="col-span-2 sm:col-span-2 text-sm">
                   +{r.teammate_bonus}
                 </div>
-                <div className="col-span-3 sm:col-span-3 flex justify-end gap-2">
+                <div className="col-span-2 sm:col-span-3 flex justify-end gap-2">
                   <button onClick={() => setEditingKey(r.activity_key)} className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted" title="Edit">
                     <Edit2 className="h-4 w-4" />
                   </button>
@@ -198,7 +198,7 @@ function AddNewActivityForm({ addAction }: { addAction: (formData: FormData) => 
           <select name="input_type" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
             <option value="number">Number</option>
             <option value="text">Text</option>
-            <option value="boolean">Boolean</option>
+            <option value="boolean">True/False</option>
           </select>
         </div>
         <div className="sm:col-span-2 space-y-1">
