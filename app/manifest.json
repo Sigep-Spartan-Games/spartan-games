@@ -1,0 +1,17 @@
+{
+    "name": "Spartan Games",
+    "short_name": "Spartan Games",
+    "description": "SigEp Spartan Games tracker",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1a020a",
+    "theme_color": "#2a0810",
+    "icons": [
+        {
+            "src": "/icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

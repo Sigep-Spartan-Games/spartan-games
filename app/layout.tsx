@@ -20,6 +20,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Spartan Games",
   description: "SigEp Spartan Games tracker",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Spartan Games",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 const geistSans = Geist({
