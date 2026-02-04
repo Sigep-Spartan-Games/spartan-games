@@ -46,6 +46,15 @@ export async function createTeamAction(formData: FormData): Promise<void> {
   // ✅ enforce registration open
   await requireRegistrationOpen(supabase);
 
+  // Get user's display name from profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", auth.user.id)
+    .single();
+
+  const displayName = profile?.full_name || auth.user.email || "Unknown";
+
   // Generate a random 6-char invite code
   const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -53,6 +62,7 @@ export async function createTeamAction(formData: FormData): Promise<void> {
   const { error } = await supabase.from("teams").insert({
     name: teamName,
     member1_id: auth.user.id,
+    member1_name: displayName,
     invite_code: inviteCode,
     tier: tier,
   });
@@ -77,6 +87,15 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
   // ✅ enforce registration open
   await requireRegistrationOpen(supabase);
 
+  // Get user's display name from profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", auth.user.id)
+    .single();
+
+  const displayName = profile?.full_name || auth.user.email || "Unknown";
+
   // 1. Find the team
   const { data: team, error: findError } = await supabase
     .from("teams")
@@ -96,11 +115,13 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
   // 3. Determine which slot to take
   // The constraint implies member1!=member2. 
   // If member1 is empty (rare but possible if creator left), take it. Else take member2.
-  const updateData: { member1_id?: string; member2_id?: string } = {};
+  const updateData: { member1_id?: string; member2_id?: string; member1_name?: string; member2_name?: string } = {};
   if (!team.member1_id) {
     updateData.member1_id = auth.user.id;
+    updateData.member1_name = displayName;
   } else if (!team.member2_id) {
     updateData.member2_id = auth.user.id;
+    updateData.member2_name = displayName;
   }
 
   const { error: updateError } = await supabase
