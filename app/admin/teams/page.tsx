@@ -35,7 +35,7 @@ async function AdminTeamsInner() {
 
   const { data: teams, error } = await supabase
     .from("teams")
-    .select("id, name, weekly_points, total_points, invite_code, tier")
+    .select("id, name, weekly_points, total_points, invite_code, tier, member1_name, member2_name")
     .order("name");
 
   if (error) {
@@ -64,6 +64,9 @@ async function AdminTeamsInner() {
           <div className="hidden md:grid grid-cols-10 items-center px-4 py-3">
             <div className="col-span-3">
               <div className="text-sm font-medium truncate">{t.name}</div>
+              <div className="text-xs text-muted-foreground truncate">
+                {t.member1_name || "—"} • {t.member2_name || "—"}
+              </div>
             </div>
 
             <div className="col-span-2 pr-2">
@@ -88,6 +91,9 @@ async function AdminTeamsInner() {
             <div className="flex justify-between items-start gap-2">
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium truncate">{t.name}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {t.member1_name || "—"} • {t.member2_name || "—"}
+                </div>
                 <div className="text-xs text-muted-foreground">Invite: {t.invite_code ?? "-"}</div>
               </div>
               <div className="text-right shrink-0">
