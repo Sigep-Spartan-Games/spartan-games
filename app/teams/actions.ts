@@ -35,6 +35,11 @@ export async function createTeamAction(formData: FormData): Promise<void> {
     redirect("/teams?error=Invalid%20team%20name");
   }
 
+  const tier = String(formData.get("tier") ?? "").trim().toLowerCase();
+  if (!["gold", "purple", "red"].includes(tier)) {
+    redirect("/teams?error=Please%20select%20a%20tier");
+  }
+
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/teams?error=Sign%20in%20required");
 
@@ -49,7 +54,7 @@ export async function createTeamAction(formData: FormData): Promise<void> {
     name: teamName,
     member1_id: auth.user.id,
     invite_code: inviteCode,
-    // defaults: weekly_points=0, total_points=0, etc.
+    tier: tier,
   });
 
   if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
@@ -173,4 +178,44 @@ export async function leaveTeamAction(teamId: string): Promise<void> {
 
   revalidatePath("/teams");
   redirect("/teams?success=Left%20team");
+}
+
+export async function changeTierAction(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+
+  const teamId = String(formData.get("teamId") ?? "");
+  const newTier = String(formData.get("tier") ?? "").trim().toLowerCase();
+
+  if (!teamId) redirect("/teams?error=Missing%20team%20id");
+  if (!["gold", "purple", "red"].includes(newTier)) {
+    redirect("/teams?error=Invalid%20tier");
+  }
+
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) redirect("/teams?error=Sign%20in%20required");
+
+  // ✅ enforce registration open (can only change tier before games start)
+  await requireRegistrationOpen(supabase);
+
+  // Verify user is the team captain (member1)
+  const { data: team, error: fetchError } = await supabase
+    .from("teams")
+    .select("id, member1_id")
+    .eq("id", teamId)
+    .single();
+
+  if (fetchError || !team) redirect("/teams?error=Team%20not%20found");
+  if (team.member1_id !== auth.user.id) {
+    redirect("/teams?error=Only%20the%20team%20captain%20can%20change%20tier");
+  }
+
+  const { error } = await supabase
+    .from("teams")
+    .update({ tier: newTier })
+    .eq("id", teamId);
+
+  if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/teams");
+  redirect("/teams?success=Tier%20updated");
 }

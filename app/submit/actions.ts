@@ -88,7 +88,7 @@ export async function createSubmission(formData: FormData) {
   // Fetch scoring rules (admin-controlled). Default fallback if row missing.
   const { data: rules, error: rulesError } = await supabase
     .from("activity_rules")
-    .select("points_per_unit, teammate_bonus, input_type, active")
+    .select("points_per_unit, teammate_bonus, input_type, active, weekly_cap")
     .eq("activity_key", activityKey)
     .single();
 
@@ -98,6 +98,24 @@ export async function createSubmission(formData: FormData) {
 
   if (!rules.active) {
     redirect(`/submit?error=activity_disabled`);
+  }
+
+  // Check weekly cap for this activity
+  if (rules.weekly_cap != null && rules.weekly_cap > 0) {
+    // Get all submissions for this team, this activity, this week
+    const { data: existingSubmissions } = await supabase
+      .from("submissions")
+      .select("points_awarded")
+      .eq("team_id", team.id)
+      .eq("activity_key", activityKey)
+      .gte("activity_date", `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`)
+      .lt("activity_date", `${nextMonday.getFullYear()}-${String(nextMonday.getMonth() + 1).padStart(2, '0')}-${String(nextMonday.getDate()).padStart(2, '0')}`);
+
+    const currentWeeklyTotal = (existingSubmissions ?? []).reduce((sum, s) => sum + (s.points_awarded || 0), 0);
+
+    if (currentWeeklyTotal >= rules.weekly_cap) {
+      redirect(`/submit?error=${encodeURIComponent(`Weekly cap reached for this activity (${rules.weekly_cap} points max)`)}`);
+    }
   }
 
   const pointsPerUnit = Number(rules.points_per_unit);

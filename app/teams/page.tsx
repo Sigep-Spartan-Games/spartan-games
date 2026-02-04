@@ -7,6 +7,7 @@ import {
   joinByCodeAction,
   leaveTeamAction,
   renameTeamAction,
+  changeTierAction,
 } from "./actions";
 
 type TeamRow = {
@@ -18,6 +19,19 @@ type TeamRow = {
   member1_id?: string | null;
   member2_id?: string | null;
   invite_code?: string | null;
+  tier?: 'gold' | 'purple' | 'red' | null;
+};
+
+const TIER_LABELS: Record<string, string> = {
+  gold: '🥇 Gold (Competitive)',
+  purple: '🟣 Purple (Intermediate)',
+  red: '🔴 Red (Casual)',
+};
+
+const TIER_COLORS: Record<string, string> = {
+  gold: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+  purple: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  red: 'bg-red-500/20 text-red-300 border-red-500/30',
 };
 
 type SP = { success?: string; error?: string };
@@ -66,7 +80,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
   const { data, error } = await supabase
     .from("teams")
     .select(
-      "id,name,weekly_points,member1_name,member2_name,member1_id,member2_id,invite_code",
+      "id,name,weekly_points,member1_name,member2_name,member1_id,member2_id,invite_code,tier",
     )
     .order("name", { ascending: true });
 
@@ -130,7 +144,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
             {myTeam ? (
               ""
             ) : (
-              <form action={createTeamAction} className="mt-3 flex gap-2">
+              <form action={createTeamAction} className="mt-3 space-y-3">
                 <input
                   name="teamName"
                   placeholder="Team name"
@@ -139,8 +153,28 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                   required
                   disabled={!canRegister}
                 />
+
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Select Tier:</span>
+                  <div className="flex flex-col gap-1.5">
+                    {Object.entries(TIER_LABELS).map(([tierKey, label]) => (
+                      <label key={tierKey} className={`flex items-center gap-2 rounded-lg border p-2 text-xs cursor-pointer transition-colors hover:bg-muted/50 ${TIER_COLORS[tierKey].split(' ')[2]}`}>
+                        <input
+                          type="radio"
+                          name="tier"
+                          value={tierKey}
+                          required
+                          disabled={!canRegister}
+                          className="accent-primary"
+                        />
+                        <span className={TIER_COLORS[tierKey].split(' ')[1]}>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <button
-                  className="h-10 shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
+                  className="h-10 w-full rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
                   type="submit"
                   disabled={!canRegister}
                 >
@@ -227,6 +261,41 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                   </span>
                 </div>
               )}
+
+              {/* Display Tier & Change Tier UI */}
+              <div className="mt-4 border-t pt-3">
+                <div className="text-xs font-medium text-muted-foreground mb-2">Team Tier</div>
+                {myTeam.tier && (
+                  <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}>
+                    {TIER_LABELS[myTeam.tier]}
+                  </span>
+                )}
+
+                {/* Captain can change tier if registration is open */}
+                {myTeam.member1_id === me.id && registrationOpen && (
+                  <form action={changeTierAction} className="mt-3 space-y-2">
+                    <input type="hidden" name="teamId" value={myTeam.id} />
+                    <div className="text-xs text-muted-foreground mb-1">Change Tier:</div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        name="tier"
+                        defaultValue={myTeam.tier ?? ""}
+                        className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
+                      >
+                        <option value="gold">🥇 Gold (Competitive)</option>
+                        <option value="purple">🟣 Purple (Intermediate)</option>
+                        <option value="red">🔴 Red (Casual)</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted/50"
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -274,8 +343,13 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
               <div key={t.id} className="rounded-2xl border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-base font-semibold">
-                      {t.name}
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-base font-semibold">{t.name}</span>
+                      {t.tier && (
+                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
+                          {TIER_LABELS[t.tier].split(' ')[0]} {TIER_LABELS[t.tier].split(' ')[1]}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-1 truncate text-sm text-muted-foreground">
                       {t.member1_name ?? "—"} &nbsp;•&nbsp;{" "}

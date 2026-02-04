@@ -10,6 +10,7 @@ export type ActivityRule = {
     min_value: number | null;
     step_value: number | null;
     active: boolean;
+    weekly_cap: number | null;
 };
 
 export type Team = {

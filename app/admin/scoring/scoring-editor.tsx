@@ -47,11 +47,12 @@ export default function ScoringEditor({
 
       <div className="rounded-xl border overflow-hidden">
         <div className="grid grid-cols-12 gap-2 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-          <div className="col-span-5 sm:col-span-3">Activity / Label</div>
+          <div className="col-span-4 sm:col-span-3">Activity / Label</div>
           <div className="hidden sm:block col-span-2">Input Type</div>
           <div className="col-span-3 sm:col-span-2">Points</div>
-          <div className="col-span-2 sm:col-span-2">Bonus</div>
-          <div className="col-span-2 sm:col-span-3 text-right">Action</div>
+          <div className="col-span-2 sm:col-span-1">Bonus</div>
+          <div className="hidden sm:block sm:col-span-1">Cap</div>
+          <div className="col-span-3 sm:col-span-3 text-right">Action</div>
         </div>
 
         <div className="divide-y">
@@ -90,9 +91,14 @@ export default function ScoringEditor({
                     <input name="points_per_unit" type="number" step="0.25" defaultValue={r.points_per_unit} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
-                  <div className="col-span-3 sm:col-span-2 space-y-1">
+                  <div className="col-span-3 sm:col-span-1 space-y-1">
                     <label className="text-xs font-medium text-foreground/70">Bonus</label>
                     <input name="teammate_bonus" type="number" step="1" defaultValue={r.teammate_bonus} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+
+                  <div className="col-span-3 sm:col-span-1 space-y-1">
+                    <label className="text-xs font-medium text-foreground/70">Cap</label>
+                    <input name="weekly_cap" type="number" step="1" min="0" defaultValue={r.weekly_cap ?? ""} placeholder="∞" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
                   <div className="col-span-12 sm:col-span-3 flex items-start justify-end gap-2 pt-6">
@@ -111,7 +117,7 @@ export default function ScoringEditor({
 
             return (
               <div key={r.activity_key} className={`grid grid-cols-12 gap-2 items-center px-4 py-3 ${!r.active ? 'opacity-50' : ''}`}>
-                <div className="col-span-5 sm:col-span-3">
+                <div className="col-span-4 sm:col-span-3">
                   <div className="font-medium text-sm">{r.label ?? r.activity_key}</div>
                   <div className="text-xs text-muted-foreground">{r.activity_key}</div>
                 </div>
@@ -122,10 +128,13 @@ export default function ScoringEditor({
                 <div className="col-span-3 sm:col-span-2 text-sm">
                   {r.points_per_unit}
                 </div>
-                <div className="col-span-2 sm:col-span-2 text-sm">
+                <div className="col-span-2 sm:col-span-1 text-sm">
                   +{r.teammate_bonus}
                 </div>
-                <div className="col-span-2 sm:col-span-3 flex justify-end gap-2">
+                <div className="hidden sm:block sm:col-span-1 text-sm text-muted-foreground">
+                  {r.weekly_cap != null ? r.weekly_cap : '∞'}
+                </div>
+                <div className="col-span-3 sm:col-span-3 flex justify-end gap-2">
                   <button onClick={() => setEditingKey(r.activity_key)} className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted" title="Edit">
                     <Edit2 className="h-4 w-4" />
                   </button>
@@ -236,14 +245,25 @@ function AddNewActivityForm({ addAction }: { addAction: (formData: FormData) => 
             required
           />
         </div>
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-1 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">Cap</label>
+          <input
+            name="weekly_cap"
+            type="number"
+            step="1"
+            min="0"
+            placeholder="∞"
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="sm:col-span-1">
           <button
             type="submit"
             disabled={!label.trim()}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-5"
           >
             <Plus className="h-4 w-4" />
-            Add Activity
+            Add
           </button>
         </div>
       </form>

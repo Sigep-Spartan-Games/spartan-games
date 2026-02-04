@@ -14,6 +14,13 @@ function toStringOrNull(v: FormDataEntryValue | null) {
   return s === "" ? null : s;
 }
 
+function toNumberOrNull(v: FormDataEntryValue | null) {
+  const s = String(v ?? "").trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 async function requireAdmin() {
   const supabase = await createClient(); // ✅ await
 
@@ -86,6 +93,7 @@ export async function updateActivityRule(formData: FormData) {
   const label = toStringOrNull(formData.get("label"));
   const inputType = toStringOrNull(formData.get("input_type"));
   const unitLabel = toStringOrNull(formData.get("unit_label"));
+  const weeklyCap = toNumberOrNull(formData.get("weekly_cap"));
 
   if (!activityKey) redirect("/admin?error=missing_activity_key");
   if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
@@ -99,6 +107,7 @@ export async function updateActivityRule(formData: FormData) {
     label: label,
     input_type: inputType as any,
     unit_label: unitLabel,
+    weekly_cap: weeklyCap != null ? Math.trunc(weeklyCap) : null,
     updated_at: new Date().toISOString(),
   };
 
@@ -126,6 +135,7 @@ export async function addActivityRule(formData: FormData) {
   const label = toStringOrNull(formData.get("label"));
   const inputType = toStringOrNull(formData.get("input_type"));
   const unitLabel = toStringOrNull(formData.get("unit_label"));
+  const weeklyCap = toNumberOrNull(formData.get("weekly_cap"));
 
   // If activity_key is empty, generate it from the label
   if (!activityKey && label) {
@@ -162,6 +172,7 @@ export async function addActivityRule(formData: FormData) {
     label: label ?? activityKey,
     input_type: inputType,
     unit_label: unitLabel,
+    weekly_cap: weeklyCap != null ? Math.trunc(weeklyCap) : null,
     active: true, // Default to active
     updated_at: new Date().toISOString(),
     min_value: 0,
