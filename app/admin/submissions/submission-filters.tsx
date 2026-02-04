@@ -26,8 +26,8 @@ export default function SubmissionFilters({
     }
 
     return (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="space-y-1 flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end overflow-hidden">
+            <div className="space-y-1 flex-1 min-w-0">
                 <div className="text-sm font-medium">Filter by team</div>
                 <select
                     value={teamId}
@@ -43,13 +43,13 @@ export default function SubmissionFilters({
                 </select>
             </div>
 
-            <div className="space-y-1 flex-1 min-w-0">
+            <div className="space-y-1 flex-1 min-w-0 overflow-hidden">
                 <div className="text-sm font-medium">Filter by activity date</div>
                 <input
                     type="date"
                     value={dateFilter}
                     onChange={(e) => updateParams("date", e.target.value)}
-                    className="h-10 w-full max-w-full rounded-md border bg-background px-3 text-sm cursor-pointer"
+                    className="h-10 w-full box-border rounded-md border bg-background px-3 text-sm cursor-pointer"
                     onClick={(e) => e.currentTarget.showPicker()}
                 />
             </div>
