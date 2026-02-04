@@ -47,15 +47,32 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  // Define public routes that don't require authentication
+  const publicRoutes = [
+    "/auth/login",
+    "/auth/sign-up",
+    "/auth/sign-up-success",
+    "/auth/forgot-password",
+    "/auth/update-password",
+    "/auth/confirm",
+    "/auth/error",
+  ];
+
+  const isPublicRoute = publicRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route)
+  );
+
+  // If no user and not on a public route, redirect to login
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    return NextResponse.redirect(url);
+  }
+
+  // If user is logged in and trying to access login/signup, redirect to leaderboard
+  if (user && (request.nextUrl.pathname === "/auth/login" || request.nextUrl.pathname === "/auth/sign-up")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/leaderboard";
     return NextResponse.redirect(url);
   }
 
