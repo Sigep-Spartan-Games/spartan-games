@@ -16,14 +16,22 @@ export default function SubmitFormClient({
   teamName: string;
   activityRules: ActivityRule[];
 }) {
+  const sortedRules = useMemo(() => {
+    return [...activityRules].sort((a, b) => {
+      const labelA = (a.label || a.activity_key || "").toLowerCase();
+      const labelB = (b.label || b.activity_key || "").toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+  }, [activityRules]);
+
   const [activityKey, setActivityKey] = useState<string>("");
 
   // Default to first activity if available
   useEffect(() => {
-    if (activityRules.length > 0 && !activityKey) {
-      setActivityKey(activityRules[0].activity_key);
+    if (sortedRules.length > 0 && !activityKey) {
+      setActivityKey(sortedRules[0].activity_key);
     }
-  }, [activityRules, activityKey]);
+  }, [sortedRules, activityKey]);
 
   const rule = useMemo(
     () => activityRules.find((r) => r.activity_key === activityKey),
@@ -80,7 +88,7 @@ export default function SubmitFormClient({
         <label className="text-sm font-medium">Activity</label>
         <Combobox
           name="activity_key"
-          options={activityRules.map((r) => ({
+          options={sortedRules.map((r) => ({
             value: r.activity_key,
             label: r.label ?? r.activity_key,
             description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • +${r.teammate_bonus} bonus`,
