@@ -2,7 +2,8 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { resetSpartanGames, startGames, endGames, finalizeWeek } from "./actions";
+import { resetSpartanGames, startGames, endGames } from "./actions";
+import { finalizeWeekWithHistory } from "./finalize-week-actions";
 import TierGoalsSection from "./tier-goals-section";
 
 function SettingsSkeleton() {
@@ -80,8 +81,8 @@ async function AdminSettingsInner({
           </form>
         </div>
 
-        {/* <div className="mt-4">
-          <form action={finalizeWeek}>
+        <div className="mt-4">
+          <form action={finalizeWeekWithHistory}>
             <button
               type="submit"
               className="h-10 rounded-md bg-amber-500 px-4 text-sm font-medium text-white hover:bg-amber-600"
@@ -90,9 +91,9 @@ async function AdminSettingsInner({
             </button>
           </form>
           <p className="mt-2 text-xs text-muted-foreground">
-            Triggers the weekly rollover: finds the winner, awards the week, resets weekly points, and starts the new week.
+            Records team performance history, finds the winner, awards the week, and resets weekly points for the new week.
           </p>
-        </div> */}
+        </div>
 
         <p className="text-xs text-muted-foreground">
           Tip: You can still export or reset at any time.
