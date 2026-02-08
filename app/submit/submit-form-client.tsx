@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { Combobox } from "@/components/ui/combobox";
 import { ActivityRule } from "@/lib/types";
+import imageCompression from 'browser-image-compression';
 
 export default function SubmitFormClient({
   action,
@@ -25,6 +26,8 @@ export default function SubmitFormClient({
   }, [activityRules]);
 
   const [activityKey, setActivityKey] = useState<string>("");
+  const [proofImage, setProofImage] = useState<File | null>(null);
+  const [compressing, setCompressing] = useState(false);
 
   // Default to first activity if available
   useEffect(() => {
@@ -46,6 +49,36 @@ export default function SubmitFormClient({
     return `${yyyy}-${mm}-${dd}`;
   }, []);
 
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setCompressing(true);
+    try {
+      const options = {
+        maxSizeMB: 0.2, // ~200KB
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      setProofImage(compressedFile);
+    } catch (error) {
+      console.error("Image compression error:", error);
+      // Fallback to original if compression fails, though unlikely
+      setProofImage(file);
+    } finally {
+      setCompressing(false);
+    }
+  };
+
+  const handleSubmit = async (formData: FormData) => {
+    if (proofImage) {
+      // Append the compressed file, overriding any original selection if needed
+      formData.set("proof_image", proofImage, proofImage.name);
+    }
+    await action(formData);
+  };
+
   if (activityRules.length === 0) {
     return (
       <div className="rounded-2xl border p-5 text-center text-muted-foreground">
@@ -55,7 +88,7 @@ export default function SubmitFormClient({
   }
 
   return (
-    <form action={action} className="space-y-3 rounded-2xl border p-4 md:p-5">
+    <form action={handleSubmit} className="space-y-3 rounded-2xl border p-4 md:p-5">
       {/* Team */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Team</label>
@@ -165,6 +198,25 @@ export default function SubmitFormClient({
         </div>
       )}
 
+      {/* Proof Image */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Proof Photo (Optional)</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="w-full text-sm text-muted-foreground
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-md file:border-0
+            file:text-sm file:font-semibold
+            file:bg-primary/10 file:text-primary
+            hover:file:bg-primary/20"
+        />
+        <p className="text-xs text-muted-foreground">
+          {compressing ? "Compressing image..." : (proofImage ? `Ready: ${Math.round(proofImage.size / 1024)}KB` : "Upload a photo as proof.")}
+        </p>
+      </div>
+
       {/* Teammate */}
       <label className="flex items-center gap-3 rounded-xl border p-3">
         <input type="checkbox" name="did_with_teammate" className="h-4 w-4" />
@@ -178,9 +230,10 @@ export default function SubmitFormClient({
 
       {/* Submit */}
       <SubmitButton
-        className="h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground"
+        className="h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground disabled:opacity-50"
+        disabled={compressing}
       >
-        Submit Activity
+        {compressing ? "Processing Image..." : "Submit Activity"}
       </SubmitButton>
     </form>
   );

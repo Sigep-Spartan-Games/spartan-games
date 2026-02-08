@@ -53,7 +53,7 @@ async function AdminSubmissionsInner({
   let q = supabase
     .from("submissions")
     .select(
-      "id, team_id, submitted_by, created_at, activity_key, activity_date, points_awarded, did_with_teammate",
+      "id, team_id, submitted_by, created_at, activity_key, activity_date, points_awarded, did_with_teammate, proof_image_path",
     )
     .order("created_at", { ascending: false })
     .limit(250);
@@ -144,6 +144,18 @@ async function AdminSubmissionsInner({
                     <div className="text-xs text-muted-foreground">
                       {s.did_with_teammate ? "With teammate" : "Solo"}
                     </div>
+                    {s.proof_image_path && (
+                      <div className="mt-1 md:hidden">
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-500 hover:underline flex items-center gap-1"
+                        >
+                          📷 View Proof
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -161,6 +173,18 @@ async function AdminSubmissionsInner({
 
                 {/* Actions */}
                 <div className="flex justify-end gap-2 md:col-span-2">
+                  {s.proof_image_path && (
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-8 rounded-md border px-3 text-xs flex items-center hover:bg-muted/50 text-blue-600"
+                      title="View Proof"
+                    >
+                      📷
+                    </a>
+                  )}
+
                   <Link
                     href={`/admin/submissions/${encodeURIComponent(
                       s.id,

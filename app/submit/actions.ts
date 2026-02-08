@@ -243,6 +243,32 @@ export async function createSubmission(formData: FormData) {
 
   const basePoints = Math.max(1, Math.floor(pointsPerUnit * units));
 
+  // Handle Proof Image Upload
+  let proofImagePath: string | null = null;
+  const proofImageFile = formData.get("proof_image");
+
+  if (proofImageFile && proofImageFile instanceof File && proofImageFile.size > 0) {
+    // Basic validation
+    if (!proofImageFile.type.startsWith("image/")) {
+      redirect("/submit?error=invalid_file_type");
+    }
+
+    const fileExt = proofImageFile.name.split('.').pop() || 'jpg';
+    const filePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('submission-proofs')
+      .upload(filePath, proofImageFile);
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      // Optional: redirect with error or just log it and continue without image
+      // redirect(`/submit?error=${encodeURIComponent("Image upload failed")}`);
+    } else {
+      proofImagePath = filePath;
+    }
+  }
+
   const { error } = await supabase.from("submissions").insert({
     team_id: team.id,
     submitted_by: user.id,
@@ -266,6 +292,7 @@ export async function createSubmission(formData: FormData) {
     activity_value_bool: hasBool ? true : null,
 
     streak_bonus: streakBonus,
+    proof_image_path: proofImagePath,
   });
 
   if (error) redirect(`/submit?error=${encodeURIComponent(error.message)}`);
