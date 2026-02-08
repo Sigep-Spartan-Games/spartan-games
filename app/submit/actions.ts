@@ -31,7 +31,7 @@ export async function createSubmission(formData: FormData) {
   // User's team from teams table
   const { data: team, error: teamError } = await supabase
     .from("teams")
-    .select("id")
+    .select("id, streak_count, last_activity_date")
     .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
     .maybeSingle();
 
@@ -169,6 +169,67 @@ export async function createSubmission(formData: FormData) {
   let pointsAwarded = Math.floor(pointsPerUnit * units);
   if (didWithTeammate) pointsAwarded += teammateBonus;
 
+  // Streak Logic
+  const { data: streakSettings } = await supabase
+    .from("streak_settings")
+    .select("daily_bonus_increment, max_bonus")
+    .eq("id", true)
+    .single();
+
+  const dailyBonusIncrement = streakSettings?.daily_bonus_increment ?? 1;
+  const maxBonus = streakSettings?.max_bonus ?? 10;
+
+  let streakBonus = 0;
+  let newStreakCount = team.streak_count || 0;
+  let newLastActivityDate = team.last_activity_date;
+
+  // activityDate is YYYY-MM-DD
+  // last_activity_date is YYYY-MM-DD from DB
+
+  const currentActivityDateObj = new Date(activityDate + 'T00:00:00');
+  // Use a reliable diff method. Since inputs are YYYY-MM-DD strings, we can blindly compare.
+
+  if (!team.last_activity_date) {
+    // First activity ever
+    newStreakCount = 1;
+    streakBonus = dailyBonusIncrement;
+    newLastActivityDate = activityDate;
+  } else {
+    // Calculate difference in days
+    // We can assume inputs are valid dates.
+    const lastDateObj = new Date(team.last_activity_date + 'T00:00:00');
+
+    // Reset hours to 0 just in case
+    currentActivityDateObj.setHours(0, 0, 0, 0);
+    lastDateObj.setHours(0, 0, 0, 0);
+
+    const diffTime = currentActivityDateObj.getTime() - lastDateObj.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      // Consecutive day
+      newStreakCount++;
+      // Limit streak bonus
+      streakBonus = Math.min(newStreakCount * dailyBonusIncrement, maxBonus);
+      newLastActivityDate = activityDate;
+    } else if (diffDays > 1) {
+      // Missed a day (or more) -> Reset
+      newStreakCount = 1;
+      streakBonus = dailyBonusIncrement;
+      newLastActivityDate = activityDate;
+    } else if (diffDays === 0) {
+      // Same day -> No streak increase, no bonus (already awarded for today)
+      streakBonus = 0;
+      // streak count stays same
+      // date stays same
+    } else {
+      // Negative diff -> Backdated. 
+      // Do not award streak bonus for backdated activities to prevent gaming.
+      streakBonus = 0;
+    }
+  }
+
+  pointsAwarded += streakBonus;
   if (!Number.isFinite(pointsAwarded) || pointsAwarded <= 0) {
     redirect("/submit?error=points_zero");
   }
@@ -203,9 +264,20 @@ export async function createSubmission(formData: FormData) {
     activity_value_number: hasNumber ? units : null,
     activity_value_text: hasText ? String(formData.get("activity_value_text")).trim() : null,
     activity_value_bool: hasBool ? true : null,
+
+    streak_bonus: streakBonus,
   });
 
   if (error) redirect(`/submit?error=${encodeURIComponent(error.message)}`);
+
+  // Update team streak info
+  // Only update if changes occurred (i.e. not same day or backdated, unless it was first activity)
+  if (newLastActivityDate !== team.last_activity_date || newStreakCount !== team.streak_count) {
+    await supabase.from("teams").update({
+      streak_count: newStreakCount,
+      last_activity_date: newLastActivityDate,
+    }).eq("id", team.id);
+  }
 
   redirect("/leaderboard");
 }

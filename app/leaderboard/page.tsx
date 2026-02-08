@@ -4,6 +4,7 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCachedUser } from "@/lib/cached-data";
+import WeeklyProgressBar from "@/components/weekly-progress-bar";
 
 type TeamRow = {
   id: string;
@@ -14,6 +15,7 @@ type TeamRow = {
   tier: "gold" | "purple" | "red" | null;
   member1_id: string | null;
   member2_id: string | null;
+  streak_count: number | null;
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -62,7 +64,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
   // Fetch all teams (with tier and member IDs)
   const { data, error } = await supabase
     .from("teams")
-    .select("id,name,weekly_points,total_points,weeks_won,tier,member1_id,member2_id")
+    .select("id,name,weekly_points,total_points,weeks_won,tier,member1_id,member2_id,streak_count")
     .order("weekly_points", { ascending: false })
     .order("total_points", { ascending: false })
     .order("name", { ascending: true });
@@ -157,6 +159,11 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
             <div className="min-w-0 pr-2">
               <div className="flex flex-col gap-0.5">
                 <span className="truncate font-semibold">{myTeam.name}</span>
+                {(myTeam.streak_count ?? 0) >= 2 && (
+                  <span className="text-orange-500 text-xs ml-1" title="Active Streak">
+                    🔥 {myTeam.streak_count}
+                  </span>
+                )}
                 {myTeam.tier && (
                   <span className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}>
                     {TIER_LABELS[myTeam.tier]}
@@ -164,6 +171,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                 )}
               </div>
               <div className="text-[10px] text-primary mt-0.5">Your team</div>
+              <WeeklyProgressBar weeklyPoints={myTeam.weekly_points ?? 0} tier={myTeam.tier} className="mt-2" />
             </div>
 
             <div className="text-center font-semibold tabular-nums">
@@ -201,6 +209,11 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <span className={isMine ? "truncate font-semibold" : "truncate font-medium"}>
                     {t.name}
                   </span>
+                  {(t.streak_count ?? 0) >= 2 && (
+                    <span className="text-orange-500 text-xs inline-flex items-center gap-0.5" title="Active Streak">
+                      🔥 {t.streak_count}
+                    </span>
+                  )}
                   {(t.tier && activeTier === 'all') && (
                     <span className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
                       {TIER_LABELS[t.tier]}
@@ -258,6 +271,11 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                 <td className="px-4 py-3 font-semibold">
                   <div className="flex items-center gap-2">
                     {myTeam.name}
+                    {(myTeam.streak_count ?? 0) >= 2 && (
+                      <span className="text-orange-500 text-xs font-bold ml-1" title="Active Streak">
+                        🔥 {myTeam.streak_count}
+                      </span>
+                    )}
                     {myTeam.tier && (
                       <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}>
                         {TIER_LABELS[myTeam.tier]}
@@ -265,6 +283,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                     )}
                     <span className="ml-2 text-xs text-primary font-normal">(Your team)</span>
                   </div>
+                  <WeeklyProgressBar weeklyPoints={myTeam.weekly_points ?? 0} tier={myTeam.tier} className="mt-2" />
                 </td>
                 <td className="px-4 py-3 text-center font-semibold tabular-nums">
                   {myTeam.weeks_won?.length ?? 0}
@@ -284,6 +303,11 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                 <td className="px-4 py-3 font-medium">
                   <div className="flex items-center gap-2">
                     {t.name}
+                    {(t.streak_count ?? 0) >= 2 && (
+                      <span className="text-orange-500 text-xs font-bold" title="Active Streak">
+                        🔥 {t.streak_count}
+                      </span>
+                    )}
                     {(t.tier && activeTier === "all") && (
                       <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
                         {TIER_LABELS[t.tier]}

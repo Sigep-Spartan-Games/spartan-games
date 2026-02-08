@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/submissions", label: "Past Submissions" },
   { href: "/admin/teams", label: "Teams" },
   { href: "/admin/settings", label: "Settings" },
+  { href: "/admin/streaks", label: "Streaks" },
 ];
 
 export default function AdminTabs() {

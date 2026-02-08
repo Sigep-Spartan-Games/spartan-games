@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { resetSpartanGames, startGames, endGames, finalizeWeek } from "./actions";
+import TierGoalsSection from "./tier-goals-section";
 
 function SettingsSkeleton() {
   return (
@@ -97,6 +98,9 @@ async function AdminSettingsInner({
           Tip: You can still export or reset at any time.
         </p>
       </div>
+
+      {/* Tier Weekly Goals */}
+      <TierGoalsSection />
 
       {/* Export */}
       <div className="rounded-2xl border p-5 space-y-3">

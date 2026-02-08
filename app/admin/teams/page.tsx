@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteTeam } from "./actions";
 import TierSelector from "./tier-selector";
+import TeamsBelowGoal from "./teams-below-goal";
 
 const TIER_COLORS: Record<string, string> = {
   gold: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30 dark:text-yellow-400",
@@ -129,6 +130,10 @@ async function AdminTeamsInner() {
 export default function AdminTeamsPage() {
   return (
     <div className="space-y-4">
+      <Suspense fallback={<TeamsSkeleton />}>
+        <TeamsBelowGoal />
+      </Suspense>
+
       <Suspense fallback={<TeamsSkeleton />}>
         <AdminTeamsInner />
       </Suspense>
