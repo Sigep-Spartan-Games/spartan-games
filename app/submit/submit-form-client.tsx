@@ -223,7 +223,7 @@ export default function SubmitFormClient({
         <div>
           <div className="text-sm font-medium">Did this with teammate</div>
           <div className="text-xs text-muted-foreground">
-            Applies roommate/teammate multiplier automatically.
+            Applies teammate multiplier automatically.
           </div>
         </div>
       </label>

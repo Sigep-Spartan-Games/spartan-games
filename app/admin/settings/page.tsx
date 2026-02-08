@@ -81,7 +81,7 @@ async function AdminSettingsInner({
           </form>
         </div>
 
-        <div className="mt-4">
+        {/* <div className="mt-4">
           <form action={finalizeWeekWithHistory}>
             <button
               type="submit"
@@ -93,7 +93,7 @@ async function AdminSettingsInner({
           <p className="mt-2 text-xs text-muted-foreground">
             Records team performance history, finds the winner, awards the week, and resets weekly points for the new week.
           </p>
-        </div>
+        </div> */}
 
         <p className="text-xs text-muted-foreground">
           Tip: You can still export or reset at any time.
