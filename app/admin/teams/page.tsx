@@ -197,7 +197,7 @@ async function AdminTeamsInner({
                 </div>
 
                 {/* Streak */}
-                <div className="col-span-1 text-center">
+                <div className="col-span-1 text-center pr-2">
                   {streakCount >= 2 ? (
                     <span className="text-orange-500 text-sm font-bold">🔥 {streakCount}</span>
                   ) : (
@@ -206,7 +206,7 @@ async function AdminTeamsInner({
                 </div>
 
                 {/* Tier Selector & Actions */}
-                <div className="col-span-2 flex justify-end items-center gap-3">
+                <div className="col-span-2 flex justify-end items-center gap-3 pl-2">
                   <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
                   <form action={deleteTeam}>
                     <input type="hidden" name="id" value={t.id} />
@@ -255,7 +255,7 @@ async function AdminTeamsInner({
                 </div>
 
                 {/* Tier & Actions - with extra spacing */}
-                <div className="flex gap-3 items-center pt-1">
+                <div className="flex gap-3 items-center pt-2 mt-1">
                   <div className="flex-1">
                     <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
                   </div>
