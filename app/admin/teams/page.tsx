@@ -6,18 +6,6 @@ import { deleteTeam } from "./actions";
 import TierSelector from "./tier-selector";
 import TeamFilters from "./team-filters";
 
-const TIER_LABELS: Record<string, string> = {
-  gold: "🥇 Gold",
-  purple: "🟣 Purple",
-  red: "🔴 Red",
-};
-
-const TIER_COLORS: Record<string, string> = {
-  gold: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30 dark:text-yellow-400",
-  purple: "bg-purple-500/20 text-purple-600 border-purple-500/30 dark:text-purple-300",
-  red: "bg-red-500/20 text-red-600 border-red-500/30 dark:text-red-400",
-};
-
 type SearchParams = { [key: string]: string | string[] | undefined };
 
 function TeamsSkeleton() {
@@ -82,13 +70,14 @@ async function AdminTeamsInner({
   const teamsWithProgress = (teams ?? []).map((team) => {
     const goal = team.tier ? tierGoals[team.tier] ?? 100 : 100;
     const weeklyPoints = team.weekly_points ?? 0;
+    const totalPoints = team.total_points ?? 0;
     const percentage = goal > 0 ? Math.round((weeklyPoints / goal) * 100) : 0;
     const metGoal = percentage >= 100;
 
     return {
       ...team,
       weekly_points: weeklyPoints,
-      total_points: team.total_points ?? 0,
+      total_points: totalPoints,
       weekly_goal: goal,
       percentage,
       metGoal,
@@ -148,48 +137,42 @@ async function AdminTeamsInner({
       <div className="rounded-2xl border overflow-hidden">
         {/* Desktop header */}
         <div className="hidden lg:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-          <div className="col-span-2">Team</div>
-          <div className="col-span-1">Tier</div>
-          <div className="col-span-2 text-right">Points / Goal</div>
+          <div className="col-span-3">Team</div>
+          <div className="col-span-2 text-right">Weekly / Goal</div>
           <div className="col-span-2 text-center">Progress</div>
+          <div className="col-span-1 text-right">Total</div>
           <div className="col-span-1 text-center">Wins</div>
           <div className="col-span-1 text-center">Streak</div>
-          <div className="col-span-1">Invite</div>
-          <div className="col-span-2 text-right">Actions</div>
+          <div className="col-span-2 text-right">Tier / Actions</div>
         </div>
 
         {filteredTeams.map((t) => {
           const streakCount = t.streak_count ?? 0;
           const winsCount = (t.weeks_won as string[] | null)?.length ?? 0;
+          const effectiveTotal = t.total_points + t.weekly_points;
 
           return (
             <div key={t.id} className="border-b last:border-b-0">
               {/* Desktop row */}
               <div className="hidden lg:grid grid-cols-12 items-center px-4 py-3">
                 {/* Team name & members */}
-                <div className="col-span-2">
+                <div className="col-span-3">
                   <div className="text-sm font-medium truncate">{t.name}</div>
                   <div className="text-xs text-muted-foreground truncate">
                     {t.member1_name || "—"} • {t.member2_name || "—"}
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    Invite: {t.invite_code ?? "-"}
+                  </div>
                 </div>
 
-                {/* Tier badge */}
-                <div className="col-span-1">
-                  {t.tier && (
-                    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
-                      {TIER_LABELS[t.tier]}
-                    </span>
-                  )}
-                </div>
-
-                {/* Points / Goal */}
+                {/* Weekly Points / Goal */}
                 <div className="col-span-2 text-sm text-right tabular-nums">
                   {t.weekly_points} / {t.weekly_goal}
                 </div>
 
                 {/* Progress bar */}
-                <div className="col-span-2 px-2">
+                <div className="col-span-2 px-3">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                       <div
@@ -201,6 +184,11 @@ async function AdminTeamsInner({
                       {t.percentage}%
                     </span>
                   </div>
+                </div>
+
+                {/* Total Points */}
+                <div className="col-span-1 text-sm text-right tabular-nums">
+                  {effectiveTotal}
                 </div>
 
                 {/* Wins */}
@@ -217,13 +205,8 @@ async function AdminTeamsInner({
                   )}
                 </div>
 
-                {/* Invite code */}
-                <div className="col-span-1 text-xs text-muted-foreground truncate">
-                  {t.invite_code ?? "-"}
-                </div>
-
-                {/* Actions */}
-                <div className="col-span-2 flex justify-end gap-2">
+                {/* Tier Selector & Actions */}
+                <div className="col-span-2 flex justify-end items-center gap-3">
                   <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
                   <form action={deleteTeam}>
                     <input type="hidden" name="id" value={t.id} />
@@ -242,15 +225,10 @@ async function AdminTeamsInner({
                     <div className="text-xs text-muted-foreground truncate">
                       {t.member1_name || "—"} • {t.member2_name || "—"}
                     </div>
-                    {t.tier && (
-                      <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]} mt-1`}>
-                        {TIER_LABELS[t.tier]}
-                      </span>
-                    )}
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-medium">{t.weekly_points} pts</div>
-                    <div className="text-xs text-muted-foreground">Goal: {t.weekly_goal}</div>
+                    <div className="text-sm font-medium">{t.weekly_points} / {t.weekly_goal}</div>
+                    <div className="text-xs text-muted-foreground">Total: {effectiveTotal}</div>
                   </div>
                 </div>
 
@@ -270,15 +248,14 @@ async function AdminTeamsInner({
                 {/* Stats row */}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span>Wins: {winsCount}</span>
-                  <span>Total: {t.total_points + t.weekly_points} pts</span>
                   {streakCount >= 2 && (
                     <span className="text-orange-500 font-bold">🔥 {streakCount}</span>
                   )}
                   <span className="ml-auto">Invite: {t.invite_code ?? "-"}</span>
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 items-center">
+                {/* Tier & Actions - with extra spacing */}
+                <div className="flex gap-3 items-center pt-1">
                   <div className="flex-1">
                     <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
                   </div>
