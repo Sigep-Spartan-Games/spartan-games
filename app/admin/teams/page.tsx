@@ -4,7 +4,13 @@ import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteTeam } from "./actions";
 import TierSelector from "./tier-selector";
-import TeamsBelowGoal from "./teams-below-goal";
+import TeamFilters from "./team-filters";
+
+const TIER_LABELS: Record<string, string> = {
+  gold: "🥇 Gold",
+  purple: "🟣 Purple",
+  red: "🔴 Red",
+};
 
 const TIER_COLORS: Record<string, string> = {
   gold: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30 dark:text-yellow-400",
@@ -12,9 +18,14 @@ const TIER_COLORS: Record<string, string> = {
   red: "bg-red-500/20 text-red-600 border-red-500/30 dark:text-red-400",
 };
 
+type SearchParams = { [key: string]: string | string[] | undefined };
+
 function TeamsSkeleton() {
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border p-4">
+        <div className="h-9 w-full rounded bg-muted/20" />
+      </div>
       <div className="rounded-2xl border overflow-hidden">
         <div className="border-b bg-muted/40 px-4 py-2">
           <div className="h-4 w-56 rounded bg-muted/40" />
@@ -29,15 +40,35 @@ function TeamsSkeleton() {
   );
 }
 
-async function AdminTeamsInner() {
+async function AdminTeamsInner({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
   noStore();
 
   const { supabase } = await requireAdmin("/admin/teams");
+  const sp = (await searchParams) ?? {};
 
+  const searchFilter = typeof sp.search === "string" ? sp.search.toLowerCase() : "";
+  const progressFilter = typeof sp.progress === "string" ? sp.progress : "";
+  const tierFilter = typeof sp.tier === "string" ? sp.tier : "";
+
+  // Fetch all teams
   const { data: teams, error } = await supabase
     .from("teams")
-    .select("id, name, weekly_points, total_points, invite_code, tier, member1_name, member2_name")
+    .select("id, name, weekly_points, total_points, invite_code, tier, member1_name, member2_name, weeks_won, streak_count")
     .order("name");
+
+  // Fetch tier goals
+  const { data: tierSettings } = await supabase
+    .from("tier_settings")
+    .select("tier, weekly_goal");
+
+  const tierGoals: Record<string, number> = {};
+  (tierSettings || []).forEach((ts) => {
+    tierGoals[ts.tier] = ts.weekly_goal;
+  });
 
   if (error) {
     return (
@@ -47,96 +78,240 @@ async function AdminTeamsInner() {
     );
   }
 
+  // Calculate goal progress for each team
+  const teamsWithProgress = (teams ?? []).map((team) => {
+    const goal = team.tier ? tierGoals[team.tier] ?? 100 : 100;
+    const weeklyPoints = team.weekly_points ?? 0;
+    const percentage = goal > 0 ? Math.round((weeklyPoints / goal) * 100) : 0;
+    const metGoal = percentage >= 100;
+
+    return {
+      ...team,
+      weekly_points: weeklyPoints,
+      total_points: team.total_points ?? 0,
+      weekly_goal: goal,
+      percentage,
+      metGoal,
+    };
+  });
+
+  // Apply filters
+  let filteredTeams = teamsWithProgress;
+
+  if (searchFilter) {
+    filteredTeams = filteredTeams.filter((t) =>
+      t.name.toLowerCase().includes(searchFilter)
+    );
+  }
+
+  if (progressFilter === "below") {
+    filteredTeams = filteredTeams.filter((t) => !t.metGoal);
+  } else if (progressFilter === "met") {
+    filteredTeams = filteredTeams.filter((t) => t.metGoal);
+  }
+
+  if (tierFilter) {
+    filteredTeams = filteredTeams.filter((t) => t.tier === tierFilter);
+  }
+
+  // Summary stats
+  const totalTeams = teamsWithProgress.length;
+  const teamsMetGoal = teamsWithProgress.filter((t) => t.metGoal).length;
+  const teamsBelowGoal = totalTeams - teamsMetGoal;
+
   return (
-    <div className="rounded-2xl border overflow-hidden">
-      {/* Desktop header */}
-      <div className="hidden md:grid grid-cols-10 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-        <div className="col-span-3">Team</div>
-        <div className="col-span-2">Tier</div>
-        <div className="col-span-2">Invite</div>
-        <div className="col-span-1 text-right">Weekly</div>
-        <div className="col-span-1 text-right">Total</div>
-        <div className="col-span-1 text-right"></div>
+    <div className="space-y-4">
+      {/* Stats Summary */}
+      <div className="flex flex-wrap gap-3 text-sm">
+        <div className="rounded-lg border px-3 py-1.5">
+          <span className="text-muted-foreground">Total:</span>{" "}
+          <span className="font-medium">{totalTeams}</span>
+        </div>
+        <div className="rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-1.5">
+          <span className="text-muted-foreground">Met Goal:</span>{" "}
+          <span className="font-medium text-green-600 dark:text-green-400">{teamsMetGoal}</span>
+        </div>
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-1.5">
+          <span className="text-muted-foreground">Below Goal:</span>{" "}
+          <span className="font-medium text-amber-600 dark:text-amber-400">{teamsBelowGoal}</span>
+        </div>
       </div>
 
-      {(teams ?? []).map((t) => (
-        <div key={t.id} className="border-b last:border-b-0">
-          {/* Desktop row */}
-          <div className="hidden md:grid grid-cols-10 items-center px-4 py-3">
-            <div className="col-span-3">
-              <div className="text-sm font-medium truncate">{t.name}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {t.member1_name || "—"} • {t.member2_name || "—"}
-              </div>
-            </div>
+      {/* Filters */}
+      <TeamFilters
+        currentSearch={searchFilter}
+        currentProgress={progressFilter}
+        currentTier={tierFilter}
+      />
 
-            <div className="col-span-2 pr-2">
-              <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
-            </div>
+      {/* Teams Table */}
+      <div className="rounded-2xl border overflow-hidden">
+        {/* Desktop header */}
+        <div className="hidden lg:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
+          <div className="col-span-2">Team</div>
+          <div className="col-span-1">Tier</div>
+          <div className="col-span-2 text-right">Points / Goal</div>
+          <div className="col-span-2 text-center">Progress</div>
+          <div className="col-span-1 text-center">Wins</div>
+          <div className="col-span-1 text-center">Streak</div>
+          <div className="col-span-1">Invite</div>
+          <div className="col-span-2 text-right">Actions</div>
+        </div>
 
-            <div className="col-span-2 text-sm truncate">{t.invite_code ?? "-"}</div>
-            <div className="col-span-1 text-sm text-right">{t.weekly_points ?? 0}</div>
-            <div className="col-span-1 text-sm text-right">{(t.total_points ?? 0) + (t.weekly_points ?? 0)}</div>
-            <div className="col-span-1 flex justify-end">
-              <form action={deleteTeam}>
-                <input type="hidden" name="id" value={t.id} />
-                <button className="h-8 rounded-md border px-2 text-xs text-destructive hover:bg-destructive/10">
-                  Delete
-                </button>
-              </form>
-            </div>
-          </div>
+        {filteredTeams.map((t) => {
+          const streakCount = t.streak_count ?? 0;
+          const winsCount = (t.weeks_won as string[] | null)?.length ?? 0;
 
-          {/* Mobile row */}
-          <div className="md:hidden px-4 py-3 space-y-3">
-            <div className="flex justify-between items-start gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium truncate">{t.name}</div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {t.member1_name || "—"} • {t.member2_name || "—"}
+          return (
+            <div key={t.id} className="border-b last:border-b-0">
+              {/* Desktop row */}
+              <div className="hidden lg:grid grid-cols-12 items-center px-4 py-3">
+                {/* Team name & members */}
+                <div className="col-span-2">
+                  <div className="text-sm font-medium truncate">{t.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {t.member1_name || "—"} • {t.member2_name || "—"}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">Invite: {t.invite_code ?? "-"}</div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-sm font-medium">{t.weekly_points ?? 0} pts</div>
-                <div className="text-xs text-muted-foreground">Total: {(t.total_points ?? 0) + (t.weekly_points ?? 0)}</div>
-              </div>
-            </div>
 
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
+                {/* Tier badge */}
+                <div className="col-span-1">
+                  {t.tier && (
+                    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
+                      {TIER_LABELS[t.tier]}
+                    </span>
+                  )}
+                </div>
+
+                {/* Points / Goal */}
+                <div className="col-span-2 text-sm text-right tabular-nums">
+                  {t.weekly_points} / {t.weekly_goal}
+                </div>
+
+                {/* Progress bar */}
+                <div className="col-span-2 px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${t.metGoal ? "bg-green-500" : "bg-primary"}`}
+                        style={{ width: `${Math.min(t.percentage, 100)}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs tabular-nums w-10 text-right ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}>
+                      {t.percentage}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Wins */}
+                <div className="col-span-1 text-sm text-center tabular-nums">
+                  {winsCount}
+                </div>
+
+                {/* Streak */}
+                <div className="col-span-1 text-center">
+                  {streakCount >= 2 ? (
+                    <span className="text-orange-500 text-sm font-bold">🔥 {streakCount}</span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </div>
+
+                {/* Invite code */}
+                <div className="col-span-1 text-xs text-muted-foreground truncate">
+                  {t.invite_code ?? "-"}
+                </div>
+
+                {/* Actions */}
+                <div className="col-span-2 flex justify-end gap-2">
+                  <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
+                  <form action={deleteTeam}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <button className="h-8 rounded-md border px-2 text-xs text-destructive hover:bg-destructive/10">
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </div>
-              <form action={deleteTeam}>
-                <input type="hidden" name="id" value={t.id} />
-                <button className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10">
-                  Delete
-                </button>
-              </form>
+
+              {/* Mobile row */}
+              <div className="lg:hidden px-4 py-3 space-y-3">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{t.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {t.member1_name || "—"} • {t.member2_name || "—"}
+                    </div>
+                    {t.tier && (
+                      <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]} mt-1`}>
+                        {TIER_LABELS[t.tier]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-medium">{t.weekly_points} pts</div>
+                    <div className="text-xs text-muted-foreground">Goal: {t.weekly_goal}</div>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${t.metGoal ? "bg-green-500" : "bg-primary"}`}
+                      style={{ width: `${Math.min(t.percentage, 100)}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs tabular-nums ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}>
+                    {t.percentage}%
+                  </span>
+                </div>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>Wins: {winsCount}</span>
+                  <span>Total: {t.total_points + t.weekly_points} pts</span>
+                  {streakCount >= 2 && (
+                    <span className="text-orange-500 font-bold">🔥 {streakCount}</span>
+                  )}
+                  <span className="ml-auto">Invite: {t.invite_code ?? "-"}</span>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
+                  </div>
+                  <form action={deleteTeam}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <button className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10">
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
+          );
+        })}
+
+        {filteredTeams.length === 0 && (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            {searchFilter || progressFilter || tierFilter
+              ? "No teams match the current filters."
+              : "No teams found."}
           </div>
-        </div>
-      ))}
-
-      {(teams ?? []).length === 0 && (
-        <div className="p-8 text-center text-sm text-muted-foreground">
-          No teams found.
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-export default function AdminTeamsPage() {
+export default function AdminTeamsPage(props: {
+  searchParams?: Promise<SearchParams>;
+}) {
   return (
-    <div className="space-y-4">
-      <Suspense fallback={<TeamsSkeleton />}>
-        <TeamsBelowGoal />
-      </Suspense>
-
-      <Suspense fallback={<TeamsSkeleton />}>
-        <AdminTeamsInner />
-      </Suspense>
-    </div>
+    <Suspense fallback={<TeamsSkeleton />}>
+      <AdminTeamsInner {...props} />
+    </Suspense>
   );
 }

@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/admin";
 import { resetSpartanGames, startGames, endGames } from "./actions";
 import { finalizeWeekWithHistory } from "./finalize-week-actions";
 import TierGoalsSection from "./tier-goals-section";
+import StreakSettingsSection from "./streak-settings-section";
 
 function SettingsSkeleton() {
   return (
@@ -102,6 +103,9 @@ async function AdminSettingsInner({
 
       {/* Tier Weekly Goals */}
       <TierGoalsSection />
+
+      {/* Streak Bonus Settings */}
+      <StreakSettingsSection />
 
       {/* Export */}
       <div className="rounded-2xl border p-5 space-y-3">

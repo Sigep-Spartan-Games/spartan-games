@@ -1,3 +1,4 @@
+// app/admin/settings/streak-settings-actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -6,17 +7,17 @@ import { requireAdmin } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function updateStreakSettings(formData: FormData) {
-    await requireAdmin("/admin/streaks");
+    await requireAdmin("/admin/settings");
 
     const dailyBonusIncrement = Number(formData.get("daily_bonus_increment"));
     const maxBonus = Number(formData.get("max_bonus"));
 
     if (!Number.isInteger(dailyBonusIncrement) || dailyBonusIncrement < 0) {
-        redirect("/admin/streaks?error=Invalid increment value");
+        redirect("/admin/settings?error=Invalid increment value");
     }
 
     if (!Number.isInteger(maxBonus) || maxBonus < 0) {
-        redirect("/admin/streaks?error=Invalid max bonus value");
+        redirect("/admin/settings?error=Invalid max bonus value");
     }
 
     const supabase = await createClient();
@@ -30,9 +31,9 @@ export async function updateStreakSettings(formData: FormData) {
         });
 
     if (error) {
-        redirect(`/admin/streaks?error=${encodeURIComponent(error.message)}`);
+        redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);
     }
 
-    revalidatePath("/admin/streaks");
-    redirect("/admin/streaks?ok=Settings updated");
+    revalidatePath("/admin/settings");
+    redirect("/admin/settings?ok=Streak settings updated");
 }

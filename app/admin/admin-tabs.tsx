@@ -5,12 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/admin/scoring", label: "Points / Scoring" },
-  { href: "/admin/submissions", label: "Past Submissions" },
+  { href: "/admin/scoring", label: "Activities" },
+  { href: "/admin/submissions", label: "Submissions" },
   { href: "/admin/teams", label: "Teams" },
   { href: "/admin/history", label: "History" },
   { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/streaks", label: "Streaks" },
 ];
 
 export default function AdminTabs() {
