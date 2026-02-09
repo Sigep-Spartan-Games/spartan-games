@@ -100,7 +100,7 @@ async function AdminHistoryInner() {
                 return (
                     <div key={week} className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold">Week {week}</h2>
+                            <h2 className="text-lg font-semibold">{week}</h2>
                             <div className="text-sm">
                                 <span className={successRate >= 70 ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}>
                                     {metGoalCount}/{totalTeams} teams met goal ({successRate}%)

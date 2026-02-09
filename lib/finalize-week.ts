@@ -4,14 +4,40 @@
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Gets the ISO week identifier for a given date
+ * Gets a date range identifier for the week containing the given date
+ * Returns format like "Feb 3 - Feb 9, 2026" (Monday to Sunday)
  */
 function getWeekIdentifier(date: Date): string {
-    const year = date.getFullYear();
-    const oneJan = new Date(year, 0, 1);
-    const numberOfDays = Math.floor((date.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000));
-    const weekNumber = Math.ceil((numberOfDays + oneJan.getDay() + 1) / 7);
-    return `${year}-W${String(weekNumber).padStart(2, '0')}`;
+    // Get the day of the week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = date.getDay();
+
+    // Calculate the Monday of the current week
+    // If Sunday (0), go back 6 days; otherwise go back (dayOfWeek - 1) days
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - daysToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    // Calculate the Sunday (end of week)
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    // Format the dates
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const startMonth = monthNames[monday.getMonth()];
+    const startDay = monday.getDate();
+    const endMonth = monthNames[sunday.getMonth()];
+    const endDay = sunday.getDate();
+    const year = sunday.getFullYear();
+
+    // If same month, use "Feb 3 - 9, 2026" format
+    // If different months, use "Feb 28 - Mar 5, 2026" format
+    if (monday.getMonth() === sunday.getMonth()) {
+        return `${startMonth} ${startDay} - ${endDay}, ${year}`;
+    } else {
+        return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+    }
 }
 
 /**
