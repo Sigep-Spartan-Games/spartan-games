@@ -7,6 +7,11 @@ function csvEscape(v: any) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+function weeksWonStr(weeks: string[] | null): string {
+  if (!weeks || weeks.length === 0) return "";
+  return weeks.join("; ");
+}
+
 async function requireAdminForRoute() {
   const supabase = await createClient();
 
@@ -35,16 +40,21 @@ export async function GET() {
   const { data: teams, error } = await supabase
     .from("teams")
     .select(
-      "id,name,points,member1_name,member2_name,invite_code,member1_id,member2_id,created_at",
+      "id,name,total_points,weekly_points,member1_name,member2_name,invite_code,member1_id,member2_id,created_at,tier,streak_count,last_activity_date,weeks_won",
     )
-    .order("points", { ascending: false })
+    .order("total_points", { ascending: false })
     .order("name", { ascending: true });
 
   if (error) return new NextResponse(error.message, { status: 500 });
 
   const rows = (teams ?? []).map((t) => ({
     team_name: t.name,
-    points: t.points,
+    total_points: t.total_points ?? 0,
+    weekly_points: t.weekly_points ?? 0,
+    tier: t.tier ?? "",
+    streak_count: t.streak_count ?? 0,
+    last_activity_date: t.last_activity_date ?? "",
+    weeks_won: weeksWonStr(t.weeks_won),
     member1_name: t.member1_name ?? "",
     member2_name: t.member2_name ?? "",
     invite_code: t.invite_code ?? "",
@@ -56,7 +66,12 @@ export async function GET() {
 
   const headers = [
     "team_name",
-    "points",
+    "total_points",
+    "weekly_points",
+    "tier",
+    "streak_count",
+    "last_activity_date",
+    "weeks_won",
     "member1_name",
     "member2_name",
     "invite_code",

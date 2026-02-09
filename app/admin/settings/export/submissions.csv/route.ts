@@ -25,28 +25,25 @@ async function requireAdminForRoute() {
   return { ok: true as const, status: 200, supabase };
 }
 
-// Keep consistent with your labels everywhere
-const ACTIVITY_LABELS: Record<string, string> = {
-  sport_practice: "Sport practice (hours)",
-  running: "Running (miles)",
-  cycling: "Cycling (miles)",
-  gyming: "Gyming (hours)",
-  swimming: "Swimming (laps)",
-  sporting: "Sporting (number of games)",
-  calorie_goal: "Hitting Calorie Goal (yes/no)",
-  races: "Races (count)",
-  powerlifting_meet: "Powerlifting meet (name)",
-  bodybuilding_show: "Bodybuilding show (name)",
-  win_tournament: "Win a tournament (name)",
-  sleep: "Sleep (hours)",
-};
-
 export async function GET() {
   const guard = await requireAdminForRoute();
   if (!guard.ok)
     return new NextResponse("Unauthorized", { status: guard.status });
 
   const { supabase } = guard;
+
+  // Fetch activity_rules for dynamic labels
+  const { data: activityRules } = await supabase
+    .from("activity_rules")
+    .select("activity_key, label, unit_label, unit");
+
+  // Build label map from dynamic activity_rules
+  const activityLabels: Record<string, string> = {};
+  for (const rule of activityRules ?? []) {
+    const label = rule.label || rule.activity_key;
+    const unitLabel = rule.unit_label || rule.unit || "";
+    activityLabels[rule.activity_key] = unitLabel ? `${label} (${unitLabel})` : label;
+  }
 
   // Join teams to include team name + member names for auditing
   const { data: subs, error } = await supabase
@@ -69,7 +66,9 @@ export async function GET() {
       points_per_unit,
       teammate_bonus,
       base_points,
-      points_awarded
+      points_awarded,
+      streak_bonus,
+      proof_image_path
     `,
     )
     .order("created_at", { ascending: false });
@@ -96,7 +95,7 @@ export async function GET() {
       team_id: s.team_id,
       submitted_by: s.submitted_by,
 
-      activity_type: ACTIVITY_LABELS[s.activity_key] ?? s.activity_key,
+      activity_type: activityLabels[s.activity_key] ?? s.activity_key,
       activity_key: s.activity_key,
 
       amount, // normalized
@@ -105,6 +104,7 @@ export async function GET() {
 
       points_per_unit: s.points_per_unit,
       teammate_bonus: s.teammate_bonus,
+      streak_bonus: s.streak_bonus ?? 0,
       base_points: s.base_points,
       points_awarded: s.points_awarded,
 
@@ -115,6 +115,8 @@ export async function GET() {
           : s.activity_value_bool
             ? "TRUE"
             : "FALSE",
+
+      proof_image_path: s.proof_image_path ?? "",
 
       submission_id: s.id,
     };
@@ -137,11 +139,14 @@ export async function GET() {
 
     "points_per_unit",
     "teammate_bonus",
+    "streak_bonus",
     "base_points",
     "points_awarded",
 
     "amount_text",
     "amount_bool",
+
+    "proof_image_path",
 
     "submission_id",
   ];
