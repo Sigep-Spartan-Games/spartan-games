@@ -83,6 +83,28 @@ export async function resetSpartanGames(formData: FormData) {
     );
   }
 
+  // First, delete all proof images from storage
+  try {
+    const { data: files, error: listError } = await supabase.storage
+      .from("submission-proofs")
+      .list("", { limit: 1000 });
+
+    if (!listError && files && files.length > 0) {
+      const filePaths = files.map((f) => f.name);
+      const { error: deleteStorageError } = await supabase.storage
+        .from("submission-proofs")
+        .remove(filePaths);
+
+      if (deleteStorageError) {
+        console.error("Error deleting proof images:", deleteStorageError);
+        // Continue with reset even if storage cleanup fails
+      }
+    }
+  } catch (e) {
+    console.error("Error cleaning up storage:", e);
+    // Continue with reset even if storage cleanup fails
+  }
+
   // Delete submissions first (even though teams has ON DELETE CASCADE, this is explicit)
   const { error: subErr } = await supabase
     .from("submissions")
@@ -91,6 +113,7 @@ export async function resetSpartanGames(formData: FormData) {
   if (subErr)
     redirect("/admin/settings?error=" + encodeURIComponent(subErr.message));
 
+  // Delete teams (this also cascades to weekly_history)
   const { error: teamErr } = await supabase
     .from("teams")
     .delete()
@@ -100,6 +123,6 @@ export async function resetSpartanGames(formData: FormData) {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent("All teams and submissions deleted."),
+    encodeURIComponent("All teams, submissions, and proof images deleted."),
   );
 }
