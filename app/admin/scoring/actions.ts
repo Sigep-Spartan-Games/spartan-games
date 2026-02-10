@@ -84,7 +84,9 @@ export async function upsertActivityRulesBulk(formData: FormData) {
 export async function updateActivityRule(formData: FormData) {
   const supabase = await requireAdmin();
 
-  const originalKey = String(formData.get("original_activity_key") ?? "").trim();
+  const originalKey = String(
+    formData.get("original_activity_key") ?? "",
+  ).trim();
   const activityKey = String(formData.get("activity_key") ?? "").trim();
 
   const pointsPerUnit = toNumber(formData.get("points_per_unit"));
@@ -113,7 +115,8 @@ export async function updateActivityRule(formData: FormData) {
 
   const targetKey = originalKey || activityKey;
 
-  const { error } = await supabase.from("activity_rules")
+  const { error } = await supabase
+    .from("activity_rules")
     .update(payload)
     .eq("activity_key", targetKey);
 
@@ -176,7 +179,7 @@ export async function addActivityRule(formData: FormData) {
     active: true, // Default to active
     updated_at: new Date().toISOString(),
     min_value: 0,
-    step_value: inputType === 'number' ? 1 : null,
+    step_value: inputType === "number" ? 0.01 : null,
   });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);

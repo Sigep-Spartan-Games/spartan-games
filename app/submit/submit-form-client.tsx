@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { Combobox } from "@/components/ui/combobox";
 import { ActivityRule } from "@/lib/types";
-import imageCompression from 'browser-image-compression';
+import imageCompression from "browser-image-compression";
 
 export default function SubmitFormClient({
   action,
@@ -49,7 +49,9 @@ export default function SubmitFormClient({
     return `${yyyy}-${mm}-${dd}`;
   }, []);
 
-  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -88,7 +90,10 @@ export default function SubmitFormClient({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-3 rounded-2xl border p-4 md:p-5">
+    <form
+      action={handleSubmit}
+      className="space-y-3 rounded-2xl border p-4 md:p-5"
+    >
       {/* Team */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Team</label>
@@ -133,7 +138,9 @@ export default function SubmitFormClient({
         />
         {rule && (
           <p className="text-xs text-muted-foreground">
-            {rule.points_per_unit} pts{rule.unit_label ? `/${rule.unit_label}` : ''} • +{rule.teammate_bonus} bonus
+            {rule.points_per_unit} pts
+            {rule.unit_label ? `/${rule.unit_label}` : ""} • +
+            {rule.teammate_bonus} bonus
           </p>
         )}
       </div>
@@ -154,11 +161,9 @@ export default function SubmitFormClient({
               name="activity_value_number"
               type="number"
               min={rule.min_value ?? 0}
-              step={rule.step_value ?? 1}
+              step={rule.step_value ?? "any"}
               placeholder={
-                rule.unit_label
-                  ? `Enter ${rule.unit_label}…`
-                  : "Enter amount…"
+                rule.unit_label ? `Enter ${rule.unit_label}…` : "Enter amount…"
               }
               className="h-11 w-full rounded-md border bg-background px-3 text-sm"
               required
@@ -169,9 +174,7 @@ export default function SubmitFormClient({
             <input
               name="activity_value_text"
               placeholder={
-                rule.unit_label
-                  ? `Enter ${rule.unit_label}…`
-                  : "Enter details…"
+                rule.unit_label ? `Enter ${rule.unit_label}…` : "Enter details…"
               }
               className="h-11 w-full rounded-md border bg-background px-3 text-sm"
               required
@@ -213,7 +216,11 @@ export default function SubmitFormClient({
             hover:file:bg-primary/20"
         />
         <p className="text-xs text-muted-foreground">
-          {compressing ? "Compressing image..." : (proofImage ? `Ready: ${Math.round(proofImage.size / 1024)}KB` : "Upload a photo as proof.")}
+          {compressing
+            ? "Compressing image..."
+            : proofImage
+              ? `Ready: ${Math.round(proofImage.size / 1024)}KB`
+              : "Upload a photo as proof."}
         </p>
       </div>
 
