@@ -51,6 +51,48 @@ export async function endGames() {
   );
 }
 
+export async function toggleSubmissions(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/settings");
+
+  const newValue = formData.get("value") === "true";
+
+  const { error } = await supabase
+    .from("game_settings")
+    .update({ submissions_open: newValue })
+    .eq("id", true);
+
+  if (error)
+    redirect("/admin/settings?error=" + encodeURIComponent(error.message));
+
+  redirect(
+    "/admin/settings?ok=" +
+    encodeURIComponent(
+      newValue ? "Submissions are now OPEN." : "Submissions are now CLOSED.",
+    ),
+  );
+}
+
+export async function toggleRegistration(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/settings");
+
+  const newValue = formData.get("value") === "true";
+
+  const { error } = await supabase
+    .from("game_settings")
+    .update({ registration_open: newValue })
+    .eq("id", true);
+
+  if (error)
+    redirect("/admin/settings?error=" + encodeURIComponent(error.message));
+
+  redirect(
+    "/admin/settings?ok=" +
+    encodeURIComponent(
+      newValue ? "Team registration is now OPEN." : "Team registration is now CLOSED.",
+    ),
+  );
+}
+
 export async function finalizeWeek() {
   const { supabase } = await requireAdmin("/admin/settings");
 

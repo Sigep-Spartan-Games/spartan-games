@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { resetSpartanGames, startGames, endGames } from "./actions";
+import { resetSpartanGames, startGames, endGames, toggleSubmissions, toggleRegistration } from "./actions";
 import TierGoalsSection from "./tier-goals-section";
 import StreakSettingsSection from "./streak-settings-section";
 import CollapsibleSection from "./collapsible-section";
@@ -26,11 +26,21 @@ async function AdminSettingsInner({
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   noStore();
-  await requireAdmin("/admin/settings");
+  const { supabase } = await requireAdmin("/admin/settings");
 
   const sp = (await searchParams) ?? {};
   const ok = typeof sp.ok === "string" ? sp.ok : null;
   const err = typeof sp.error === "string" ? sp.error : null;
+
+  // Fetch current game settings
+  const { data: settings } = await supabase
+    .from("game_settings")
+    .select("submissions_open, registration_open")
+    .eq("id", true)
+    .single();
+
+  const submissionsOpen = settings?.submissions_open ?? false;
+  const registrationOpen = settings?.registration_open ?? true;
 
   return (
     <div className="space-y-4">
@@ -51,33 +61,110 @@ async function AdminSettingsInner({
       {/* Game Controls - Always visible */}
       <CollapsibleSection
         title="🎮 Game Controls"
-        description="Start or end the games"
+        description="Start or end the games, and toggle submissions & registration"
         defaultOpen={true}
       >
-        <div className="space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <form action={startGames}>
-              <button
-                type="submit"
-                className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-              >
-                Start Games
-              </button>
-            </form>
+        <div className="space-y-5">
+          {/* Start / End Games buttons */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Quick Actions</div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <form action={startGames}>
+                <button
+                  type="submit"
+                  className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+                >
+                  Start Games
+                </button>
+              </form>
 
-            <form action={endGames}>
-              <button
-                type="submit"
-                className="h-10 rounded-md border px-4 text-sm font-medium"
-              >
-                End Games
-              </button>
-            </form>
+              <form action={endGames}>
+                <button
+                  type="submit"
+                  className="h-10 rounded-md border px-4 text-sm font-medium"
+                >
+                  End Games
+                </button>
+              </form>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Start Games closes team registration and opens submissions. End Games does the opposite.
+            </p>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Start Games closes team registration and opens submissions. End Games does the opposite.
-          </p>
+          {/* Divider */}
+          <div className="border-t" />
+
+          {/* Independent Toggles */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Independent Toggles</div>
+
+            {/* Submissions Toggle */}
+            <div className="flex items-center justify-between rounded-xl border p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Submissions</div>
+                <div className="text-xs text-muted-foreground">
+                  Allow teams to submit activities
+                </div>
+              </div>
+              <form action={toggleSubmissions} className="shrink-0">
+                <input type="hidden" name="value" value={submissionsOpen ? "false" : "true"} />
+                <button
+                  type="submit"
+                  className={[
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                    submissionsOpen
+                      ? "bg-emerald-500"
+                      : "bg-muted-foreground/30",
+                  ].join(" ")}
+                  title={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
+                >
+                  <span
+                    className={[
+                      "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                      submissionsOpen ? "translate-x-6" : "translate-x-1",
+                    ].join(" ")}
+                  />
+                </button>
+              </form>
+            </div>
+
+            {/* Registration Toggle */}
+            <div className="flex items-center justify-between rounded-xl border p-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Team Registration</div>
+                <div className="text-xs text-muted-foreground">
+                  Allow users to create or join teams
+                </div>
+              </div>
+              <form action={toggleRegistration} className="shrink-0">
+                <input type="hidden" name="value" value={registrationOpen ? "false" : "true"} />
+                <button
+                  type="submit"
+                  className={[
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                    registrationOpen
+                      ? "bg-emerald-500"
+                      : "bg-muted-foreground/30",
+                  ].join(" ")}
+                  title={registrationOpen ? "Turn off registration" : "Turn on registration"}
+                >
+                  <span
+                    className={[
+                      "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                      registrationOpen ? "translate-x-6" : "translate-x-1",
+                    ].join(" ")}
+                  />
+                </button>
+              </form>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Use these toggles to independently control submissions and registration.
+              Useful for beta testing when you want both open at the same time.
+            </p>
+          </div>
         </div>
       </CollapsibleSection>
 
