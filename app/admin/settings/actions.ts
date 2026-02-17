@@ -17,12 +17,12 @@ async function getAllUserEmails(
   }
 
   // SAFETY: During testing, only return my email.
-  console.log(
-    `[TEST MODE] Would have emailed ${data?.length || 0} users. Sending to loffm300334@gmail.com only.`,
-  );
-  return ["loffm300334@gmail.com"];
+  // console.log(
+  //   `[TEST MODE] Would have emailed ${data?.length || 0} users. Sending to loffm300334@gmail.com only.`,
+  // );
+  // return ["loffm300334@gmail.com"];
 
-  // return (data ?? []).map((row: { email: string }) => row.email);
+  return (data ?? []).map((row: { email: string }) => row.email);
 }
 
 export async function startGames() {

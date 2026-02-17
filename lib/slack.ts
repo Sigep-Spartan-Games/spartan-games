@@ -3,15 +3,14 @@ import crypto from "crypto";
 /**
  * Send a message to the configured Slack Webhook URL.
  */
-export async function sendToSlack(
-  subject: string,
-  message: string,
-  imageUrl?: string,
-) {
+export async function sendToSlack(subject: string, message: string) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    throw new Error("SLACK_WEBHOOK_URL is not configured.");
+    console.warn("SLACK_WEBHOOK_URL is not defined in environment variables.");
+    // In production, we might want to throw an error, but for dev/if not set up, warn is better
+    // throw new Error("SLACK_WEBHOOK_URL not configured");
+    return;
   }
 
   // Formatting the message for Slack
@@ -33,31 +32,31 @@ export async function sendToSlack(
           text: message,
         },
       },
-
-      ...(imageUrl
-        ? [
-            {
-              type: "image",
-              image_url: imageUrl,
-              alt_text: "Announcement Image",
-            },
-          ]
-        : []),
     ],
   };
 
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    throw new Error(
-      `Slack API error: ${response.status} ${response.statusText}`,
-    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `Failed to send to Slack: ${response.status} ${response.statusText}`,
+        errorText,
+      );
+      throw new Error(
+        `Slack API error: ${response.status} ${response.statusText}`,
+      );
+    }
+  } catch (error) {
+    console.error("Error sending to Slack:", error);
+    throw error;
   }
 }
 

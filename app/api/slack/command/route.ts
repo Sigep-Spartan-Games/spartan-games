@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         supabase,
         subject,
         message,
-        undefined, // No image support via slash command yet (unless we parse it from text)
+        // undefined, // Image removed
         true, // Send to Slack (echo)
         true, // Send to Email
       );

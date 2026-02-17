@@ -11,7 +11,6 @@ export async function sendAnnouncement(formData: FormData) {
   const message = formData.get("message") as string;
   const sendSlack = formData.get("sendSlack") === "on";
   const sendEmail = formData.get("sendEmail") === "on";
-  const imageFile = formData.get("image");
 
   if (!subject || !message) {
     return {
@@ -23,33 +22,10 @@ export async function sendAnnouncement(formData: FormData) {
   // Auth check and client creation
   const { supabase } = await requireAdmin("/admin/announcements");
 
-  let imageUrl: string | undefined;
-
-  if (imageFile && imageFile instanceof File && imageFile.size > 0) {
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("announcements")
-      .upload(filePath, imageFile);
-
-    if (uploadError) {
-      console.error("Image upload error:", uploadError);
-      return { success: false, error: "Failed to upload image." };
-    } else {
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("announcements").getPublicUrl(filePath);
-      imageUrl = publicUrl;
-    }
-  }
-
   return await internalBroadcastAnnouncement(
     supabase,
     subject,
     message,
-    imageUrl,
     sendSlack,
     sendEmail,
   );
@@ -59,7 +35,6 @@ export async function internalBroadcastAnnouncement(
   supabase: SupabaseClient, // Use the passed client (Admin or Service Role)
   subject: string,
   message: string,
-  imageUrl: string | undefined,
   sendSlack: boolean,
   sendEmail: boolean,
 ) {
@@ -68,7 +43,7 @@ export async function internalBroadcastAnnouncement(
   // 1. Send to Slack
   if (sendSlack) {
     try {
-      await sendToSlack(subject, message, imageUrl);
+      await sendToSlack(subject, message);
     } catch (err) {
       console.warn("Slack warning:", err);
     }
@@ -85,27 +60,23 @@ export async function internalBroadcastAnnouncement(
         errors.push("Could not fetch user emails.");
       }
 
-      const recipients = ["loffm300334@gmail.com"];
-      console.log(
-        "TEST MODE: Sending to " +
-          recipients[0] +
-          ". Real user count: " +
-          (data?.length || 0),
-      );
-
-      // const recipients = (data ?? []).map(
-      //   (row: { email: string }) => row.email,
+      // const recipients = ["loffm300334@gmail.com"];
+      // console.log(
+      //   "TEST MODE: Sending to " +
+      //     recipients[0] +
+      //     ". Real user count: " +
+      //     (data?.length || 0),
       // );
 
-      if (recipients.length > 0) {
-        const imageHtml = imageUrl
-          ? `<img src="${imageUrl}" alt="Announcement Image" style="max-width: 100%; height: auto; margin-top: 10px;" /><br/>`
-          : "";
+      const recipients = (data ?? []).map(
+        (row: { email: string }) => row.email,
+      );
 
+      if (recipients.length > 0) {
         const { errors: emailErrors } = await sendBulkEmail({
           recipients,
           subject,
-          html: `<p>${message.replace(/\n/g, "<br/>")}</p>${imageHtml}`,
+          html: `<p>${message.replace(/\n/g, "<br/>")}</p>`,
         });
 
         if (emailErrors.length > 0) {
