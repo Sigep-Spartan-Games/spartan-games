@@ -8,7 +8,9 @@ import {
   leaveTeamAction,
   renameTeamAction,
   changeTierAction,
+  leaveTeamActionFormData,
 } from "./actions";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
 type TeamRow = {
   id: string;
@@ -19,19 +21,19 @@ type TeamRow = {
   member1_id?: string | null;
   member2_id?: string | null;
   invite_code?: string | null;
-  tier?: 'gold' | 'purple' | 'red' | null;
+  tier?: "gold" | "purple" | "red" | null;
 };
 
 const TIER_LABELS: Record<string, string> = {
-  gold: '🥇 Gold (Competitive)',
-  purple: '🟣 Purple (Intermediate)',
-  red: '🔴 Red (Casual)',
+  gold: "🥇 Gold (Competitive)",
+  purple: "🟣 Purple (Intermediate)",
+  red: "🔴 Red (Casual)",
 };
 
 const TIER_COLORS: Record<string, string> = {
-  gold: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-  purple: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  red: 'bg-red-500/20 text-red-300 border-red-500/30',
+  gold: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  purple: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  red: "bg-red-500/20 text-red-300 border-red-500/30",
 };
 
 type SP = { success?: string; error?: string };
@@ -155,10 +157,15 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                 />
 
                 <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">Select Tier:</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Select Tier:
+                  </span>
                   <div className="flex flex-col gap-1.5">
                     {Object.entries(TIER_LABELS).map(([tierKey, label]) => (
-                      <label key={tierKey} className={`flex items-center gap-2 rounded-lg border p-2 text-xs cursor-pointer transition-colors hover:bg-muted/50 ${TIER_COLORS[tierKey].split(' ')[2]}`}>
+                      <label
+                        key={tierKey}
+                        className={`flex items-center gap-2 rounded-lg border p-2 text-xs cursor-pointer transition-colors hover:bg-muted/50 ${TIER_COLORS[tierKey].split(" ")[2]}`}
+                      >
                         <input
                           type="radio"
                           name="tier"
@@ -167,7 +174,9 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                           disabled={!canRegister}
                           className="accent-primary"
                         />
-                        <span className={TIER_COLORS[tierKey].split(' ')[1]}>{label}</span>
+                        <span className={TIER_COLORS[tierKey].split(" ")[1]}>
+                          {label}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -264,9 +273,13 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
 
               {/* Display Tier & Change Tier UI */}
               <div className="mt-4 border-t pt-3">
-                <div className="text-xs font-medium text-muted-foreground mb-2">Team Tier</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">
+                  Team Tier
+                </div>
                 {myTeam.tier && (
-                  <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}>
+                  <span
+                    className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}
+                  >
                     {TIER_LABELS[myTeam.tier]}
                   </span>
                 )}
@@ -275,7 +288,9 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                 {myTeam.member1_id === me.id && registrationOpen && (
                   <form action={changeTierAction} className="mt-3 space-y-2">
                     <input type="hidden" name="teamId" value={myTeam.id} />
-                    <div className="text-xs text-muted-foreground mb-1">Change Tier:</div>
+                    <div className="text-xs text-muted-foreground mb-1">
+                      Change Tier:
+                    </div>
                     <div className="flex flex-wrap gap-2 items-center">
                       <select
                         name="tier"
@@ -315,16 +330,15 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                 </form>
               )}
 
-              <form
-                action={async () => {
-                  "use server";
-                  await leaveTeamAction(myTeam.id);
-                }}
-              >
-                <button className="h-9 w-full rounded-xl border px-3 text-sm font-medium">
-                  Leave team
-                </button>
-              </form>
+              <ConfirmDeleteButton
+                action={leaveTeamActionFormData}
+                payload={{ teamId: myTeam.id }}
+                title="Leave Team"
+                description="Are you sure you want to leave your team? If you are the last member, the team will be deleted."
+                buttonText="Leave team"
+                className="h-9 w-full rounded-xl border px-3 text-sm font-medium"
+                buttonSize="default"
+              />
             </div>
           </div>
         </div>
@@ -344,10 +358,15 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-base font-semibold">{t.name}</span>
+                      <span className="truncate text-base font-semibold">
+                        {t.name}
+                      </span>
                       {t.tier && (
-                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
-                          {TIER_LABELS[t.tier].split(' ')[0]} {TIER_LABELS[t.tier].split(' ')[1]}
+                        <span
+                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
+                        >
+                          {TIER_LABELS[t.tier].split(" ")[0]}{" "}
+                          {TIER_LABELS[t.tier].split(" ")[1]}
                         </span>
                       )}
                     </div>
@@ -361,7 +380,9 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <div className="text-xs text-muted-foreground">Weekly Pts</div>
+                    <div className="text-xs text-muted-foreground">
+                      Weekly Pts
+                    </div>
                     <div className="text-base font-semibold tabular-nums">
                       {t.weekly_points ?? 0}
                     </div>
