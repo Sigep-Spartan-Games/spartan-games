@@ -29,7 +29,10 @@ export function LogoutButton() {
   return (
     <>
       <Button
-        onClick={() => setOpen(true)}
+        onPointerDown={(e) => {
+          e.preventDefault(); // Prevents extra click event
+          setOpen(true);
+        }}
         size="sm"
         variant="outline"
         className="h-10"
