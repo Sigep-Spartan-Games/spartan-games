@@ -11,7 +11,7 @@ const cinzel = Cinzel({
 
 export default function Loading() {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 animate-in fade-in duration-700 delay-500 fill-mode-forwards opacity-0">
       <div className="relative h-24 w-24 overflow-hidden rounded-xl bg-neutral-900 shadow-2xl">
         <Image
           src={AppleIcon}
