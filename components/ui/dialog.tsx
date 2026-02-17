@@ -31,11 +31,11 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/80 sm:backdrop-blur-sm animate-in fade-in duration-200 will-change-[opacity]"
+        className="fixed inset-0 bg-black/80 sm:backdrop-blur-sm sm:animate-in sm:fade-in sm:duration-200"
         onClick={() => onOpenChange(false)}
       />
       {/* Content */}
-      <div className="relative z-[10000] w-full max-w-lg p-4 animate-in zoom-in-95 duration-200 will-change-[transform,opacity]">
+      <div className="relative z-[10000] w-full max-w-lg p-4 sm:animate-in sm:zoom-in-95 sm:duration-200">
         {children}
       </div>
     </div>,

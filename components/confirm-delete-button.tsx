@@ -53,10 +53,7 @@ export function ConfirmDeleteButton({
     <>
       <button
         type="button"
-        onPointerDown={(e) => {
-          e.preventDefault();
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className={cn(
           "flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors",
           buttonSize === "icon" ? "h-8 w-8" : "h-8 px-3 text-xs border",
