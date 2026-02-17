@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendToSlack, verifySlackRequest } from "@/lib/slack";
-import { sendAnnouncement } from "@/app/admin/announcements/actions";
+import { internalBroadcastAnnouncement } from "@/app/admin/announcements/actions";
 
 // Slack sends application/x-www-form-urlencoded
 export async function POST(req: NextRequest) {
@@ -47,7 +47,39 @@ export async function POST(req: NextRequest) {
       // But ideally we check the user_id against a list of allowed slack users.
       // For now, allow it.
 
-      const result = await sendAnnouncement(actionFormData);
+      // We need a Service Role client to bypass Auth/RLS because this request
+      // comes from Slack (no user cookies).
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      if (!serviceRoleKey || !supabaseUrl) {
+        console.error(
+          "Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL",
+        );
+        return new NextResponse(
+          "Configuration error: Missing Service Role Key. Cannot send emails.",
+          { status: 200 },
+        );
+      }
+
+      // Create a Supabase client with the Service Role key
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+
+      // Call the internal broadcast function directly
+      const result = await internalBroadcastAnnouncement(
+        supabase,
+        subject,
+        message,
+        undefined, // No image support via slash command yet (unless we parse it from text)
+        true, // Send to Slack (echo)
+        true, // Send to Email
+      );
 
       if (result.success) {
         return new NextResponse("Announcement sent! 🚀", { status: 200 });

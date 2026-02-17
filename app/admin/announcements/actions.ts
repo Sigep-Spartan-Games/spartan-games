@@ -4,11 +4,14 @@ import { sendToSlack } from "@/lib/slack";
 import { sendBulkEmail } from "@/lib/email";
 import { requireAdmin } from "@/lib/admin";
 
+import { SupabaseClient } from "@supabase/supabase-js";
+
 export async function sendAnnouncement(formData: FormData) {
   const subject = formData.get("subject") as string;
   const message = formData.get("message") as string;
   const sendSlack = formData.get("sendSlack") === "on";
   const sendEmail = formData.get("sendEmail") === "on";
+  const imageFile = formData.get("image");
 
   if (!subject || !message) {
     return {
@@ -17,28 +20,24 @@ export async function sendAnnouncement(formData: FormData) {
     };
   }
 
-  const errors: string[] = [];
+  // Auth check and client creation
+  const { supabase } = await requireAdmin("/admin/announcements");
 
-  const imageFile = formData.get("image");
   let imageUrl: string | undefined;
 
   if (imageFile && imageFile instanceof File && imageFile.size > 0) {
-    // 1. Upload Image
     const fileExt = imageFile.name.split(".").pop();
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    // Use admin client for upload
-    const { supabase } = await requireAdmin("/admin/announcements");
     const { error: uploadError } = await supabase.storage
       .from("announcements")
       .upload(filePath, imageFile);
 
     if (uploadError) {
       console.error("Image upload error:", uploadError);
-      errors.push("Failed to upload image.");
+      return { success: false, error: "Failed to upload image." };
     } else {
-      // 2. Get Public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("announcements").getPublicUrl(filePath);
@@ -46,27 +45,39 @@ export async function sendAnnouncement(formData: FormData) {
     }
   }
 
+  return await internalBroadcastAnnouncement(
+    supabase,
+    subject,
+    message,
+    imageUrl,
+    sendSlack,
+    sendEmail,
+  );
+}
+
+export async function internalBroadcastAnnouncement(
+  supabase: SupabaseClient, // Use the passed client (Admin or Service Role)
+  subject: string,
+  message: string,
+  imageUrl: string | undefined,
+  sendSlack: boolean,
+  sendEmail: boolean,
+) {
+  const errors: string[] = [];
+
   // 1. Send to Slack
   if (sendSlack) {
     try {
       await sendToSlack(subject, message, imageUrl);
     } catch (err) {
-      console.warn("Slack warning:", err); // Warn instead of error for now
-      // errors.push("Failed to send to Slack."); // Don't block success if just Slack fails (e.g. no webhook)
+      console.warn("Slack warning:", err);
     }
   }
 
   // 2. Send to Email
   if (sendEmail) {
     try {
-      // Use the same pattern as admin/settings/actions.ts
-      // This uses the logged-in admin's client (cookies) to call an RPC function
-      // responsible for fetching emails. This avoids needing the Service Role key directly here.
-      // Note: We still need the Service Key in lib/email.ts if using it there? No, lib/email uses SMTP env vars.
-
-      const { supabase } = await requireAdmin("/admin/announcements");
-
-      // Fetch all user emails using the RPC function (same as settings/actions.ts)
+      // Use the passed client to call RPC
       const { data, error } = await supabase.rpc("get_all_user_emails");
 
       if (error) {
@@ -85,9 +96,6 @@ export async function sendAnnouncement(formData: FormData) {
       // const recipients = (data ?? []).map(
       //   (row: { email: string }) => row.email,
       // );
-
-      // FOR TESTING: Uncomment to send only to yourself
-      // const recipients = ["loffm300334@gmail.com"];
 
       if (recipients.length > 0) {
         const imageHtml = imageUrl
