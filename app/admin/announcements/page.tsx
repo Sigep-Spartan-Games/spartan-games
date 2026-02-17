@@ -23,7 +23,7 @@ export default function AnnouncementsPage() {
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     try {
-      const result = await sendAnnouncement(data);
+      const result = await sendAnnouncement(formData);
       if (result.success) {
         toast.success("Announcement sent successfully! 🚀");
         // Reset form or redirect?
