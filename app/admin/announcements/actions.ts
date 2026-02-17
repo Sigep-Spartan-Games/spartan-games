@@ -39,21 +39,20 @@ export async function sendAnnouncement(formData: FormData) {
 
       const { supabase } = await requireAdmin("/admin/announcements");
 
-      // FOR TESTING: Send only to loffm300334@gmail.com
-      const recipients = ["loffm300334@gmail.com"];
-
-      /* 
-      // PRODUCTION LOGIC:
+      // Fetch all user emails using the RPC function (same as settings/actions.ts)
       const { data, error } = await supabase.rpc("get_all_user_emails");
-      
+
       if (error) {
-         console.error("Error fetching user emails via RPC:", error.message);
-         errors.push("Could not fetch user emails.");
-         // return { success: false, error: "RPC Erorr: " + error.message }; 
+        console.error("Error fetching user emails via RPC:", error.message);
+        errors.push("Could not fetch user emails.");
       }
-      
-      const recipients = (data ?? []).map((row: { email: string }) => row.email);
-      */
+
+      const recipients = (data ?? []).map(
+        (row: { email: string }) => row.email,
+      );
+
+      // FOR TESTING: Uncomment to send only to yourself
+      // const recipients = ["loffm300334@gmail.com"];
 
       if (recipients.length > 0) {
         const { errors: emailErrors } = await sendBulkEmail({
@@ -68,13 +67,6 @@ export async function sendAnnouncement(formData: FormData) {
       }
     } catch (err) {
       console.error("Email error:", err);
-      // DEBUG LOGGING
-      console.log("DEBUG: SMTP Config seen by action:", {
-        host: process.env.SMTP_HOST,
-        user: process.env.SMTP_USER,
-        port: process.env.SMTP_PORT,
-      });
-      // END DEBUG
       errors.push("Failed to send emails.");
     }
   }

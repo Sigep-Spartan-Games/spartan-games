@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { sendAnnouncement } from "./actions";
-// import { toast } from "sonner";
+import { toast } from "sonner";
 
 export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(false);
@@ -23,15 +23,17 @@ export default function AnnouncementsPage() {
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     try {
-      const result = await sendAnnouncement(formData);
+      const result = await sendAnnouncement(data);
       if (result.success) {
-        alert("Announcement sent successfully! 🚀");
-        // Reset form or redirect
+        toast.success("Announcement sent successfully! 🚀");
+        // Reset form or redirect?
+        // For now, maybe just clear the form?
+        // window.location.reload(); // Simple way to clear
       } else {
-        alert("Failed to send announcement: " + JSON.stringify(result.error));
+        toast.error("Failed to send announcement: " + result.error);
       }
     } catch (e) {
-      alert("An unexpected error occurred.");
+      toast.error("An unexpected error occurred.");
       console.error(e);
     } finally {
       setLoading(false);

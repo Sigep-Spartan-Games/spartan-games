@@ -10,6 +10,7 @@ import { AuthButton } from "@/components/auth-button";
 import AdminLink from "@/components/admin-link";
 import { SpartanNavLinks } from "@/components/spartan-nav-links";
 import Spartan from "@/app/assets/spartan.png";
+import { Toaster } from "sonner";
 // import AuthRefresh from "@/components/auth-refresh";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -166,6 +167,7 @@ export default function RootLayout({
         <main className="mx-auto w-full max-w-4xl px-4 pb-32 pt-5 md:pb-8 md:pt-6">
           {children}
         </main>
+        <Toaster />
       </body>
     </html>
   );
