@@ -68,6 +68,13 @@ export async function sendAnnouncement(formData: FormData) {
       }
     } catch (err) {
       console.error("Email error:", err);
+      // DEBUG LOGGING
+      console.log("DEBUG: SMTP Config seen by action:", {
+        host: process.env.SMTP_HOST,
+        user: process.env.SMTP_USER,
+        port: process.env.SMTP_PORT,
+      });
+      // END DEBUG
       errors.push("Failed to send emails.");
     }
   }
