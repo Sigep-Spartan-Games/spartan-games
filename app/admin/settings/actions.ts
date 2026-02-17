@@ -6,7 +6,9 @@ import { requireAdmin } from "@/lib/admin";
 import { sendBulkEmail } from "@/lib/email";
 
 /** Fetch all confirmed user emails via the Postgres function */
-async function getAllUserEmails(supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"]) {
+async function getAllUserEmails(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+) {
   const { data, error } = await supabase.rpc("get_all_user_emails");
 
   if (error) {
@@ -14,7 +16,13 @@ async function getAllUserEmails(supabase: Awaited<ReturnType<typeof requireAdmin
     return [];
   }
 
-  return (data ?? []).map((row: { email: string }) => row.email);
+  // SAFETY: During testing, only return my email.
+  console.log(
+    `[TEST MODE] Would have emailed ${data?.length || 0} users. Sending to loffm300334@gmail.com only.`,
+  );
+  return ["loffm300334@gmail.com"];
+
+  // return (data ?? []).map((row: { email: string }) => row.email);
 }
 
 export async function startGames() {
@@ -50,7 +58,7 @@ export async function startGames() {
                 <p style="color: #cbd5e1; font-size: 14px; margin: 0;">🔒 Team registration is now closed</p>
               </div>
               <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Start logging your activities and earning points for your team!</p>
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spartan-games.vercel.app'}/submit"
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/submit"
                  style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 Submit an Activity →
               </a>
@@ -70,9 +78,9 @@ export async function startGames() {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent(
-      "Games started: registration closed, submissions opened. Notification emails sent!",
-    ),
+      encodeURIComponent(
+        "Games started: registration closed, submissions opened. Notification emails sent!",
+      ),
   );
 }
 
@@ -108,7 +116,7 @@ export async function endGames() {
                 <p style="color: #cbd5e1; font-size: 14px; margin: 0;">✅ <strong style="color: #4ade80;">Team registration is now OPEN</strong></p>
               </div>
               <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Check the leaderboard to see the final standings!</p>
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spartan-games.vercel.app'}/leaderboard"
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/leaderboard"
                  style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 View Leaderboard →
               </a>
@@ -127,9 +135,9 @@ export async function endGames() {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent(
-      "Games ended: registration opened, submissions closed. Notification emails sent!",
-    ),
+      encodeURIComponent(
+        "Games ended: registration opened, submissions closed. Notification emails sent!",
+      ),
   );
 }
 
@@ -148,9 +156,9 @@ export async function toggleSubmissions(formData: FormData) {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent(
-      newValue ? "Submissions are now OPEN." : "Submissions are now CLOSED.",
-    ),
+      encodeURIComponent(
+        newValue ? "Submissions are now OPEN." : "Submissions are now CLOSED.",
+      ),
   );
 }
 
@@ -169,9 +177,11 @@ export async function toggleRegistration(formData: FormData) {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent(
-      newValue ? "Team registration is now OPEN." : "Team registration is now CLOSED.",
-    ),
+      encodeURIComponent(
+        newValue
+          ? "Team registration is now OPEN."
+          : "Team registration is now CLOSED.",
+      ),
   );
 }
 
@@ -190,9 +200,9 @@ export async function finalizeWeek() {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent(
-      "Weekly finalization requested. The background job will process it shortly.",
-    ),
+      encodeURIComponent(
+        "Weekly finalization requested. The background job will process it shortly.",
+      ),
   );
 }
 
@@ -203,7 +213,7 @@ export async function resetSpartanGames(formData: FormData) {
   if (confirm !== "RESET") {
     redirect(
       "/admin/settings?error=" +
-      encodeURIComponent("Confirmation text must be RESET."),
+        encodeURIComponent("Confirmation text must be RESET."),
     );
   }
 
@@ -247,6 +257,6 @@ export async function resetSpartanGames(formData: FormData) {
 
   redirect(
     "/admin/settings?ok=" +
-    encodeURIComponent("All teams, submissions, and proof images deleted."),
+      encodeURIComponent("All teams, submissions, and proof images deleted."),
   );
 }

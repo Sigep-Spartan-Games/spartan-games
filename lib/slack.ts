@@ -3,7 +3,11 @@ import crypto from "crypto";
 /**
  * Send a message to the configured Slack Webhook URL.
  */
-export async function sendToSlack(subject: string, message: string) {
+export async function sendToSlack(
+  subject: string,
+  message: string,
+  imageUrl?: string,
+) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
@@ -29,6 +33,16 @@ export async function sendToSlack(subject: string, message: string) {
           text: message,
         },
       },
+
+      ...(imageUrl
+        ? [
+            {
+              type: "image",
+              image_url: imageUrl,
+              alt_text: "Announcement Image",
+            },
+          ]
+        : []),
     ],
   };
 

@@ -19,10 +19,37 @@ export async function sendAnnouncement(formData: FormData) {
 
   const errors: string[] = [];
 
+  const imageFile = formData.get("image");
+  let imageUrl: string | undefined;
+
+  if (imageFile && imageFile instanceof File && imageFile.size > 0) {
+    // 1. Upload Image
+    const fileExt = imageFile.name.split(".").pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // Use admin client for upload
+    const { supabase } = await requireAdmin("/admin/announcements");
+    const { error: uploadError } = await supabase.storage
+      .from("announcements")
+      .upload(filePath, imageFile);
+
+    if (uploadError) {
+      console.error("Image upload error:", uploadError);
+      errors.push("Failed to upload image.");
+    } else {
+      // 2. Get Public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("announcements").getPublicUrl(filePath);
+      imageUrl = publicUrl;
+    }
+  }
+
   // 1. Send to Slack
   if (sendSlack) {
     try {
-      await sendToSlack(subject, message);
+      await sendToSlack(subject, message, imageUrl);
     } catch (err) {
       console.warn("Slack warning:", err); // Warn instead of error for now
       // errors.push("Failed to send to Slack."); // Don't block success if just Slack fails (e.g. no webhook)
@@ -63,10 +90,14 @@ export async function sendAnnouncement(formData: FormData) {
       // const recipients = ["loffm300334@gmail.com"];
 
       if (recipients.length > 0) {
+        const imageHtml = imageUrl
+          ? `<img src="${imageUrl}" alt="Announcement Image" style="max-width: 100%; height: auto; margin-top: 10px;" /><br/>`
+          : "";
+
         const { errors: emailErrors } = await sendBulkEmail({
           recipients,
           subject,
-          html: `<p>${message.replace(/\n/g, "<br/>")}</p>`,
+          html: `<p>${message.replace(/\n/g, "<br/>")}</p>${imageHtml}`,
         });
 
         if (emailErrors.length > 0) {

@@ -57,10 +57,11 @@ export async function updateSession(request: NextRequest) {
     "/auth/update-password",
     "/auth/confirm",
     "/auth/error",
+    "/api/slack/command", // Exclude Slack commands from auth
   ];
 
   const isPublicRoute = publicRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
+    request.nextUrl.pathname.startsWith(route),
   );
 
   // If no user and not on a public route, redirect to login
@@ -71,7 +72,11 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is logged in and trying to access login/signup, redirect to leaderboard
-  if (user && (request.nextUrl.pathname === "/auth/login" || request.nextUrl.pathname === "/auth/sign-up")) {
+  if (
+    user &&
+    (request.nextUrl.pathname === "/auth/login" ||
+      request.nextUrl.pathname === "/auth/sign-up")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/leaderboard";
     return NextResponse.redirect(url);

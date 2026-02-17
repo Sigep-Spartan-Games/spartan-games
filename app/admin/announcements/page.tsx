@@ -79,6 +79,14 @@ export default function AnnouncementsPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="image">Image Attachment (Optional)</Label>
+              <Input id="image" name="image" type="file" accept="image/*" />
+              <p className="text-sm text-muted-foreground">
+                Upload an image to include in the announcement (Slack & Email).
+              </p>
+            </div>
+
             <div className="flex flex-col gap-4 sm:flex-row">
               <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
                 <Checkbox id="sendSlack" name="sendSlack" defaultChecked />
