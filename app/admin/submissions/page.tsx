@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteSubmission } from "./actions";
 import SubmissionFilters from "./submission-filters";
 
@@ -47,7 +48,7 @@ async function AdminSubmissionsInner({
     .order("name");
 
   // Create a lookup map for team names
-  const teamMap = new Map((teams ?? []).map(t => [t.id, t.name]));
+  const teamMap = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   // Fetch submissions with submitted_by
   let q = supabase
@@ -64,22 +65,31 @@ async function AdminSubmissionsInner({
   const { data: subs, error } = await q;
 
   // Fetch user names for the submissions
-  const userIds = [...new Set((subs ?? []).map(s => s.submitted_by).filter(Boolean))];
+  const userIds = [
+    ...new Set((subs ?? []).map((s) => s.submitted_by).filter(Boolean)),
+  ];
   let userMap = new Map<string, string>();
 
   if (userIds.length > 0) {
-    const { data: profiles } = await supabase
+    const adminClient = createAdminClient();
+    const { data: profiles } = await adminClient
       .from("profiles")
       .select("id, full_name")
       .in("id", userIds);
 
-    userMap = new Map((profiles ?? []).map(p => [p.id, p.full_name ?? "Unknown"]));
+    userMap = new Map(
+      (profiles ?? []).map((p) => [p.id, p.full_name ?? "Unknown"]),
+    );
   }
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border p-4">
-        <SubmissionFilters teams={teams ?? []} teamId={teamId} dateFilter={dateFilter} />
+        <SubmissionFilters
+          teams={teams ?? []}
+          teamId={teamId}
+          dateFilter={dateFilter}
+        />
 
         {teamsError ? (
           <div className="mt-2 text-xs text-muted-foreground">
@@ -134,13 +144,17 @@ async function AdminSubmissionsInner({
                 {/* Team/User Column - Desktop */}
                 <div className="hidden md:block md:col-span-3">
                   <div className="text-sm font-medium truncate">{teamName}</div>
-                  <div className="text-xs text-muted-foreground truncate">{userName}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {userName}
+                  </div>
                 </div>
 
                 {/* Activity Column */}
                 <div className="flex justify-between items-center md:col-span-3 md:block">
                   <div>
-                    <div className="text-sm md:font-medium">{s.activity_key}</div>
+                    <div className="text-sm md:font-medium">
+                      {s.activity_key}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {s.did_with_teammate ? "With teammate" : "Solo"}
                     </div>
@@ -161,7 +175,9 @@ async function AdminSubmissionsInner({
 
                 {/* Team/User - Mobile only (between activity and actions) */}
                 <div className="md:hidden flex items-center gap-2 text-xs text-muted-foreground border-t border-dashed pt-2">
-                  <span className="font-medium text-foreground">{teamName}</span>
+                  <span className="font-medium text-foreground">
+                    {teamName}
+                  </span>
                   <span>•</span>
                   <span>{userName}</span>
                 </div>
@@ -196,7 +212,9 @@ async function AdminSubmissionsInner({
 
                   <form action={deleteSubmission}>
                     <input type="hidden" name="id" value={s.id} />
-                    {teamId && <input type="hidden" name="team" value={teamId} />}
+                    {teamId && (
+                      <input type="hidden" name="team" value={teamId} />
+                    )}
                     <button className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10">
                       Delete
                     </button>
