@@ -2,7 +2,7 @@
 
 import { sendToSlack } from "@/lib/slack";
 import { sendBulkEmail } from "@/lib/email";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/admin";
 
 export async function sendAnnouncement(formData: FormData) {
   const subject = formData.get("subject") as string;
@@ -32,29 +32,30 @@ export async function sendAnnouncement(formData: FormData) {
   // 2. Send to Email
   if (sendEmail) {
     try {
-      // The public 'profiles' table does not have emails.
-      // We must use the Service Role to fetch emails from auth.users.
-      const supabaseAdmin = createAdminClient();
+      // Use the same pattern as admin/settings/actions.ts
+      // This uses the logged-in admin's client (cookies) to call an RPC function
+      // responsible for fetching emails. This avoids needing the Service Role key directly here.
+      // Note: We still need the Service Key in lib/email.ts if using it there? No, lib/email uses SMTP env vars.
 
-      const {
-        data: { users },
-        error: usersError,
-      } = await supabaseAdmin.auth.admin.listUsers({
-        perPage: 1000, // Adjust if you have more users
-      });
+      const { supabase } = await requireAdmin("/admin/announcements");
 
-      if (usersError) {
-        console.error("Error fetching users for email:", usersError);
-        errors.push("Could not fetch user emails.");
-      } else if (users) {
-        // FOR TESTING: Send only to loffm300334@gmail.com
-        const recipients = ["loffm300334@gmail.com"];
+      // FOR TESTING: Send only to loffm300334@gmail.com
+      const recipients = ["loffm300334@gmail.com"];
 
-        // Original logic (commented out for safety/testing)
-        // const recipients = users
-        //   .map((u) => u.email)
-        //   .filter((email): email is string => !!email);
+      /* 
+      // PRODUCTION LOGIC:
+      const { data, error } = await supabase.rpc("get_all_user_emails");
+      
+      if (error) {
+         console.error("Error fetching user emails via RPC:", error.message);
+         errors.push("Could not fetch user emails.");
+         // return { success: false, error: "RPC Erorr: " + error.message }; 
+      }
+      
+      const recipients = (data ?? []).map((row: { email: string }) => row.email);
+      */
 
+      if (recipients.length > 0) {
         const { errors: emailErrors } = await sendBulkEmail({
           recipients,
           subject,
