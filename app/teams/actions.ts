@@ -35,7 +35,9 @@ export async function createTeamAction(formData: FormData): Promise<void> {
     redirect("/teams?error=Invalid%20team%20name");
   }
 
-  const tier = String(formData.get("tier") ?? "").trim().toLowerCase();
+  const tier = String(formData.get("tier") ?? "")
+    .trim()
+    .toLowerCase();
   if (!["gold", "purple", "red"].includes(tier)) {
     redirect("/teams?error=Please%20select%20a%20tier");
   }
@@ -113,9 +115,14 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
   }
 
   // 3. Determine which slot to take
-  // The constraint implies member1!=member2. 
+  // The constraint implies member1!=member2.
   // If member1 is empty (rare but possible if creator left), take it. Else take member2.
-  const updateData: { member1_id?: string; member2_id?: string; member1_name?: string; member2_name?: string } = {};
+  const updateData: {
+    member1_id?: string;
+    member2_id?: string;
+    member1_name?: string;
+    member2_name?: string;
+  } = {};
   if (!team.member1_id) {
     updateData.member1_id = auth.user.id;
     updateData.member1_name = displayName;
@@ -129,7 +136,8 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
     .update(updateData)
     .eq("id", team.id);
 
-  if (updateError) redirect(`/teams?error=${encodeURIComponent(updateError.message)}`);
+  if (updateError)
+    redirect(`/teams?error=${encodeURIComponent(updateError.message)}`);
 
   revalidatePath("/teams");
   redirect("/teams?success=Joined%20team");
@@ -188,13 +196,21 @@ export async function leaveTeamAction(teamId: string): Promise<void> {
 
   if (!otherMemberExists) {
     // We are the last one. Delete the team.
-    const { error: delError } = await supabase.from("teams").delete().eq("id", teamId);
-    if (delError) redirect(`/teams?error=${encodeURIComponent(delError.message)}`);
+    const { error: delError } = await supabase
+      .from("teams")
+      .delete()
+      .eq("id", teamId);
+    if (delError)
+      redirect(`/teams?error=${encodeURIComponent(delError.message)}`);
   } else {
     // Just vacate our slot
     const updateData = isMember1 ? { member1_id: null } : { member2_id: null };
-    const { error: upError } = await supabase.from("teams").update(updateData).eq("id", teamId);
-    if (upError) redirect(`/teams?error=${encodeURIComponent(upError.message)}`);
+    const { error: upError } = await supabase
+      .from("teams")
+      .update(updateData)
+      .eq("id", teamId);
+    if (upError)
+      redirect(`/teams?error=${encodeURIComponent(upError.message)}`);
   }
 
   revalidatePath("/teams");
@@ -205,7 +221,9 @@ export async function changeTierAction(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   const teamId = String(formData.get("teamId") ?? "");
-  const newTier = String(formData.get("tier") ?? "").trim().toLowerCase();
+  const newTier = String(formData.get("tier") ?? "")
+    .trim()
+    .toLowerCase();
 
   if (!teamId) redirect("/teams?error=Missing%20team%20id");
   if (!["gold", "purple", "red"].includes(newTier)) {
@@ -239,4 +257,12 @@ export async function changeTierAction(formData: FormData): Promise<void> {
 
   revalidatePath("/teams");
   redirect("/teams?success=Tier%20updated");
+}
+
+// Wrapper for ConfirmDeleteButton
+export async function leaveTeamActionFormData(
+  formData: FormData,
+): Promise<void> {
+  const teamId = String(formData.get("teamId") ?? "");
+  await leaveTeamAction(teamId);
 }

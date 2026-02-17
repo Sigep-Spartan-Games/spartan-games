@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteSubmission } from "./actions";
 import SubmissionFilters from "./submission-filters";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -210,15 +211,14 @@ async function AdminSubmissionsInner({
                     Edit
                   </Link>
 
-                  <form action={deleteSubmission}>
-                    <input type="hidden" name="id" value={s.id} />
-                    {teamId && (
-                      <input type="hidden" name="team" value={teamId} />
-                    )}
-                    <button className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10">
-                      Delete
-                    </button>
-                  </form>
+                  <ConfirmDeleteButton
+                    action={deleteSubmission}
+                    payload={{ id: s.id, ...(teamId ? { team: teamId } : {}) }}
+                    title="Delete Submission"
+                    description="Are you sure you want to delete this submission? This action cannot be undone."
+                    className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10"
+                    buttonSize="default"
+                  />
                 </div>
               </div>
             );

@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { deleteTeam } from "./actions";
 import TierSelector from "./tier-selector";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import TeamFilters from "./team-filters";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -38,14 +39,17 @@ async function AdminTeamsInner({
   const { supabase } = await requireAdmin("/admin/teams");
   const sp = (await searchParams) ?? {};
 
-  const searchFilter = typeof sp.search === "string" ? sp.search.toLowerCase() : "";
+  const searchFilter =
+    typeof sp.search === "string" ? sp.search.toLowerCase() : "";
   const progressFilter = typeof sp.progress === "string" ? sp.progress : "";
   const tierFilter = typeof sp.tier === "string" ? sp.tier : "";
 
   // Fetch all teams
   const { data: teams, error } = await supabase
     .from("teams")
-    .select("id, name, weekly_points, total_points, invite_code, tier, member1_name, member2_name, weeks_won, streak_count")
+    .select(
+      "id, name, weekly_points, total_points, invite_code, tier, member1_name, member2_name, weeks_won, streak_count",
+    )
     .order("name");
 
   // Fetch tier goals
@@ -68,7 +72,7 @@ async function AdminTeamsInner({
 
   // Calculate goal progress for each team
   const teamsWithProgress = (teams ?? []).map((team) => {
-    const goal = team.tier ? tierGoals[team.tier] ?? 100 : 100;
+    const goal = team.tier ? (tierGoals[team.tier] ?? 100) : 100;
     const weeklyPoints = team.weekly_points ?? 0;
     const totalPoints = team.total_points ?? 0;
     const percentage = goal > 0 ? Math.round((weeklyPoints / goal) * 100) : 0;
@@ -89,7 +93,7 @@ async function AdminTeamsInner({
 
   if (searchFilter) {
     filteredTeams = filteredTeams.filter((t) =>
-      t.name.toLowerCase().includes(searchFilter)
+      t.name.toLowerCase().includes(searchFilter),
     );
   }
 
@@ -118,11 +122,15 @@ async function AdminTeamsInner({
         </div>
         <div className="rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-1.5">
           <span className="text-muted-foreground">Met Goal:</span>{" "}
-          <span className="font-medium text-green-600 dark:text-green-400">{teamsMetGoal}</span>
+          <span className="font-medium text-green-600 dark:text-green-400">
+            {teamsMetGoal}
+          </span>
         </div>
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-1.5">
           <span className="text-muted-foreground">Below Goal:</span>{" "}
-          <span className="font-medium text-amber-600 dark:text-amber-400">{teamsBelowGoal}</span>
+          <span className="font-medium text-amber-600 dark:text-amber-400">
+            {teamsBelowGoal}
+          </span>
         </div>
       </div>
 
@@ -180,7 +188,9 @@ async function AdminTeamsInner({
                         style={{ width: `${Math.min(t.percentage, 100)}%` }}
                       />
                     </div>
-                    <span className={`text-xs tabular-nums w-10 text-right ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}>
+                    <span
+                      className={`text-xs tabular-nums w-10 text-right ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}
+                    >
                       {t.percentage}%
                     </span>
                   </div>
@@ -199,7 +209,9 @@ async function AdminTeamsInner({
                 {/* Streak */}
                 <div className="col-span-1 text-center pr-2">
                   {streakCount >= 2 ? (
-                    <span className="text-orange-500 text-sm font-bold">🔥 {streakCount}</span>
+                    <span className="text-orange-500 text-sm font-bold">
+                      🔥 {streakCount}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground text-sm">—</span>
                   )}
@@ -207,13 +219,15 @@ async function AdminTeamsInner({
 
                 {/* Tier Selector & Actions */}
                 <div className="col-span-2 flex justify-end items-center gap-3 pl-2">
-                  <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
-                  <form action={deleteTeam}>
-                    <input type="hidden" name="id" value={t.id} />
-                    <button className="h-8 rounded-md border px-2 text-xs text-destructive hover:bg-destructive/10">
-                      Delete
-                    </button>
-                  </form>
+                  <TierSelector
+                    team={{ id: t.id, name: t.name, tier: t.tier }}
+                  />
+                  <ConfirmDeleteButton
+                    action={deleteTeam}
+                    payload={{ id: t.id }}
+                    title="Delete Team"
+                    description={`Are you sure you want to delete "${t.name}"? This action cannot be undone.`}
+                  />
                 </div>
               </div>
 
@@ -227,8 +241,12 @@ async function AdminTeamsInner({
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-medium">{t.weekly_points} / {t.weekly_goal}</div>
-                    <div className="text-xs text-muted-foreground">Total: {effectiveTotal}</div>
+                    <div className="text-sm font-medium">
+                      {t.weekly_points} / {t.weekly_goal}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Total: {effectiveTotal}
+                    </div>
                   </div>
                 </div>
 
@@ -240,7 +258,9 @@ async function AdminTeamsInner({
                       style={{ width: `${Math.min(t.percentage, 100)}%` }}
                     />
                   </div>
-                  <span className={`text-xs tabular-nums ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}>
+                  <span
+                    className={`text-xs tabular-nums ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}
+                  >
                     {t.percentage}%
                   </span>
                 </div>
@@ -249,22 +269,30 @@ async function AdminTeamsInner({
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span>Wins: {winsCount}</span>
                   {streakCount >= 2 && (
-                    <span className="text-orange-500 font-bold">🔥 {streakCount}</span>
+                    <span className="text-orange-500 font-bold">
+                      🔥 {streakCount}
+                    </span>
                   )}
-                  <span className="ml-auto">Invite: {t.invite_code ?? "-"}</span>
+                  <span className="ml-auto">
+                    Invite: {t.invite_code ?? "-"}
+                  </span>
                 </div>
 
                 {/* Tier & Actions - with extra spacing */}
                 <div className="flex gap-3 items-center pt-2 mt-1">
                   <div className="flex-1">
-                    <TierSelector team={{ id: t.id, name: t.name, tier: t.tier }} />
+                    <TierSelector
+                      team={{ id: t.id, name: t.name, tier: t.tier }}
+                    />
                   </div>
-                  <form action={deleteTeam}>
-                    <input type="hidden" name="id" value={t.id} />
-                    <button className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10">
-                      Delete
-                    </button>
-                  </form>
+                  <ConfirmDeleteButton
+                    action={deleteTeam}
+                    payload={{ id: t.id }}
+                    title="Delete Team"
+                    description={`Are you sure you want to delete "${t.name}"? This action cannot be undone.`}
+                    className="h-8 px-3 text-xs border"
+                    buttonSize="default"
+                  />
                 </div>
               </div>
             </div>
