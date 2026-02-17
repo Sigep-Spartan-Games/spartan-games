@@ -60,8 +60,13 @@ export async function updateSession(request: NextRequest) {
     "/api/slack/command", // Exclude Slack commands from auth
   ];
 
+  const pathname = request.nextUrl.pathname;
   const isPublicRoute = publicRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route),
+    pathname.startsWith(route),
+  );
+
+  console.log(
+    `[Middleware] Path: ${pathname}, User: ${!!user}, Public: ${isPublicRoute}`,
   );
 
   // If no user and not on a public route, redirect to login
