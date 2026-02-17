@@ -57,6 +57,19 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        "indeterminate-bar": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
+      },
+      animation: {
+        "indeterminate-bar": "indeterminate-bar 1.5s infinite linear",
+        shimmer: "shimmer 2s infinite",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

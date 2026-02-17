@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Geist, Cinzel } from "next/font/google";
@@ -15,6 +15,11 @@ import Spartan from "@/app/assets/spartan.png";
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
+
+export const viewport: Viewport = {
+  themeColor: "#1a020a",
+  colorScheme: "dark",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
@@ -79,7 +84,11 @@ function DesktopTopNav() {
                 className="h-10 w-10 object-contain"
                 priority
               />
-              <span className={`whitespace-nowrap text-lg tracking-wide ${cinzel.className}`}>Spartan Games</span>
+              <span
+                className={`whitespace-nowrap text-lg tracking-wide ${cinzel.className}`}
+              >
+                Spartan Games
+              </span>
             </Link>
 
             <div className="border-l border-amber-200/20 pl-4">
