@@ -82,11 +82,41 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
   const { data, error } = await supabase
     .from("teams")
     .select(
-      "id,name,weekly_points,member1_name,member2_name,member1_id,member2_id,invite_code,tier",
+      `
+      id,
+      name,
+      weekly_points,
+      member1_id,
+      member2_id,
+      invite_code,
+      tier,
+      member1:profiles!member1_id(first_name, last_name, email),
+      member2:profiles!member2_id(first_name, last_name, email)
+    `,
     )
     .order("name", { ascending: true });
 
-  const teams = (data ?? []) as TeamRow[];
+  const teams = (data ?? []).map((t: any) => {
+    const m1 = t.member1;
+    const m1Name = m1
+      ? m1.first_name && m1.last_name
+        ? `${m1.first_name} ${m1.last_name}`
+        : m1.email
+      : null;
+
+    const m2 = t.member2;
+    const m2Name = m2
+      ? m2.first_name && m2.last_name
+        ? `${m2.first_name} ${m2.last_name}`
+        : m2.email
+      : null;
+
+    return {
+      ...t,
+      member1_name: m1Name,
+      member2_name: m2Name,
+    };
+  }) as TeamRow[];
 
   const success = sp?.success ? decodeURIComponent(sp.success) : null;
   const errorMsg = sp?.error ? decodeURIComponent(sp.error) : null;
