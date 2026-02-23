@@ -117,7 +117,10 @@ export function RequestEditDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent onClose={() => setOpen(false)}>
+        <DialogContent
+          onClose={() => setOpen(false)}
+          className="max-h-[85vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>Request Edit: {activityKey}</DialogTitle>
             <DialogDescription>

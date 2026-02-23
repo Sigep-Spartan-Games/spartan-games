@@ -116,10 +116,10 @@ export async function updateSubmission(formData: FormData) {
     redirect(editUrl(id, { ...editQueryParams, error: "missing_date" }));
   }
 
-  // Load existing to preserve multiplier (and any other non-edit fields)
+  // Load existing to preserve multiplier and streak_bonus (and any other non-edit fields)
   const { data: existing, error: existingErr } = await supabase
     .from("submissions")
-    .select("id, multiplier")
+    .select("id, multiplier, streak_bonus")
     .eq("id", id)
     .single();
 
@@ -141,7 +141,7 @@ export async function updateSubmission(formData: FormData) {
   }
 
   const points_per_unit = Number(rule.points_per_unit);
-  const teammate_bonus = Math.trunc(Number(rule.teammate_bonus));
+  const teammate_bonus = Number(rule.teammate_bonus);
 
   if (!Number.isFinite(points_per_unit) || points_per_unit < 0) {
     redirect(
@@ -178,19 +178,25 @@ export async function updateSubmission(formData: FormData) {
     );
   }
 
-  // Preserve multiplier (or default 1.0)
+  // Preserve multiplier and streak_bonus
   const multiplier = Number(existing.multiplier ?? 1.0);
   if (!(multiplier > 0)) {
     redirect(editUrl(id, { ...editQueryParams, error: "invalid_multiplier" }));
   }
+  const streak_bonus = Number(existing.streak_bonus ?? 0);
 
-  // Compute integer points (schema requires > 0)
-  const base_points = Math.max(1, Math.round(activity_units * points_per_unit));
-  const bonus = did_with_teammate ? teammate_bonus : 0;
-  const points_awarded = Math.max(
-    1,
-    Math.round((base_points + bonus) * multiplier),
-  );
+  // Compute integer points exactly like submit/actions.ts
+  const base_points = Math.max(1, Math.floor(activity_units * points_per_unit));
+
+  let computedPoints = Math.floor(points_per_unit * activity_units);
+  if (did_with_teammate) {
+    computedPoints = Math.floor(computedPoints * teammate_bonus);
+  }
+
+  // Apply admin multiplier (usually 1.0)
+  computedPoints = Math.floor(computedPoints * multiplier);
+
+  const points_awarded = Math.max(1, computedPoints + streak_bonus);
 
   const payload = {
     team_id: team_id_from_form,
