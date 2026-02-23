@@ -51,11 +51,14 @@ export async function createTeamAction(formData: FormData): Promise<void> {
   // Get user's display name from profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("first_name, last_name")
     .eq("id", auth.user.id)
     .single();
 
-  const displayName = profile?.full_name || auth.user.email || "Unknown";
+  const displayName =
+    (profile?.first_name && profile?.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : auth.user.email) || "Unknown";
 
   // Generate a random 6-char invite code
   const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -92,11 +95,14 @@ export async function joinByCodeAction(formData: FormData): Promise<void> {
   // Get user's display name from profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("first_name, last_name")
     .eq("id", auth.user.id)
     .single();
 
-  const displayName = profile?.full_name || auth.user.email || "Unknown";
+  const displayName =
+    (profile?.first_name && profile?.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : auth.user.email) || "Unknown";
 
   // 1. Find the team
   const { data: team, error: findError } = await supabase

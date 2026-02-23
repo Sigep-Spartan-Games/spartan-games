@@ -75,11 +75,16 @@ async function AdminSubmissionsInner({
     const adminClient = createAdminClient();
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, full_name")
+      .select("id, first_name, last_name")
       .in("id", userIds);
 
     userMap = new Map(
-      (profiles ?? []).map((p) => [p.id, p.full_name ?? "Unknown"]),
+      (profiles ?? []).map((p) => [
+        p.id,
+        p.first_name && p.last_name
+          ? `${p.first_name} ${p.last_name}`
+          : "Unknown",
+      ]),
     );
   }
 
