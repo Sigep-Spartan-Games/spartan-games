@@ -10,6 +10,7 @@ export type SuggestedChanges = {
   activity_value_text?: string;
   activity_value_bool?: boolean;
   did_with_teammate?: boolean;
+  is_deletion?: boolean;
 };
 
 export async function requestSubmissionEdit(

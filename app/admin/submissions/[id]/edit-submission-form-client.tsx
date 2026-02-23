@@ -2,6 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ActivityRule } from "@/lib/types";
 
 type Team = { id: string; name: string };
 
@@ -21,59 +22,29 @@ type Props = {
   teamFilter?: string;
   requestId?: string;
   teams: Team[];
+  activityRules: ActivityRule[];
   initial: InitialSubmission;
 };
-
-// Keep these identical to your submit form keys/labels
-const ACTIVITY_LABELS: Record<string, string> = {
-  sport_practice: "Sport practice (hours)",
-  running: "Running (miles)",
-  cycling: "Cycling (miles)",
-  gyming: "Gyming (hours)",
-  swimming: "Swimming (laps)",
-  sporting: "Sporting (number of games)",
-  calorie_goal: "Hitting Calorie Goal for Day (yes/no)",
-  races: "Races (number of races)",
-  powerlifting_meet: "Powerlifting meet (name of meet)",
-  bodybuilding_show: "Body building show (name of show)",
-  win_tournament: "Win a tournament (name of tournament)",
-  sleep: "Sleep (hours)",
-};
-
-type AmountKind = "number" | "text" | "bool";
-
-function amountKindForKey(key: string): AmountKind {
-  if (key === "calorie_goal") return "bool";
-  if (
-    key === "powerlifting_meet" ||
-    key === "bodybuilding_show" ||
-    key === "win_tournament"
-  )
-    return "text";
-  return "number";
-}
-
-function defaultStepForKey(key: string) {
-  // match your scoring step expectations (hours/miles often 0.25)
-  if (key === "sport_practice" || key === "gyming" || key === "sleep")
-    return 0.25;
-  if (key === "running" || key === "cycling") return 0.25;
-  if (key === "swimming") return 1;
-  if (key === "sporting" || key === "races") return 1;
-  return 0.25;
-}
 
 export default function EditSubmissionFormClient({
   action,
   teamFilter,
   requestId,
   teams,
+  activityRules,
   initial,
 }: Props) {
   const [activityKey, setActivityKey] = useState(initial.activity_key);
 
-  const kind = useMemo(() => amountKindForKey(activityKey), [activityKey]);
-  const step = useMemo(() => defaultStepForKey(activityKey), [activityKey]);
+  const activeRule = useMemo(
+    () =>
+      activityRules.find((r) => r.activity_key === activityKey) ||
+      activityRules[0],
+    [activityRules, activityKey],
+  );
+
+  const kind = activeRule?.input_type || "number";
+  const step = activeRule?.step_value || 0.25;
 
   // Preload “amount” values but let the user change them
   const [units, setUnits] = useState<string>(
@@ -92,7 +63,9 @@ export default function EditSubmissionFormClient({
   function onActivityChange(next: string) {
     setActivityKey(next);
 
-    const nextKind = amountKindForKey(next);
+    const rule = activityRules.find((r) => r.activity_key === next);
+    const nextKind = rule?.input_type || "number";
+
     if (nextKind === "number") {
       // keep units if it exists; clear others
       setTextVal("");
@@ -166,9 +139,9 @@ export default function EditSubmissionFormClient({
             className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             required
           >
-            {Object.keys(ACTIVITY_LABELS).map((k) => (
-              <option key={k} value={k}>
-                {ACTIVITY_LABELS[k]}
+            {activityRules.map((r) => (
+              <option key={r.activity_key} value={r.activity_key}>
+                {r.label ?? r.activity_key}
               </option>
             ))}
           </select>
@@ -212,7 +185,7 @@ export default function EditSubmissionFormClient({
           </label>
         )}
 
-        {kind === "bool" && (
+        {kind === "boolean" && (
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -220,7 +193,7 @@ export default function EditSubmissionFormClient({
               checked={boolVal}
               onChange={(e) => setBoolVal(e.target.checked)}
             />
-            Hit calorie goal (true)
+            {activeRule?.label || "Completed"}
           </label>
         )}
 

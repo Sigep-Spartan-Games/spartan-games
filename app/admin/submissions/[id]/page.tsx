@@ -61,6 +61,19 @@ async function AdminSubmissionEditInner({
     );
   }
 
+  const { data: activityRules, error: rulesErr } = await supabase
+    .from("activity_rules")
+    .select("*")
+    .order("activity_key");
+
+  if (rulesErr) {
+    return (
+      <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
+        Error loading activity rules: {rulesErr.message}
+      </div>
+    );
+  }
+
   const { data: sub, error } = await supabase
     .from("submissions")
     .select(
@@ -130,6 +143,7 @@ async function AdminSubmissionEditInner({
         teamFilter={teamFilter}
         requestId={requestId}
         teams={teams ?? []}
+        activityRules={activityRules ?? []}
         initial={{
           id: sub.id,
           team_id: sub.team_id,

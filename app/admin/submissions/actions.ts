@@ -2,6 +2,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -61,6 +62,8 @@ export async function deleteSubmission(formData: FormData) {
     );
   }
 
+  revalidatePath("/admin/submissions");
+  revalidatePath("/profile");
   redirect(safeBackToList(teamFilter));
 }
 
@@ -83,6 +86,11 @@ export async function updateSubmission(formData: FormData) {
 
   if (!id) redirect("/admin/submissions?error=missing_id");
 
+  const requestId = String(formData.get("request_id") ?? "").trim();
+  const editQueryParams: Record<string, string> = {};
+  if (teamFilter) editQueryParams.team = teamFilter;
+  if (requestId) editQueryParams.requestId = requestId;
+
   // Read form fields (same as submit)
   const team_id_from_form = String(formData.get("team_id") ?? "").trim(); // allow moving teams
   const activity_key = String(formData.get("activity_key") ?? "").trim();
@@ -97,13 +105,15 @@ export async function updateSubmission(formData: FormData) {
       : isChecked(formData, "activity_value_bool");
 
   if (!team_id_from_form) {
-    redirect(editUrl(id, { error: "missing_team", team: teamFilter }));
+    redirect(editUrl(id, { ...editQueryParams, error: "missing_team" }));
   }
   if (!activity_key) {
-    redirect(editUrl(id, { error: "missing_activity_key", team: teamFilter }));
+    redirect(
+      editUrl(id, { ...editQueryParams, error: "missing_activity_key" }),
+    );
   }
   if (!activity_date) {
-    redirect(editUrl(id, { error: "missing_date", team: teamFilter }));
+    redirect(editUrl(id, { ...editQueryParams, error: "missing_date" }));
   }
 
   // Load existing to preserve multiplier (and any other non-edit fields)
@@ -126,7 +136,7 @@ export async function updateSubmission(formData: FormData) {
 
   if (ruleErr || !rule) {
     redirect(
-      editUrl(id, { error: "missing_rule_for_activity", team: teamFilter }),
+      editUrl(id, { ...editQueryParams, error: "missing_rule_for_activity" }),
     );
   }
 
@@ -135,12 +145,15 @@ export async function updateSubmission(formData: FormData) {
 
   if (!Number.isFinite(points_per_unit) || points_per_unit < 0) {
     redirect(
-      editUrl(id, { error: "invalid_points_per_unit_rule", team: teamFilter }),
+      editUrl(id, {
+        ...editQueryParams,
+        error: "invalid_points_per_unit_rule",
+      }),
     );
   }
   if (!Number.isFinite(teammate_bonus) || teammate_bonus < 0) {
     redirect(
-      editUrl(id, { error: "invalid_teammate_bonus_rule", team: teamFilter }),
+      editUrl(id, { ...editQueryParams, error: "invalid_teammate_bonus_rule" }),
     );
   }
 
@@ -161,14 +174,14 @@ export async function updateSubmission(formData: FormData) {
     activity_units <= 0
   ) {
     redirect(
-      editUrl(id, { error: "invalid_activity_units", team: teamFilter }),
+      editUrl(id, { ...editQueryParams, error: "invalid_activity_units" }),
     );
   }
 
   // Preserve multiplier (or default 1.0)
   const multiplier = Number(existing.multiplier ?? 1.0);
   if (!(multiplier > 0)) {
-    redirect(editUrl(id, { error: "invalid_multiplier", team: teamFilter }));
+    redirect(editUrl(id, { ...editQueryParams, error: "invalid_multiplier" }));
   }
 
   // Compute integer points (schema requires > 0)
@@ -210,11 +223,10 @@ export async function updateSubmission(formData: FormData) {
     .eq("id", id);
 
   if (error) {
-    redirect(editUrl(id, { error: error.message, team: teamFilter }));
+    redirect(editUrl(id, { ...editQueryParams, error: error.message }));
   }
 
   // If there's a request ID provided (e.g. from the edit request workflow), approve it
-  const requestId = String(formData.get("request_id") ?? "").trim();
   if (requestId) {
     const adminClient = createAdminClient();
     await adminClient
@@ -223,6 +235,8 @@ export async function updateSubmission(formData: FormData) {
       .eq("id", requestId);
   }
 
+  revalidatePath("/admin/submissions");
+  revalidatePath("/profile");
   redirect(safeBackToList(teamFilter));
 }
 
@@ -249,5 +263,7 @@ export async function resolveEditRequest(formData: FormData) {
     );
   }
 
+  revalidatePath("/admin/submissions");
+  revalidatePath("/profile");
   redirect(safeBackToList(teamFilter));
 }
