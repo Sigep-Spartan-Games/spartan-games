@@ -21,6 +21,18 @@ export default async function ProfilePage() {
     .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
     .maybeSingle();
 
+  // Fetch Profile Name
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, email")
+    .eq("id", user.id)
+    .single();
+
+  const displayName =
+    profile?.first_name && profile?.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : `${user.email}`;
+
   // Fetch user's individual submissions
   const { data: submissions, error: subError } = await supabase
     .from("submissions")
@@ -53,8 +65,8 @@ export default async function ProfilePage() {
               <User className="h-8 w-8" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold">{user.email}</h2>
-              <p className="text-sm text-muted-foreground">Logged In</p>
+              <h2 className="text-xl font-semibold">{displayName}</h2>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
             </div>
           </div>
           <div className="mt-6 border-t pt-4">

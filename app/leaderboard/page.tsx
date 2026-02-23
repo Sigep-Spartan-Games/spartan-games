@@ -16,6 +16,8 @@ type TeamRow = {
   tier: "gold" | "purple" | "red" | null;
   member1_id: string | null;
   member2_id: string | null;
+  member1_name: string | null;
+  member2_name: string | null;
   streak_count: number | null;
 };
 
@@ -27,7 +29,8 @@ const TIER_LABELS: Record<string, string> = {
 
 const TIER_COLORS: Record<string, string> = {
   gold: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30",
-  purple: "bg-purple-500/10 text-purple-700 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30",
+  purple:
+    "bg-purple-500/10 text-purple-700 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30",
   red: "bg-red-500/10 text-red-700 border-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30",
 };
 
@@ -55,7 +58,11 @@ function LeaderboardSkeleton() {
 
 type SearchParams = Promise<{ tier?: string }>;
 
-async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }) {
+async function LeaderboardInner({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   noStore();
 
   const supabase = await createClient();
@@ -65,7 +72,9 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
   // Fetch all teams (with tier and member IDs)
   const { data, error } = await supabase
     .from("teams")
-    .select("id,name,weekly_points,total_points,weeks_won,tier,member1_id,member2_id,streak_count")
+    .select(
+      "id,name,weekly_points,total_points,weeks_won,tier,member1_id,member2_id,member1_name,member2_name,streak_count",
+    )
     .order("weekly_points", { ascending: false })
     .order("total_points", { ascending: false })
     .order("name", { ascending: true });
@@ -74,13 +83,16 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
 
   // Find my team in memory (need ID to identify default tier)
   const myTeam = user
-    ? teams.find((t) => t.member1_id === user.id || t.member2_id === user.id) ?? null
+    ? (teams.find(
+        (t) => t.member1_id === user.id || t.member2_id === user.id,
+      ) ?? null)
     : null;
 
   // Determine active tier filter
   // Priority: URL Param -> My Team's Tier -> "All"
   const tierParam = sp?.tier?.toLowerCase();
-  const isValidTier = tierParam && ["gold", "purple", "red", "all"].includes(tierParam);
+  const isValidTier =
+    tierParam && ["gold", "purple", "red", "all"].includes(tierParam);
 
   let activeTier = isValidTier ? tierParam : (myTeam?.tier ?? "all");
 
@@ -90,9 +102,8 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
   }
 
   // Filter teams based on active tier
-  const filteredTeams = activeTier === "all"
-    ? teams
-    : teams.filter((t) => t.tier === activeTier);
+  const filteredTeams =
+    activeTier === "all" ? teams : teams.filter((t) => t.tier === activeTier);
 
   // My Rank within the current view
   const myRank = myTeam
@@ -106,7 +117,9 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
       <div className="space-y-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Leaderboard</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Leaderboard
+            </h1>
             <p className="text-sm text-muted-foreground">
               Live standings sorted by points.
             </p>
@@ -118,10 +131,14 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
               const isActive = activeTier === t;
               const label = t === "all" ? "All" : TIER_LABELS[t];
               // Style based on tier color if active
-              let styleClass = "text-muted-foreground hover:bg-muted/50 hover:text-foreground";
+              let styleClass =
+                "text-muted-foreground hover:bg-muted/50 hover:text-foreground";
               if (isActive) {
-                if (t === "all") styleClass = "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20";
-                else styleClass = `${TIER_COLORS[t]} font-semibold ring-1 ring-inset`;
+                if (t === "all")
+                  styleClass =
+                    "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20";
+                else
+                  styleClass = `${TIER_COLORS[t]} font-semibold ring-1 ring-inset`;
               }
 
               return (
@@ -161,19 +178,31 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
               <div className="min-w-0 pr-2">
                 <div className="flex flex-col gap-0.5">
                   <span className="truncate font-semibold">{myTeam.name}</span>
+                  <div className="text-[10px] text-muted-foreground truncate">
+                    {myTeam.member1_name || "—"} • {myTeam.member2_name || "—"}
+                  </div>
                   {(myTeam.streak_count ?? 0) >= 2 && (
-                    <span className="text-orange-500 text-xs ml-1" title="Active Streak">
+                    <span
+                      className="text-orange-500 text-[10px] ml-1"
+                      title="Active Streak"
+                    >
                       🔥 {myTeam.streak_count}
                     </span>
                   )}
                   {myTeam.tier && (
-                    <span className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}>
+                    <span
+                      className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}
+                    >
                       {TIER_LABELS[myTeam.tier]}
                     </span>
                   )}
                 </div>
                 <div className="text-[10px] text-primary mt-0.5">Your team</div>
-                <WeeklyProgressBar weeklyPoints={myTeam.weekly_points ?? 0} tier={myTeam.tier} className="mt-2" />
+                <WeeklyProgressBar
+                  weeklyPoints={myTeam.weekly_points ?? 0}
+                  tier={myTeam.tier}
+                  className="mt-2"
+                />
               </div>
 
               <div className="text-center font-semibold tabular-nums">
@@ -183,7 +212,8 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
               <div className="text-right font-semibold tabular-nums">
                 {myTeam.weekly_points ?? 0}
                 <div className="text-[10px] text-muted-foreground font-normal">
-                  Total: {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
+                  Total:{" "}
+                  {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
                 </div>
               </div>
             </div>
@@ -192,7 +222,8 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
           {filteredTeams.map((t, idx) => {
             const rank = idx + 1;
             const isMine = myTeam?.id === t.id;
-            const effectiveTotal = (t.total_points ?? 0) + (t.weekly_points ?? 0);
+            const effectiveTotal =
+              (t.total_points ?? 0) + (t.weekly_points ?? 0);
 
             return (
               <div
@@ -202,32 +233,56 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   isMine ? "bg-primary/5 dark:bg-primary/10" : "",
                 ].join(" ")}
               >
-                <div className={isMine ? "font-medium" : "text-muted-foreground"}>
+                <div
+                  className={isMine ? "font-medium" : "text-muted-foreground"}
+                >
                   #{rank}
                 </div>
 
                 <div className="min-w-0 pr-2">
                   <div className="flex flex-col gap-0.5">
-                    <span className={isMine ? "truncate font-semibold" : "truncate font-medium"}>
+                    <span
+                      className={
+                        isMine
+                          ? "truncate font-semibold"
+                          : "truncate font-medium"
+                      }
+                    >
                       {t.name}
                     </span>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {t.member1_name || "—"} • {t.member2_name || "—"}
+                    </div>
                     {(t.streak_count ?? 0) >= 2 && (
-                      <span className="text-orange-500 text-xs inline-flex items-center gap-0.5" title="Active Streak">
+                      <span
+                        className="text-orange-500 text-[10px] inline-flex items-center gap-0.5"
+                        title="Active Streak"
+                      >
                         🔥 {t.streak_count}
                       </span>
                     )}
-                    {(t.tier && activeTier === 'all') && (
-                      <span className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
+                    {t.tier && activeTier === "all" && (
+                      <span
+                        className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
+                      >
                         {TIER_LABELS[t.tier]}
                       </span>
                     )}
                   </div>
                   {isMine && (
-                    <div className="text-[10px] text-primary mt-0.5">Your team</div>
+                    <div className="text-[10px] text-primary mt-0.5">
+                      Your team
+                    </div>
                   )}
                 </div>
 
-                <div className={isMine ? "text-center font-semibold tabular-nums" : "text-center tabular-nums text-muted-foreground"}>
+                <div
+                  className={
+                    isMine
+                      ? "text-center font-semibold tabular-nums"
+                      : "text-center tabular-nums text-muted-foreground"
+                  }
+                >
                   {t.weeks_won?.length ?? 0}
                 </div>
 
@@ -272,20 +327,37 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <td className="px-4 py-3 font-medium">#{myRank}</td>
                   <td className="px-4 py-3 font-semibold">
                     <div className="flex items-center gap-2">
-                      {myTeam.name}
+                      <div className="flex flex-col">
+                        <span>{myTeam.name}</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {myTeam.member1_name || "—"} •{" "}
+                          {myTeam.member2_name || "—"}
+                        </span>
+                      </div>
                       {(myTeam.streak_count ?? 0) >= 2 && (
-                        <span className="text-orange-500 text-xs font-bold ml-1" title="Active Streak">
+                        <span
+                          className="text-orange-500 text-[10px] font-bold ml-1"
+                          title="Active Streak"
+                        >
                           🔥 {myTeam.streak_count}
                         </span>
                       )}
                       {myTeam.tier && (
-                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}>
+                        <span
+                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}
+                        >
                           {TIER_LABELS[myTeam.tier]}
                         </span>
                       )}
-                      <span className="ml-2 text-xs text-primary font-normal">(Your team)</span>
+                      <span className="ml-2 text-xs text-primary font-normal">
+                        (Your team)
+                      </span>
                     </div>
-                    <WeeklyProgressBar weeklyPoints={myTeam.weekly_points ?? 0} tier={myTeam.tier} className="mt-2" />
+                    <WeeklyProgressBar
+                      weeklyPoints={myTeam.weekly_points ?? 0}
+                      tier={myTeam.tier}
+                      className="mt-2"
+                    />
                   </td>
                   <td className="px-4 py-3 text-center font-semibold tabular-nums">
                     {myTeam.weeks_won?.length ?? 0}
@@ -300,22 +372,37 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
               )}
 
               {filteredTeams.map((t, idx) => (
-                <tr key={t.id} className={`border-t ${myTeam?.id === t.id ? "bg-primary/5" : ""}`}>
+                <tr
+                  key={t.id}
+                  className={`border-t ${myTeam?.id === t.id ? "bg-primary/5" : ""}`}
+                >
                   <td className="px-4 py-3">{idx + 1}</td>
                   <td className="px-4 py-3 font-medium">
                     <div className="flex items-center gap-2">
-                      {t.name}
+                      <div className="flex flex-col">
+                        <span>{t.name}</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {t.member1_name || "—"} • {t.member2_name || "—"}
+                        </span>
+                      </div>
                       {(t.streak_count ?? 0) >= 2 && (
-                        <span className="text-orange-500 text-xs font-bold" title="Active Streak">
+                        <span
+                          className="text-orange-500 text-[10px] font-bold"
+                          title="Active Streak"
+                        >
                           🔥 {t.streak_count}
                         </span>
                       )}
-                      {(t.tier && activeTier === "all") && (
-                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}>
+                      {t.tier && activeTier === "all" && (
+                        <span
+                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
+                        >
                           {TIER_LABELS[t.tier]}
                         </span>
                       )}
-                      {myTeam?.id === t.id && <span className="text-xs text-primary">(You)</span>}
+                      {myTeam?.id === t.id && (
+                        <span className="text-xs text-primary">(You)</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">
@@ -332,7 +419,10 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
 
               {filteredTeams.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                  <td
+                    colSpan={5}
+                    className="p-8 text-center text-muted-foreground"
+                  >
                     No teams found in this tier.
                   </td>
                 </tr>
