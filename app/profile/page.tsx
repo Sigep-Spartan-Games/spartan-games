@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RequestEditDialog } from "./request-edit-dialog";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -36,7 +37,7 @@ export default async function ProfilePage() {
   // Fetch user's individual submissions
   const { data: submissions, error: subError } = await supabase
     .from("submissions")
-    .select("*")
+    .select("*, submission_edit_requests(id, status)")
     .eq("submitted_by", user.id)
     .order("created_at", { ascending: false });
 
@@ -134,43 +135,62 @@ export default async function ProfilePage() {
           </div>
         ) : (
           <div className="divide-y">
-            {submissions?.map((s) => (
-              <div
-                key={s.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 hover:bg-muted/10 transition-colors"
-              >
-                <div className="space-y-1">
-                  <div className="font-semibold text-lg flex items-center gap-2">
-                    {s.activity_key}
-                    {s.did_with_teammate && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                        Teammate Bonus
+            {submissions?.map((s) => {
+              const pendingRequest = s.submission_edit_requests?.find(
+                (r: any) => r.status === "pending",
+              );
+
+              return (
+                <div
+                  key={s.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="font-semibold text-lg flex items-center gap-2">
+                      {s.activity_key}
+                      {s.did_with_teammate && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                          Teammate Bonus
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground flex gap-4">
+                      <span>
+                        {new Date(s.activity_date).toLocaleDateString()}
                       </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 sm:mt-0 flex items-center gap-4">
+                    {pendingRequest ? (
+                      <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-1 rounded-full font-medium">
+                        Pending Edit
+                      </span>
+                    ) : (
+                      team && (
+                        <RequestEditDialog
+                          submissionId={s.id}
+                          teamId={team.id}
+                          activityKey={s.activity_key}
+                        />
+                      )
                     )}
-                  </div>
-                  <div className="text-sm text-muted-foreground flex gap-4">
-                    <span>
-                      {new Date(s.activity_date).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-3 sm:mt-0 flex items-center gap-4">
-                  {s.proof_image_path && (
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-500 hover:underline flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
-                    >
-                      📷 Proof
-                    </a>
-                  )}
-                  <div className="font-mono text-xl font-bold text-amber-400">
-                    +{s.points_awarded}
+                    {s.proof_image_path && (
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-500 hover:underline flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
+                      >
+                        📷 Proof
+                      </a>
+                    )}
+                    <div className="font-mono text-xl font-bold text-amber-400">
+                      +{s.points_awarded}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

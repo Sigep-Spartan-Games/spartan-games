@@ -19,6 +19,7 @@ type InitialSubmission = {
 type Props = {
   action: (formData: FormData) => Promise<void>;
   teamFilter?: string;
+  requestId?: string;
   teams: Team[];
   initial: InitialSubmission;
 };
@@ -65,6 +66,7 @@ function defaultStepForKey(key: string) {
 export default function EditSubmissionFormClient({
   action,
   teamFilter,
+  requestId,
   teams,
   initial,
 }: Props) {
@@ -121,6 +123,9 @@ export default function EditSubmissionFormClient({
         <input type="hidden" name="id" value={initial.id} />
         {teamFilter ? (
           <input type="hidden" name="teamFilter" value={teamFilter} />
+        ) : null}
+        {requestId ? (
+          <input type="hidden" name="request_id" value={requestId} />
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">

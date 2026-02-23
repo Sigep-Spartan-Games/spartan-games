@@ -39,6 +39,7 @@ async function AdminSubmissionEditInner({
 
   const sp = (await searchParams) ?? {};
   const teamFilter = typeof sp.team === "string" ? sp.team : "";
+  const requestId = typeof sp.requestId === "string" ? sp.requestId : undefined;
 
   const { supabase } = await requireAdmin(`/admin/submissions/${id}`);
 
@@ -113,6 +114,7 @@ async function AdminSubmissionEditInner({
       <EditSubmissionFormClient
         action={updateSubmission}
         teamFilter={teamFilter}
+        requestId={requestId}
         teams={teams ?? []}
         initial={{
           id: sub.id,

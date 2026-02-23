@@ -212,5 +212,39 @@ export async function updateSubmission(formData: FormData) {
     redirect(editUrl(id, { error: error.message, team: teamFilter }));
   }
 
+  // If there's a request ID provided (e.g. from the edit request workflow), approve it
+  const requestId = String(formData.get("request_id") ?? "").trim();
+  if (requestId) {
+    await supabase
+      .from("submission_edit_requests")
+      .update({ status: "approved" })
+      .eq("id", requestId);
+  }
+
+  redirect(safeBackToList(teamFilter));
+}
+
+export async function resolveEditRequest(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/submissions");
+
+  const requestId = String(formData.get("request_id") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+  const teamFilter = String(formData.get("team") ?? "").trim();
+
+  if (!requestId || !status) {
+    redirect("/admin/submissions?error=missing_request_info");
+  }
+
+  const { error } = await supabase
+    .from("submission_edit_requests")
+    .update({ status })
+    .eq("id", requestId);
+
+  if (error) {
+    redirect(
+      `/admin/submissions?error=${encodeURIComponent(error.message)}${teamFilter ? `&team=${encodeURIComponent(teamFilter)}` : ""}`,
+    );
+  }
+
   redirect(safeBackToList(teamFilter));
 }
