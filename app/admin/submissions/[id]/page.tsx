@@ -91,6 +91,18 @@ async function AdminSubmissionEditInner({
   const preloadedUnits =
     sub.activity_units ?? sub.activity_value_number ?? null;
 
+  let suggested: any = {};
+  if (requestId) {
+    const { data: req } = await supabase
+      .from("submission_edit_requests")
+      .select("suggested_changes")
+      .eq("id", requestId)
+      .single();
+    if (req?.suggested_changes) {
+      suggested = req.suggested_changes;
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
@@ -120,11 +132,14 @@ async function AdminSubmissionEditInner({
           id: sub.id,
           team_id: sub.team_id,
           activity_key: sub.activity_key,
-          activity_date: sub.activity_date,
-          did_with_teammate: sub.did_with_teammate,
-          activity_units: preloadedUnits,
-          activity_value_text: sub.activity_value_text,
-          activity_value_bool: sub.activity_value_bool,
+          activity_date: suggested.activity_date ?? sub.activity_date,
+          did_with_teammate:
+            suggested.did_with_teammate ?? sub.did_with_teammate,
+          activity_units: suggested.activity_units ?? preloadedUnits,
+          activity_value_text:
+            suggested.activity_value_text ?? sub.activity_value_text,
+          activity_value_bool:
+            suggested.activity_value_bool ?? sub.activity_value_bool,
         }}
       />
     </div>

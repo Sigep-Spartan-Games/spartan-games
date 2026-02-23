@@ -9,21 +9,41 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { requestSubmissionEdit } from "./actions";
+import { requestSubmissionEdit, SuggestedChanges } from "./actions";
+import { ActivityRule } from "@/lib/types";
 
 interface RequestEditDialogProps {
   submissionId: string;
   teamId: string;
   activityKey: string;
+  rule: ActivityRule;
+  originalSubmission: any;
 }
 
 export function RequestEditDialog({
   submissionId,
   teamId,
   activityKey,
+  rule,
+  originalSubmission,
 }: RequestEditDialogProps) {
   const [open, setOpen] = useState(false);
-  const [expectedValues, setExpectedValues] = useState("");
+
+  // Structured Form State
+  const [date, setDate] = useState(originalSubmission.activity_date || "");
+  const [units, setUnits] = useState<number | string>(
+    originalSubmission.activity_units ?? "",
+  );
+  const [textValue, setTextValue] = useState(
+    originalSubmission.activity_value_text || "",
+  );
+  const [boolValue, setBoolValue] = useState(
+    originalSubmission.activity_value_bool || false,
+  );
+  const [didWithTeammate, setDidWithTeammate] = useState(
+    originalSubmission.did_with_teammate || false,
+  );
+
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -35,10 +55,23 @@ export function RequestEditDialog({
     setLoading(true);
 
     try {
+      const suggestedChanges: SuggestedChanges = {
+        activity_date: date,
+        did_with_teammate: didWithTeammate,
+      };
+
+      if (rule.input_type === "number") {
+        suggestedChanges.activity_units = Number(units);
+      } else if (rule.input_type === "text") {
+        suggestedChanges.activity_value_text = textValue;
+      } else if (rule.input_type === "boolean") {
+        suggestedChanges.activity_value_bool = boolValue;
+      }
+
       const result = await requestSubmissionEdit(
         submissionId,
         teamId,
-        expectedValues,
+        suggestedChanges,
         reason,
       );
       if (result.error) {
@@ -90,16 +123,73 @@ export function RequestEditDialog({
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Correct Values</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 15 reps, instead of 10"
-                  className="w-full h-10 px-3 py-2 text-sm rounded-md border bg-background"
-                  value={expectedValues}
-                  onChange={(e) => setExpectedValues(e.target.value)}
-                />
+              <div className="space-y-4 bg-muted/30 p-4 rounded-xl border border-dashed">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Activity Date</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full h-10 px-3 py-2 text-sm rounded-md border bg-background"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {rule.input_type === "boolean"
+                      ? "Completed?"
+                      : rule.unit_label
+                        ? `Amount (${rule.unit_label})`
+                        : "Details"}
+                  </label>
+
+                  {rule.input_type === "number" && (
+                    <input
+                      type="number"
+                      required
+                      min={rule.min_value ?? 0}
+                      step={rule.step_value ?? "any"}
+                      className="w-full h-10 px-3 py-2 text-sm rounded-md border bg-background"
+                      value={units}
+                      onChange={(e) => setUnits(e.target.value)}
+                    />
+                  )}
+
+                  {rule.input_type === "text" && (
+                    <input
+                      type="text"
+                      required
+                      className="w-full h-10 px-3 py-2 text-sm rounded-md border bg-background"
+                      value={textValue}
+                      onChange={(e) => setTextValue(e.target.value)}
+                    />
+                  )}
+
+                  {rule.input_type === "boolean" && (
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={boolValue}
+                        onChange={(e) => setBoolValue(e.target.checked)}
+                      />
+                      <span className="text-sm">
+                        {rule.label || "Completed"}
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={didWithTeammate}
+                    onChange={(e) => setDidWithTeammate(e.target.checked)}
+                  />
+                  <div className="text-sm">Did this with teammate</div>
+                </label>
               </div>
 
               <div className="space-y-2">

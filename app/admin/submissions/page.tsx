@@ -176,10 +176,45 @@ async function AdminSubmissionsInner({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                         <div className="rounded-md bg-background/50 border p-3">
                           <div className="text-xs font-medium text-muted-foreground mb-1">
-                            Expected Values (User says)
+                            Suggested Changes
                           </div>
-                          <div className="text-sm font-medium">
-                            {req.expected_values}
+                          <div className="text-sm font-medium space-y-1">
+                            {req.suggested_changes?.activity_date && (
+                              <div>
+                                Date: {req.suggested_changes.activity_date}
+                              </div>
+                            )}
+                            {req.suggested_changes?.activity_units !==
+                              undefined && (
+                              <div>
+                                Units: {req.suggested_changes.activity_units}
+                              </div>
+                            )}
+                            {req.suggested_changes?.activity_value_text !==
+                              undefined && (
+                              <div>
+                                Details:{" "}
+                                {req.suggested_changes.activity_value_text}
+                              </div>
+                            )}
+                            {req.suggested_changes?.activity_value_bool !==
+                              undefined && (
+                              <div>
+                                Completed:{" "}
+                                {req.suggested_changes.activity_value_bool
+                                  ? "Yes"
+                                  : "No"}
+                              </div>
+                            )}
+                            {req.suggested_changes?.did_with_teammate !==
+                              undefined && (
+                              <div>
+                                With teammate:{" "}
+                                {req.suggested_changes.did_with_teammate
+                                  ? "Yes"
+                                  : "No"}
+                              </div>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground mt-2 border-t border-dashed pt-2">
                             Reason: {req.reason}

@@ -3,10 +3,18 @@
 import { createClient } from "../../lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+export type SuggestedChanges = {
+  activity_date?: string;
+  activity_units?: number;
+  activity_value_text?: string;
+  activity_value_bool?: boolean;
+  did_with_teammate?: boolean;
+};
+
 export async function requestSubmissionEdit(
   submissionId: string,
   teamId: string,
-  expectedValues: string,
+  suggestedChanges: SuggestedChanges,
   reason: string,
 ) {
   const supabase = await createClient();
@@ -18,7 +26,7 @@ export async function requestSubmissionEdit(
     return { error: "Not authenticated" };
   }
 
-  if (!submissionId || !teamId || !expectedValues.trim() || !reason.trim()) {
+  if (!submissionId || !teamId || !suggestedChanges || !reason.trim()) {
     return { error: "Missing required fields" };
   }
 
@@ -26,7 +34,7 @@ export async function requestSubmissionEdit(
     submission_id: submissionId,
     user_id: user.id,
     team_id: teamId,
-    expected_values: expectedValues.trim(),
+    suggested_changes: suggestedChanges,
     reason: reason.trim(),
     status: "pending",
   });

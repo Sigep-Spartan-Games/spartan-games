@@ -22,6 +22,11 @@ export default async function ProfilePage() {
     .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
     .maybeSingle();
 
+  // Fetch Activity Rules
+  const { data: activityRules } = await supabase
+    .from("activity_rules")
+    .select("*");
+
   // Fetch Profile Name
   const { data: profile } = await supabase
     .from("profiles")
@@ -139,6 +144,9 @@ export default async function ProfilePage() {
               const pendingRequest = s.submission_edit_requests?.find(
                 (r: any) => r.status === "pending",
               );
+              const rule = activityRules?.find(
+                (r) => r.activity_key === s.activity_key,
+              );
 
               return (
                 <div
@@ -166,11 +174,14 @@ export default async function ProfilePage() {
                         Pending Edit
                       </span>
                     ) : (
-                      team && (
+                      team &&
+                      rule && (
                         <RequestEditDialog
                           submissionId={s.id}
                           teamId={team.id}
                           activityKey={s.activity_key}
+                          rule={rule}
+                          originalSubmission={s}
                         />
                       )
                     )}
