@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,8 +19,11 @@ import { toast } from "sonner";
 
 export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(false);
+  const isSubmitting = React.useRef(false);
 
   async function handleSubmit(formData: FormData) {
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     setLoading(true);
     try {
       const result = await sendAnnouncement(formData);
@@ -31,12 +34,19 @@ export default function AnnouncementsPage() {
         // window.location.reload(); // Simple way to clear
       } else {
         toast.error("Failed to send announcement: " + result.error);
+        isSubmitting.current = false; // Reset on failure
       }
     } catch (e) {
       toast.error("An unexpected error occurred.");
       console.error(e);
+      isSubmitting.current = false; // Reset on error
     } finally {
       setLoading(false);
+      // We don't necessarily reset isSubmitting to false on success to prevent immediate resubmission
+      // unless we clear the form. For now, let's reset it after a delay or let the reload handle it if added.
+      setTimeout(() => {
+        isSubmitting.current = false;
+      }, 2000);
     }
   }
 

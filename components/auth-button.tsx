@@ -9,12 +9,18 @@ export async function AuthButton() {
   return user ? (
     <div className="flex items-center gap-2">
       {/* Desktop: show email */}
-      <span className="hidden md:inline text-sm text-muted-foreground">
+      <Link
+        href="/profile"
+        className="hidden md:inline hover:underline text-sm text-muted-foreground mr-2 cursor-pointer"
+      >
         Hey, {user.email}!
-      </span>
+      </Link>
 
       {/* Mobile: user icon */}
-      <div className="md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-primary/20 text-primary">
+      <Link
+        href="/profile"
+        className="md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -27,7 +33,7 @@ export async function AuthButton() {
             clipRule="evenodd"
           />
         </svg>
-      </div>
+      </Link>
 
       <LogoutButton />
     </div>

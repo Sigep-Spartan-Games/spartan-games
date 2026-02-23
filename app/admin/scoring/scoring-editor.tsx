@@ -121,6 +121,18 @@ export default function ScoringEditor({
                     </div>
                   </div>
 
+                  <div className="col-span-12 sm:col-span-5 space-y-1">
+                    <label className="text-xs font-medium text-foreground/70">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      defaultValue={r.description ?? ""}
+                      placeholder="Optional details or rules for this activity..."
+                      className="min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+
                   <div className="col-span-3 sm:col-span-2 space-y-1">
                     <label className="text-xs font-medium text-foreground/70">
                       Points
@@ -141,7 +153,7 @@ export default function ScoringEditor({
                     <input
                       name="teammate_bonus"
                       type="number"
-                      step="1"
+                      step="0.1"
                       defaultValue={r.teammate_bonus}
                       className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
@@ -325,6 +337,16 @@ function AddNewActivityForm({
             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
+        <div className="sm:col-span-12 space-y-1">
+          <label className="text-xs font-medium text-foreground/70">
+            Description (optional)
+          </label>
+          <textarea
+            name="description"
+            placeholder="Optional details or rules for this activity..."
+            className="min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
         <div className="sm:col-span-1 space-y-1">
           <label className="text-xs font-medium text-foreground/70">
             Points
@@ -347,10 +369,10 @@ function AddNewActivityForm({
           <input
             name="teammate_bonus"
             type="number"
-            step="1"
+            step="0.1"
             min="0"
-            placeholder="15"
-            defaultValue={15}
+            placeholder="1.5"
+            defaultValue={1.5}
             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             required
           />

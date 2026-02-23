@@ -73,17 +73,16 @@ export async function createSubmission(formData: FormData) {
   const nextMonday = new Date(monday);
   nextMonday.setDate(monday.getDate() + 7);
 
-  const [y, m, d] = activityDate.split('-').map(Number);
+  const [y, m, d] = activityDate.split("-").map(Number);
   // create date at midnight local
   const subDate = new Date(y, m - 1, d);
 
   if (subDate < monday || subDate >= nextMonday) {
     redirect(
       "/submit?error=" +
-      encodeURIComponent("Date is not in the current active week"),
+        encodeURIComponent("Date is not in the current active week"),
     );
   }
-
 
   // Fetch scoring rules (admin-controlled). Default fallback if row missing.
   const { data: rules, error: rulesError } = await supabase
@@ -108,13 +107,24 @@ export async function createSubmission(formData: FormData) {
       .select("points_awarded")
       .eq("team_id", team.id)
       .eq("activity_key", activityKey)
-      .gte("activity_date", `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`)
-      .lt("activity_date", `${nextMonday.getFullYear()}-${String(nextMonday.getMonth() + 1).padStart(2, '0')}-${String(nextMonday.getDate()).padStart(2, '0')}`);
+      .gte(
+        "activity_date",
+        `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`,
+      )
+      .lt(
+        "activity_date",
+        `${nextMonday.getFullYear()}-${String(nextMonday.getMonth() + 1).padStart(2, "0")}-${String(nextMonday.getDate()).padStart(2, "0")}`,
+      );
 
-    const currentWeeklyTotal = (existingSubmissions ?? []).reduce((sum, s) => sum + (s.points_awarded || 0), 0);
+    const currentWeeklyTotal = (existingSubmissions ?? []).reduce(
+      (sum, s) => sum + (s.points_awarded || 0),
+      0,
+    );
 
     if (currentWeeklyTotal >= rules.weekly_cap) {
-      redirect(`/submit?error=${encodeURIComponent(`Weekly cap reached for this activity (${rules.weekly_cap} points max)`)}`);
+      redirect(
+        `/submit?error=${encodeURIComponent(`Weekly cap reached for this activity (${rules.weekly_cap} points max)`)}`,
+      );
     }
   }
 
@@ -128,15 +138,16 @@ export async function createSubmission(formData: FormData) {
   let hasBool = false;
 
   // Validate based on input_type
-  if (rules.input_type === 'number') {
+  if (rules.input_type === "number") {
     const val = formData.get("activity_value_number");
     const n = Number(val);
-    if (val === null || !Number.isFinite(n) || n < 0) { // strict non-negative check
+    if (val === null || !Number.isFinite(n) || n < 0) {
+      // strict non-negative check
       redirect("/submit?error=invalid_number");
     }
     units = n;
     hasNumber = true;
-  } else if (rules.input_type === 'text') {
+  } else if (rules.input_type === "text") {
     const val = formData.get("activity_value_text");
     const s = String(val ?? "").trim();
     if (!s) {
@@ -144,11 +155,11 @@ export async function createSubmission(formData: FormData) {
     }
     units = 1; // Flat points usually
     hasText = true;
-  } else if (rules.input_type === 'boolean') {
+  } else if (rules.input_type === "boolean") {
     const val = formData.get("activity_value_bool");
     const checked = val === "on";
     if (!checked) {
-      // If boolean is strictly "must do it", maybe 0 points? 
+      // If boolean is strictly "must do it", maybe 0 points?
       // But usually submission implies "I did it".
       // If they unchecked it, maybe we shouldn't submit?
       // The form implies "Yes I hit my goal".
@@ -167,7 +178,8 @@ export async function createSubmission(formData: FormData) {
 
   // Points
   let pointsAwarded = Math.floor(pointsPerUnit * units);
-  if (didWithTeammate) pointsAwarded += teammateBonus;
+  if (didWithTeammate)
+    pointsAwarded = Math.floor(pointsAwarded * teammateBonus);
 
   // Streak Logic
   const { data: streakSettings } = await supabase
@@ -186,7 +198,7 @@ export async function createSubmission(formData: FormData) {
   // activityDate is YYYY-MM-DD
   // last_activity_date is YYYY-MM-DD from DB
 
-  const currentActivityDateObj = new Date(activityDate + 'T00:00:00');
+  const currentActivityDateObj = new Date(activityDate + "T00:00:00");
   // Use a reliable diff method. Since inputs are YYYY-MM-DD strings, we can blindly compare.
 
   if (!team.last_activity_date) {
@@ -197,7 +209,7 @@ export async function createSubmission(formData: FormData) {
   } else {
     // Calculate difference in days
     // We can assume inputs are valid dates.
-    const lastDateObj = new Date(team.last_activity_date + 'T00:00:00');
+    const lastDateObj = new Date(team.last_activity_date + "T00:00:00");
 
     // Reset hours to 0 just in case
     currentActivityDateObj.setHours(0, 0, 0, 0);
@@ -223,7 +235,7 @@ export async function createSubmission(formData: FormData) {
       // streak count stays same
       // date stays same
     } else {
-      // Negative diff -> Backdated. 
+      // Negative diff -> Backdated.
       // Do not award streak bonus for backdated activities to prevent gaming.
       streakBonus = 0;
     }
@@ -236,7 +248,8 @@ export async function createSubmission(formData: FormData) {
 
   const activityDisplay = (() => {
     if (hasNumber) return `${activityKey}:${units}`;
-    if (hasText) return `${activityKey}:${String(formData.get("activity_value_text")).trim()}`;
+    if (hasText)
+      return `${activityKey}:${String(formData.get("activity_value_text")).trim()}`;
     if (hasBool) return `${activityKey}:yes`;
     return activityKey;
   })();
@@ -247,17 +260,21 @@ export async function createSubmission(formData: FormData) {
   let proofImagePath: string | null = null;
   const proofImageFile = formData.get("proof_image");
 
-  if (proofImageFile && proofImageFile instanceof File && proofImageFile.size > 0) {
+  if (
+    proofImageFile &&
+    proofImageFile instanceof File &&
+    proofImageFile.size > 0
+  ) {
     // Basic validation
     if (!proofImageFile.type.startsWith("image/")) {
       redirect("/submit?error=invalid_file_type");
     }
 
-    const fileExt = proofImageFile.name.split('.').pop() || 'jpg';
+    const fileExt = proofImageFile.name.split(".").pop() || "jpg";
     const filePath = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('submission-proofs')
+      .from("submission-proofs")
       .upload(filePath, proofImageFile);
 
     if (uploadError) {
@@ -288,7 +305,9 @@ export async function createSubmission(formData: FormData) {
     activity_units: units,
 
     activity_value_number: hasNumber ? units : null,
-    activity_value_text: hasText ? String(formData.get("activity_value_text")).trim() : null,
+    activity_value_text: hasText
+      ? String(formData.get("activity_value_text")).trim()
+      : null,
     activity_value_bool: hasBool ? true : null,
 
     streak_bonus: streakBonus,
@@ -299,11 +318,17 @@ export async function createSubmission(formData: FormData) {
 
   // Update team streak info
   // Only update if changes occurred (i.e. not same day or backdated, unless it was first activity)
-  if (newLastActivityDate !== team.last_activity_date || newStreakCount !== team.streak_count) {
-    await supabase.from("teams").update({
-      streak_count: newStreakCount,
-      last_activity_date: newLastActivityDate,
-    }).eq("id", team.id);
+  if (
+    newLastActivityDate !== team.last_activity_date ||
+    newStreakCount !== team.streak_count
+  ) {
+    await supabase
+      .from("teams")
+      .update({
+        streak_count: newStreakCount,
+        last_activity_date: newLastActivityDate,
+      })
+      .eq("id", team.id);
   }
 
   redirect("/leaderboard");

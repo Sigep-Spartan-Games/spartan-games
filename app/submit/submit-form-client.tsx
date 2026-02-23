@@ -129,7 +129,7 @@ export default function SubmitFormClient({
           options={sortedRules.map((r) => ({
             value: r.activity_key,
             label: r.label ?? r.activity_key,
-            description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • +${r.teammate_bonus} bonus`,
+            description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • x${r.teammate_bonus} bonus`,
           }))}
           value={activityKey}
           onChange={setActivityKey}
@@ -137,11 +137,18 @@ export default function SubmitFormClient({
           required
         />
         {rule && (
-          <p className="text-xs text-muted-foreground">
-            {rule.points_per_unit} pts
-            {rule.unit_label ? `/${rule.unit_label}` : ""} • +
-            {rule.teammate_bonus} bonus
-          </p>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              {rule.points_per_unit} pts
+              {rule.unit_label ? `/${rule.unit_label}` : ""} • x
+              {rule.teammate_bonus} bonus
+            </p>
+            {rule.description && (
+              <p className="text-xs mt-2 p-2 rounded-md bg-muted/50 text-muted-foreground border border-primary/10">
+                {rule.description}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
