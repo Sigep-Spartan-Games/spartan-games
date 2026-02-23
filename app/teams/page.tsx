@@ -99,15 +99,15 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
   const teams = (data ?? []).map((t: any) => {
     const m1 = t.member1;
     const m1Name = m1
-      ? m1.first_name && m1.last_name
-        ? `${m1.first_name} ${m1.last_name}`
+      ? m1.first_name || m1.last_name
+        ? `${m1.first_name || ""} ${m1.last_name || ""}`.trim()
         : m1.email
       : null;
 
     const m2 = t.member2;
     const m2Name = m2
-      ? m2.first_name && m2.last_name
-        ? `${m2.first_name} ${m2.last_name}`
+      ? m2.first_name || m2.last_name
+        ? `${m2.first_name || ""} ${m2.last_name || ""}`.trim()
         : m2.email
       : null;
 
