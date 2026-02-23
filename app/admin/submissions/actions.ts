@@ -261,17 +261,20 @@ export async function resolveEditRequest(formData: FormData) {
     redirect("/admin/submissions?error=missing_request_info");
   }
 
+  console.log("resolveEditRequest applying update for requestId:", requestId);
   const { error } = await adminClient
     .from("submission_edit_requests")
     .update({ status })
     .eq("id", requestId);
 
   if (error) {
+    console.error("resolveEditRequest error:", error.message);
     redirect(
       `/admin/submissions?error=${encodeURIComponent(error.message)}${teamFilter ? `&team=${encodeURIComponent(teamFilter)}` : ""}`,
     );
   }
 
+  console.log("resolveEditRequest success, revalidating and redirecting...");
   revalidatePath("/admin/submissions");
   revalidatePath("/profile");
   redirect(safeBackToList(teamFilter));

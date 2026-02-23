@@ -1,21 +1,7 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
+import { useTransition } from "react";
 import { resolveEditRequest } from "./actions";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className={`h-9 w-full rounded-md border border-destructive bg-transparent px-4 text-sm font-medium text-destructive shadow-sm hover:bg-destructive/10 ${pending ? "opacity-50 cursor-not-allowed" : ""}`}
-    >
-      {pending ? "Rejecting..." : "Reject"}
-    </button>
-  );
-}
 
 export function RejectRequestButton({
   requestId,
@@ -24,12 +10,35 @@ export function RejectRequestButton({
   requestId: string;
   teamId: string;
 }) {
+  const [isPending, startTransition] = useTransition();
+
+  const handleReject = async () => {
+    const formData = new FormData();
+    formData.append("request_id", requestId);
+    formData.append("status", "rejected");
+    formData.append("team", teamId);
+
+    startTransition(async () => {
+      try {
+        await resolveEditRequest(formData);
+      } catch (err) {
+        // Next.js redirect() throws an error that is handled by the framework
+        // If it's not a redirect error, we can log it
+        if (err instanceof Error && err.message !== "NEXT_REDIRECT") {
+          console.error("Failed to reject request:", err);
+        }
+      }
+    });
+  };
+
   return (
-    <form action={resolveEditRequest} className="w-full">
-      <input type="hidden" name="request_id" value={requestId} />
-      <input type="hidden" name="status" value="rejected" />
-      <input type="hidden" name="team" value={teamId} />
-      <SubmitButton />
-    </form>
+    <button
+      type="button"
+      onClick={handleReject}
+      disabled={isPending}
+      className={`h-9 w-full rounded-md border border-destructive bg-transparent px-4 text-sm font-medium text-destructive shadow-sm hover:bg-destructive/10 ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      {isPending ? "Rejecting..." : "Reject"}
+    </button>
   );
 }
