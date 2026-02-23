@@ -274,5 +274,5 @@ export async function resolveEditRequest(formData: FormData) {
 
   revalidatePath("/admin/submissions");
   revalidatePath("/profile");
-  redirect(safeBackToList(teamFilter));
+  return { success: true };
 }
