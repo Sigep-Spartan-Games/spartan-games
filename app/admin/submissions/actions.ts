@@ -274,5 +274,4 @@ export async function resolveEditRequest(formData: FormData) {
 
   revalidatePath("/admin/submissions");
   revalidatePath("/profile");
-  return { success: true };
 }
