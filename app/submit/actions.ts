@@ -241,7 +241,7 @@ export async function createSubmission(formData: FormData) {
     }
   }
 
-  pointsAwarded += streakBonus;
+  // pointsAwarded += streakBonus; // (Streak is now separated)
   if (!Number.isFinite(pointsAwarded) || pointsAwarded <= 0) {
     redirect("/submit?error=points_zero");
   }
@@ -310,11 +310,43 @@ export async function createSubmission(formData: FormData) {
       : null,
     activity_value_bool: hasBool ? true : null,
 
-    streak_bonus: streakBonus,
+    streak_bonus: 0, // Ensure no streak is attached directly to the activity
     proof_image_path: proofImagePath,
   });
 
   if (error) redirect(`/submit?error=${encodeURIComponent(error.message)}`);
+
+  // Insert Separate Streak Bonus Submission if applicable
+  if (streakBonus > 0) {
+    const { error: streakError } = await supabase.from("submissions").insert({
+      team_id: team.id,
+      submitted_by: user.id,
+      activity: "daily_streak_bonus",
+
+      base_points: streakBonus,
+      did_with_teammate: false,
+      multiplier: 1.0,
+      points_awarded: streakBonus,
+
+      activity_key: "daily_streak_bonus",
+      activity_date: activityDate,
+
+      points_per_unit: 1.0,
+      teammate_bonus: 1.0,
+      activity_units: streakBonus,
+
+      activity_value_number: streakBonus,
+      activity_value_text: null,
+      activity_value_bool: null,
+
+      streak_bonus: streakBonus, // This row itself represents the bonus
+      proof_image_path: null,
+    });
+
+    if (streakError) {
+      console.error("Streak bonus submission error:", streakError);
+    }
+  }
 
   // Update team streak info
   // Only update if changes occurred (i.e. not same day or backdated, unless it was first activity)

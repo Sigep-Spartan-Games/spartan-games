@@ -39,12 +39,23 @@ export default async function ProfilePage() {
       ? `${profile.first_name} ${profile.last_name}`
       : `${user.email}`;
 
-  // Fetch user's individual submissions
-  const { data: submissions, error: subError } = await supabase
+  // Fetch user's individual submissions AND team streak bonuses
+  let query = supabase
     .from("submissions")
-    .select("*, submission_edit_requests(id, status)")
-    .eq("submitted_by", user.id)
-    .order("created_at", { ascending: false });
+    .select("*, submission_edit_requests(id, status)");
+
+  if (team) {
+    query = query.or(
+      `submitted_by.eq.${user.id},and(team_id.eq.${team.id},activity_key.eq.daily_streak_bonus)`,
+    );
+  } else {
+    query = query.eq("submitted_by", user.id);
+  }
+
+  const { data: submissions, error: subError } = await query.order(
+    "created_at",
+    { ascending: false },
+  );
 
   // Calculate user-specific total points from these submissions
   const totalUserPoints = (submissions || []).reduce(
@@ -155,7 +166,9 @@ export default async function ProfilePage() {
                 >
                   <div className="space-y-1">
                     <div className="font-semibold text-lg flex items-center gap-2">
-                      {s.activity_key}
+                      {s.activity_key === "daily_streak_bonus"
+                        ? "🔥 Daily Streak Bonus"
+                        : s.activity_key}
                       {s.did_with_teammate && (
                         <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                           Teammate Bonus
@@ -169,7 +182,11 @@ export default async function ProfilePage() {
                     </div>
                   </div>
                   <div className="mt-3 sm:mt-0 flex items-center gap-4">
-                    {pendingRequest ? (
+                    {s.activity_key === "daily_streak_bonus" ? (
+                      <span className="text-xs bg-amber-500/10 text-amber-600 px-3 py-1 rounded-full font-medium border border-amber-500/20">
+                        Team Reward
+                      </span>
+                    ) : pendingRequest ? (
                       <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-1 rounded-full font-medium">
                         Pending Edit
                       </span>

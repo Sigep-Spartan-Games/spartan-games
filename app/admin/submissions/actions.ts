@@ -116,10 +116,10 @@ export async function updateSubmission(formData: FormData) {
     redirect(editUrl(id, { ...editQueryParams, error: "missing_date" }));
   }
 
-  // Load existing to preserve multiplier and streak_bonus (and any other non-edit fields)
+  // Load existing to preserve multiplier (and any other non-edit fields)
   const { data: existing, error: existingErr } = await supabase
     .from("submissions")
-    .select("id, multiplier, streak_bonus")
+    .select("id, multiplier")
     .eq("id", id)
     .single();
 
@@ -178,12 +178,11 @@ export async function updateSubmission(formData: FormData) {
     );
   }
 
-  // Preserve multiplier and streak_bonus
+  // Preserve multiplier
   const multiplier = Number(existing.multiplier ?? 1.0);
   if (!(multiplier > 0)) {
     redirect(editUrl(id, { ...editQueryParams, error: "invalid_multiplier" }));
   }
-  const streak_bonus = Number(existing.streak_bonus ?? 0);
 
   // Compute integer points exactly like submit/actions.ts
   const base_points = Math.max(1, Math.floor(activity_units * points_per_unit));
@@ -196,7 +195,7 @@ export async function updateSubmission(formData: FormData) {
   // Apply admin multiplier (usually 1.0)
   computedPoints = Math.floor(computedPoints * multiplier);
 
-  const points_awarded = Math.max(1, computedPoints + streak_bonus);
+  const points_awarded = Math.max(1, computedPoints);
 
   const payload = {
     team_id: team_id_from_form,
