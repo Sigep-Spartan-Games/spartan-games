@@ -71,8 +71,9 @@ async function AdminSubmissionsInner({
   ];
   let userMap = new Map<string, string>();
 
+  const adminClient = createAdminClient();
+
   if (userIds.length > 0) {
-    const adminClient = createAdminClient();
     const { data: profiles } = await adminClient
       .from("profiles")
       .select("id, first_name, last_name")
@@ -88,8 +89,8 @@ async function AdminSubmissionsInner({
     );
   }
 
-  // Fetch pending edit requests
-  const { data: pendingRequests, error: reqError } = await supabase
+  // Fetch pending edit requests using adminClient
+  const { data: pendingRequests, error: reqError } = await adminClient
     .from("submission_edit_requests")
     .select(
       "*, submissions(activity_key, activity_date, activity_units, points_awarded)",
@@ -103,7 +104,6 @@ async function AdminSubmissionsInner({
   ];
   const missingUserIds = reqUserIds.filter((id) => !userMap.has(id));
   if (missingUserIds.length > 0) {
-    const adminClient = createAdminClient();
     const { data: missingProfiles } = await adminClient
       .from("profiles")
       .select("id, first_name, last_name")

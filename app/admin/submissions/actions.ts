@@ -3,6 +3,7 @@
 
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function num(v: FormDataEntryValue | null) {
   if (v === null) return null;
@@ -215,7 +216,8 @@ export async function updateSubmission(formData: FormData) {
   // If there's a request ID provided (e.g. from the edit request workflow), approve it
   const requestId = String(formData.get("request_id") ?? "").trim();
   if (requestId) {
-    await supabase
+    const adminClient = createAdminClient();
+    await adminClient
       .from("submission_edit_requests")
       .update({ status: "approved" })
       .eq("id", requestId);
@@ -226,6 +228,7 @@ export async function updateSubmission(formData: FormData) {
 
 export async function resolveEditRequest(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/submissions");
+  const adminClient = createAdminClient();
 
   const requestId = String(formData.get("request_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
@@ -235,7 +238,7 @@ export async function resolveEditRequest(formData: FormData) {
     redirect("/admin/submissions?error=missing_request_info");
   }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from("submission_edit_requests")
     .update({ status })
     .eq("id", requestId);

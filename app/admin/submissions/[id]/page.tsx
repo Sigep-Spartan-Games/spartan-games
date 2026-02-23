@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import EditSubmissionFormClient from "./edit-submission-form-client";
 import { updateSubmission } from "../actions";
 
@@ -93,7 +94,8 @@ async function AdminSubmissionEditInner({
 
   let suggested: any = {};
   if (requestId) {
-    const { data: req } = await supabase
+    const adminClient = createAdminClient();
+    const { data: req } = await adminClient
       .from("submission_edit_requests")
       .select("suggested_changes")
       .eq("id", requestId)
@@ -131,7 +133,7 @@ async function AdminSubmissionEditInner({
         initial={{
           id: sub.id,
           team_id: sub.team_id,
-          activity_key: sub.activity_key,
+          activity_key: suggested.activity_key ?? sub.activity_key,
           activity_date: suggested.activity_date ?? sub.activity_date,
           did_with_teammate:
             suggested.did_with_teammate ?? sub.did_with_teammate,
