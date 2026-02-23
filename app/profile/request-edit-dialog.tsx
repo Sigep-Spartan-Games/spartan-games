@@ -180,7 +180,7 @@ export function RequestEditDialog({
                     <input
                       type="date"
                       required
-                      className="w-full max-w-full min-w-0 h-10 px-3 py-2 text-sm rounded-md border bg-background box-border"
+                      className="h-11 w-full max-w-full appearance-none rounded-md border bg-background px-3 text-sm cursor-pointer"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                     />

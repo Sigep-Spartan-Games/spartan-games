@@ -124,7 +124,7 @@ export default function EditSubmissionFormClient({
               name="activity_date"
               type="date"
               defaultValue={initial.activity_date}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="h-11 w-full max-w-full appearance-none rounded-md border bg-background px-3 text-sm cursor-pointer"
               required
             />
           </label>
