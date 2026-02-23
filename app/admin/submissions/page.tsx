@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteSubmission, resolveEditRequest } from "./actions";
 import SubmissionFilters from "./submission-filters";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { RejectRequestButton } from "./reject-request-button";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -257,17 +258,12 @@ async function AdminSubmissionsInner({
                       >
                         Approve / Edit
                       </Link>
-                      <form action={resolveEditRequest} className="flex-1 flex">
-                        <input type="hidden" name="request_id" value={req.id} />
-                        <input type="hidden" name="status" value="rejected" />
-                        <input type="hidden" name="team" value={teamId} />
-                        <button
-                          type="submit"
-                          className="h-9 w-full rounded-md border border-destructive bg-transparent px-4 text-sm font-medium text-destructive shadow-sm hover:bg-destructive/10"
-                        >
-                          Reject
-                        </button>
-                      </form>
+                      <div className="flex-1 flex">
+                        <RejectRequestButton
+                          requestId={req.id}
+                          teamId={teamId}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

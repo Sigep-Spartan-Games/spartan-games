@@ -246,6 +246,10 @@ export async function updateSubmission(formData: FormData) {
 }
 
 export async function resolveEditRequest(formData: FormData) {
+  console.log(
+    "resolveEditRequest triggered with formData",
+    Object.fromEntries(formData.entries()),
+  );
   const { supabase } = await requireAdmin("/admin/submissions");
   const adminClient = createAdminClient();
 
