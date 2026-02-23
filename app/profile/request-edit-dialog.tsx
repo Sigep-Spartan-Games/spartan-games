@@ -9,8 +9,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { requestSubmissionEdit, SuggestedChanges } from "./actions";
 import { ActivityRule } from "@/lib/types";
+import { useMemo } from "react";
 
 interface RequestEditDialogProps {
   submissionId: string;
@@ -18,6 +20,7 @@ interface RequestEditDialogProps {
   activityKey: string;
   rule: ActivityRule;
   originalSubmission: any;
+  allRules: ActivityRule[];
 }
 
 export function RequestEditDialog({
@@ -26,8 +29,15 @@ export function RequestEditDialog({
   activityKey,
   rule,
   originalSubmission,
+  allRules,
 }: RequestEditDialogProps) {
   const [open, setOpen] = useState(false);
+
+  const [selectedActivityKey, setSelectedActivityKey] = useState(activityKey);
+  const activeRule = useMemo(
+    () => allRules?.find((r) => r.activity_key === selectedActivityKey) || rule,
+    [allRules, selectedActivityKey, rule],
+  );
 
   // Structured Form State
   const [date, setDate] = useState(originalSubmission.activity_date || "");
@@ -56,15 +66,16 @@ export function RequestEditDialog({
 
     try {
       const suggestedChanges: SuggestedChanges = {
+        activity_key: selectedActivityKey,
         activity_date: date,
         did_with_teammate: didWithTeammate,
       };
 
-      if (rule.input_type === "number") {
+      if (activeRule.input_type === "number") {
         suggestedChanges.activity_units = Number(units);
-      } else if (rule.input_type === "text") {
+      } else if (activeRule.input_type === "text") {
         suggestedChanges.activity_value_text = textValue;
-      } else if (rule.input_type === "boolean") {
+      } else if (activeRule.input_type === "boolean") {
         suggestedChanges.activity_value_bool = boolValue;
       }
 
@@ -124,6 +135,22 @@ export function RequestEditDialog({
               )}
 
               <div className="space-y-4 bg-muted/30 p-4 rounded-xl border border-dashed">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Activity Type</label>
+                  <Combobox
+                    name="activity_key"
+                    options={allRules.map((r) => ({
+                      value: r.activity_key,
+                      label: r.label ?? r.activity_key,
+                      description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • x${r.teammate_bonus} bonus`,
+                    }))}
+                    value={selectedActivityKey}
+                    onChange={setSelectedActivityKey}
+                    placeholder="Search activities..."
+                    required
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Activity Date</label>
                   <input

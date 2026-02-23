@@ -182,6 +182,7 @@ export default async function ProfilePage() {
                           activityKey={s.activity_key}
                           rule={rule}
                           originalSubmission={s}
+                          allRules={activityRules || []}
                         />
                       )
                     )}

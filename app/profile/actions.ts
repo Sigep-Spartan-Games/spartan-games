@@ -4,6 +4,7 @@ import { createClient } from "../../lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export type SuggestedChanges = {
+  activity_key?: string;
   activity_date?: string;
   activity_units?: number;
   activity_value_text?: string;

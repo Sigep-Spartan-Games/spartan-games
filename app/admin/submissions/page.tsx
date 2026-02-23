@@ -179,6 +179,14 @@ async function AdminSubmissionsInner({
                             Suggested Changes
                           </div>
                           <div className="text-sm font-medium space-y-1">
+                            {req.suggested_changes?.activity_key &&
+                              req.suggested_changes.activity_key !==
+                                req.submissions?.activity_key && (
+                                <div className="text-amber-500">
+                                  New Activity:{" "}
+                                  {req.suggested_changes.activity_key}
+                                </div>
+                              )}
                             {req.suggested_changes?.activity_date && (
                               <div>
                                 Date: {req.suggested_changes.activity_date}
