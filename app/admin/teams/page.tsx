@@ -48,7 +48,18 @@ async function AdminTeamsInner({
   const { data: teams, error } = await supabase
     .from("teams")
     .select(
-      "id, name, weekly_points, total_points, invite_code, tier, member1_name, member2_name, weeks_won, streak_count",
+      `
+      id, 
+      name, 
+      weekly_points, 
+      total_points, 
+      invite_code, 
+      tier, 
+      weeks_won, 
+      streak_count,
+      member1:profiles!member1_id(first_name, last_name, email),
+      member2:profiles!member2_id(first_name, last_name, email)
+    `,
     )
     .order("name");
 
@@ -71,15 +82,31 @@ async function AdminTeamsInner({
   }
 
   // Calculate goal progress for each team
-  const teamsWithProgress = (teams ?? []).map((team) => {
-    const goal = team.tier ? (tierGoals[team.tier] ?? 100) : 100;
-    const weeklyPoints = team.weekly_points ?? 0;
-    const totalPoints = team.total_points ?? 0;
+  const teamsWithProgress = (teams ?? []).map((t: any) => {
+    const goal = t.tier ? (tierGoals[t.tier] ?? 100) : 100;
+    const weeklyPoints = t.weekly_points ?? 0;
+    const totalPoints = t.total_points ?? 0;
     const percentage = goal > 0 ? Math.round((weeklyPoints / goal) * 100) : 0;
     const metGoal = percentage >= 100;
 
+    const m1 = t.member1;
+    const m1Name = m1
+      ? m1.first_name || m1.last_name
+        ? `${m1.first_name || ""} ${m1.last_name || ""}`.trim()
+        : m1.email
+      : null;
+
+    const m2 = t.member2;
+    const m2Name = m2
+      ? m2.first_name || m2.last_name
+        ? `${m2.first_name || ""} ${m2.last_name || ""}`.trim()
+        : m2.email
+      : null;
+
     return {
-      ...team,
+      ...t,
+      member1_name: m1Name,
+      member2_name: m2Name,
       weekly_points: weeklyPoints,
       total_points: totalPoints,
       weekly_goal: goal,
