@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { resolveEditRequest } from "./actions";
 
@@ -12,34 +12,39 @@ export function RejectRequestButton({
   teamId: string;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleReject = async () => {
+    setIsLoading(true);
+
     const formData = new FormData();
     formData.append("request_id", requestId);
     formData.append("status", "rejected");
     formData.append("team", teamId);
 
-    startTransition(async () => {
-      try {
-        const result = await resolveEditRequest(formData);
-        if (result?.success) {
-          router.refresh();
-        }
-      } catch (err) {
-        console.error("Failed to reject request:", err);
+    try {
+      const result = await resolveEditRequest(formData);
+      if (result?.success) {
+        // We trigger the refresh but don't await its completion to avoid
+        // the button appearing hung if the page re-render is slow.
+        router.refresh();
       }
-    });
+    } catch (err) {
+      console.error("Failed to reject request:", err);
+    } finally {
+      // Small timeout to allow the refresh signal to start before resetting UI
+      setTimeout(() => setIsLoading(false), 500);
+    }
   };
 
   return (
     <button
       type="button"
       onClick={handleReject}
-      disabled={isPending}
-      className={`h-9 w-full rounded-md border border-destructive bg-transparent px-4 text-sm font-medium text-destructive shadow-sm hover:bg-destructive/10 ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
+      disabled={isLoading}
+      className={`h-9 w-full rounded-md border border-destructive bg-transparent px-4 text-sm font-medium text-destructive shadow-sm hover:bg-destructive/10 ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
     >
-      {isPending ? "Rejecting..." : "Reject"}
+      {isLoading ? "Rejecting..." : "Reject"}
     </button>
   );
 }

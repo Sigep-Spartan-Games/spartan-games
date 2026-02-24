@@ -43,16 +43,9 @@ async function AdminSubmissionsInner({
   const dateFilter = typeof sp.date === "string" ? sp.date : "";
 
   const { supabase } = await requireAdmin("/admin/submissions");
+  const adminClient = createAdminClient();
 
-  const { data: teams, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name")
-    .order("name");
-
-  // Create a lookup map for team names
-  const teamMap = new Map((teams ?? []).map((t) => [t.id, t.name]));
-
-  // Fetch submissions with submitted_by
+  // Prepare submission query early
   let q = supabase
     .from("submissions")
     .select(
@@ -64,15 +57,34 @@ async function AdminSubmissionsInner({
   if (teamId) q = q.eq("team_id", teamId);
   if (dateFilter) q = q.eq("activity_date", dateFilter);
 
-  const { data: subs, error } = await q;
+  // Parallelize the primary data fetches
+  const [teamsResult, subsResult, pendingRequestsResult] = await Promise.all([
+    supabase.from("teams").select("id, name").order("name"),
+    q,
+    adminClient
+      .from("submission_edit_requests")
+      .select(
+        "*, submissions(activity_key, activity_date, activity_units, points_awarded)",
+      )
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const teams = teamsResult.data;
+  const teamsError = teamsResult.error;
+  const subs = subsResult.data;
+  const error = subsResult.error;
+  const pendingRequests = pendingRequestsResult.data;
+  const reqError = pendingRequestsResult.error;
+
+  // Create a lookup map for team names
+  const teamMap = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   // Fetch user names for the submissions
   const userIds = [
     ...new Set((subs ?? []).map((s) => s.submitted_by).filter(Boolean)),
   ];
   let userMap = new Map<string, string>();
-
-  const adminClient = createAdminClient();
 
   if (userIds.length > 0) {
     const { data: profiles } = await adminClient
@@ -89,15 +101,6 @@ async function AdminSubmissionsInner({
       ]),
     );
   }
-
-  // Fetch pending edit requests using adminClient
-  const { data: pendingRequests, error: reqError } = await adminClient
-    .from("submission_edit_requests")
-    .select(
-      "*, submissions(activity_key, activity_date, activity_units, points_awarded)",
-    )
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
 
   // Add extra user IDs to userMap if necessary
   const reqUserIds = [
