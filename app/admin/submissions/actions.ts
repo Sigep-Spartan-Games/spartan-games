@@ -274,8 +274,8 @@ export async function resolveEditRequest(formData: FormData) {
     );
   }
 
-  console.log("resolveEditRequest success, revalidating and redirecting...");
+  console.log("resolveEditRequest success, revalidating...");
   revalidatePath("/admin/submissions");
   revalidatePath("/profile");
-  redirect(safeBackToList(teamFilter));
+  return { success: true };
 }

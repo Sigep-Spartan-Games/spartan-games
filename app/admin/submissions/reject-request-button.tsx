@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { resolveEditRequest } from "./actions";
 
 export function RejectRequestButton({
@@ -10,6 +11,7 @@ export function RejectRequestButton({
   requestId: string;
   teamId: string;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const handleReject = async () => {
@@ -20,13 +22,12 @@ export function RejectRequestButton({
 
     startTransition(async () => {
       try {
-        await resolveEditRequest(formData);
-      } catch (err) {
-        // Next.js redirect() throws an error that is handled by the framework
-        // If it's not a redirect error, we can log it
-        if (err instanceof Error && err.message !== "NEXT_REDIRECT") {
-          console.error("Failed to reject request:", err);
+        const result = await resolveEditRequest(formData);
+        if (result?.success) {
+          router.refresh();
         }
+      } catch (err) {
+        console.error("Failed to reject request:", err);
       }
     });
   };
