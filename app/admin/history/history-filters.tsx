@@ -113,7 +113,7 @@ export function HistoryFilters({
 
   const weeks = Object.keys(byWeek).sort().reverse();
 
-  // Collapse state
+  // Collapse state for weekly history
   const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>(() => {
     // Default the most recent week to open, others closed
     if (weeks.length > 0) {
@@ -121,6 +121,9 @@ export function HistoryFilters({
     }
     return {};
   });
+
+  // Collapse state for All-Time Totals
+  const [showTotals, setShowTotals] = useState(false);
 
   const toggleWeek = (week: string) => {
     setOpenWeeks((prev) => ({
@@ -187,78 +190,96 @@ export function HistoryFilters({
       {/* All-Time Totals Table */}
       {totalsArray.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">All-Time Totals</h2>
-          <div className="rounded-2xl border overflow-hidden">
-            <div className="hidden md:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
-              <div className="col-span-4">Team</div>
-              <div className="col-span-2">Tier</div>
-              <div className="col-span-2 text-right">All-Time Pts</div>
-              <div className="col-span-2 text-center text-green-600 dark:text-green-500">
-                Goals Met
-              </div>
-              <div className="col-span-2 text-center text-red-500">
-                Goals Missed
-              </div>
+          <button
+            onClick={() => setShowTotals((prev) => !prev)}
+            className="w-full flex items-center justify-between hover:bg-muted/30 p-2 -mx-2 rounded-lg transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              {showTotals ? (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              )}
+              <h2 className="text-lg font-semibold">All-Time Totals</h2>
             </div>
-            {totalsArray.map((t) => (
-              <div key={t.id} className="border-b last:border-b-0">
-                {/* Desktop */}
-                <div className="hidden md:grid grid-cols-12 items-center px-4 py-3">
-                  <div className="col-span-4 text-sm font-medium truncate">
-                    {t.name}
-                  </div>
-                  <div className="col-span-2">
-                    {t.tier && (
-                      <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
-                      >
-                        {TIER_LABELS[t.tier]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="col-span-2 text-sm text-right tabular-nums font-semibold">
-                    {t.all_time_points}
-                  </div>
-                  <div className="col-span-2 text-sm text-center tabular-nums text-green-600 dark:text-green-500 font-medium">
-                    {t.goals_met}
-                  </div>
-                  <div className="col-span-2 text-sm text-center tabular-nums text-red-500 font-medium">
-                    {t.goals_missed}
-                  </div>
+            <div className="text-sm font-medium text-muted-foreground">
+              {totalsArray.length} team{totalsArray.length !== 1 && "s"}
+            </div>
+          </button>
+
+          {showTotals && (
+            <div className="rounded-2xl border overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+              <div className="hidden md:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
+                <div className="col-span-4">Team</div>
+                <div className="col-span-2">Tier</div>
+                <div className="col-span-2 text-right">All-Time Pts</div>
+                <div className="col-span-2 text-center text-green-600 dark:text-green-500">
+                  Goals Met
                 </div>
-                {/* Mobile */}
-                <div className="md:hidden px-4 py-3 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">
-                        {t.name}
-                      </div>
+                <div className="col-span-2 text-center text-red-500">
+                  Goals Missed
+                </div>
+              </div>
+              {totalsArray.map((t) => (
+                <div key={t.id} className="border-b last:border-b-0">
+                  {/* Desktop */}
+                  <div className="hidden md:grid grid-cols-12 items-center px-4 py-3">
+                    <div className="col-span-4 text-sm font-medium truncate">
+                      {t.name}
+                    </div>
+                    <div className="col-span-2">
                       {t.tier && (
                         <span
-                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]} mt-1`}
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
                         >
                           {TIER_LABELS[t.tier]}
                         </span>
                       )}
                     </div>
-                    <div className="text-right shrink-0 ml-2">
-                      <div className="text-sm font-semibold">
-                        {t.all_time_points} pts
+                    <div className="col-span-2 text-sm text-right tabular-nums font-semibold">
+                      {t.all_time_points}
+                    </div>
+                    <div className="col-span-2 text-sm text-center tabular-nums text-green-600 dark:text-green-500 font-medium">
+                      {t.goals_met}
+                    </div>
+                    <div className="col-span-2 text-sm text-center tabular-nums text-red-500 font-medium">
+                      {t.goals_missed}
+                    </div>
+                  </div>
+                  {/* Mobile */}
+                  <div className="md:hidden px-4 py-3 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">
+                          {t.name}
+                        </div>
+                        {t.tier && (
+                          <span
+                            className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]} mt-1`}
+                          >
+                            {TIER_LABELS[t.tier]}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0 ml-2">
+                        <div className="text-sm font-semibold">
+                          {t.all_time_points} pts
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs pt-1 border-t mt-2 border-border/50">
+                      <div className="text-green-600 dark:text-green-500 font-medium">
+                        Goals Met: {t.goals_met}
+                      </div>
+                      <div className="text-red-500 font-medium">
+                        Goals Missed: {t.goals_missed}
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-between text-xs pt-1 border-t mt-2 border-border/50">
-                    <div className="text-green-600 dark:text-green-500 font-medium">
-                      Goals Met: {t.goals_met}
-                    </div>
-                    <div className="text-red-500 font-medium">
-                      Goals Missed: {t.goals_missed}
-                    </div>
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -300,7 +321,7 @@ export function HistoryFilters({
                         : "text-muted-foreground"
                     }
                   >
-                    {metGoalCount}/{totalTeams} matched ({successRate}%)
+                    {metGoalCount}/{totalTeams} met goals ({successRate}%)
                   </span>
                 </div>
               </button>
