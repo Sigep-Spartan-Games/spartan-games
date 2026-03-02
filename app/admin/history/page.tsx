@@ -54,7 +54,8 @@ async function AdminHistoryInner() {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any\r\n  return <HistoryFilters history={(history || []) as any[]} />;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <HistoryFilters history={(history || []) as any[]} />;
 }
 
 export default function AdminHistoryPage() {
