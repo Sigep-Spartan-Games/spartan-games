@@ -46,7 +46,12 @@ async function AdminHistoryInner() {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (error) {
+  // Fetch all teams to calculate all-time totals
+  const { data: teamsData, error: teamsError } = await supabase
+    .from("teams")
+    .select("id, name, tier, total_points, weekly_points");
+
+  if (error || teamsError) {
     return (
       <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
         Error loading history: {error.message}
@@ -55,7 +60,12 @@ async function AdminHistoryInner() {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <HistoryFilters history={(history || []) as any[]} />;
+  return (
+    <HistoryFilters
+      history={(history || []) as any[]}
+      teams={(teamsData || []) as any[]}
+    />
+  );
 }
 
 export default function AdminHistoryPage() {
