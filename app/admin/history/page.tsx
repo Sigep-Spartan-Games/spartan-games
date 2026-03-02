@@ -54,7 +54,7 @@ async function AdminHistoryInner() {
   if (error || teamsError) {
     return (
       <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-        Error loading history: {error.message}
+        Error loading history: {error?.message || teamsError?.message}
       </div>
     );
   }
