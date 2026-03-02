@@ -54,6 +54,19 @@ function getWeekIdentifier(date: Date): string {
 }
 
 /**
+ * Gets the Monday date of the week as an ISO date string (YYYY-MM-DD)
+ * Used for weeks_won entries (date[] column requires ISO date format)
+ */
+function getWeekMondayDate(date: Date): string {
+  const dayOfWeek = date.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - daysToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split("T")[0];
+}
+
+/**
  * Records weekly history for all teams
  * Returns summary of what was recorded
  */
@@ -137,6 +150,9 @@ export async function finalizeWeekService() {
   // Step 1: Record weekly history
   const historyResult = await recordWeeklyHistoryService();
 
+  // Get Monday date for weeks_won (date[] column requires ISO dates, not readable strings)
+  const weekMondayDate = getWeekMondayDate(new Date());
+
   // Step 2: Find the winner(s) per tier
   const { data: teams } = await supabase
     .from("teams")
@@ -187,12 +203,12 @@ export async function finalizeWeekService() {
   for (const team of teams) {
     const isWinner = winners.some((w: TeamType) => w.id === team.id);
     const newWeeksWon = isWinner
-      ? [...(team.weeks_won || []), historyResult.weekIdentifier]
+      ? [...(team.weeks_won || []), weekMondayDate]
       : team.weeks_won;
 
     const newTotalPoints = (team.total_points ?? 0) + (team.weekly_points ?? 0);
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("teams")
       .update({
         weeks_won: newWeeksWon,
@@ -200,6 +216,10 @@ export async function finalizeWeekService() {
         weekly_points: 0, // Reset for new week
       })
       .eq("id", team.id);
+
+    if (updateError) {
+      console.error(`[Cron] Failed to update team ${team.name}:`, updateError);
+    }
   }
 
   // Reset the finalize_requested flag
