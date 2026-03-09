@@ -25,13 +25,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       message: result.message,
-      details: {
-        weekIdentifier: result.historyResult?.weekIdentifier,
-        teamsRecorded: result.historyResult?.teamsRecorded,
-        teamsMetGoal: result.historyResult?.teamsMetGoal,
-        winners: result.winners,
-        tierMaxPoints: result.tierMaxPoints,
-      },
     });
   } catch (error) {
     console.error("[Cron] Weekly finalization failed:", error);
