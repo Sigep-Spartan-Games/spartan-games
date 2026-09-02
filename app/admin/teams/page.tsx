@@ -6,6 +6,9 @@ import { deleteTeam } from "./actions";
 import TierSelector from "./tier-selector";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import TeamFilters from "./team-filters";
+import { Flame } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBanner } from "@/components/ui/status-banner";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -75,9 +78,9 @@ async function AdminTeamsInner({
 
   if (error) {
     return (
-      <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-        Error loading teams: {error.message}
-      </div>
+      <StatusBanner variant="error" title="Teams unavailable">
+        {error.message}
+      </StatusBanner>
     );
   }
 
@@ -140,22 +143,26 @@ async function AdminTeamsInner({
   const teamsBelowGoal = totalTeams - teamsMetGoal;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <PageHeader
+        title="Teams"
+        description="Monitor progress, manage tiers, and maintain competition rosters."
+      />
       {/* Stats Summary */}
       <div className="flex flex-wrap gap-3 text-sm">
         <div className="rounded-lg border px-3 py-1.5">
           <span className="text-muted-foreground">Total:</span>{" "}
           <span className="font-medium">{totalTeams}</span>
         </div>
-        <div className="rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-1.5">
+        <div className="rounded-lg border border-success/30 bg-success/[0.06] px-3 py-1.5">
           <span className="text-muted-foreground">Met Goal:</span>{" "}
-          <span className="font-medium text-green-600 dark:text-green-400">
+          <span className="font-medium text-success">
             {teamsMetGoal}
           </span>
         </div>
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-1.5">
+        <div className="rounded-lg border border-warning/30 bg-warning/[0.06] px-3 py-1.5">
           <span className="text-muted-foreground">Below Goal:</span>{" "}
-          <span className="font-medium text-amber-600 dark:text-amber-400">
+          <span className="font-medium text-warning">
             {teamsBelowGoal}
           </span>
         </div>
@@ -169,7 +176,7 @@ async function AdminTeamsInner({
       />
 
       {/* Teams Table */}
-      <div className="rounded-2xl border overflow-hidden">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {/* Desktop header */}
         <div className="hidden lg:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
           <div className="col-span-3">Team</div>
@@ -194,7 +201,7 @@ async function AdminTeamsInner({
                 <div className="col-span-3">
                   <div className="text-sm font-medium truncate">{t.name}</div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {t.member1_name || "—"} • {t.member2_name || "—"}
+                    {t.member1_name || "—"} · {t.member2_name || "—"}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Invite: {t.invite_code ?? "-"}
@@ -211,12 +218,12 @@ async function AdminTeamsInner({
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className={`h-full ${t.metGoal ? "bg-green-500" : "bg-primary"}`}
+                        className={`h-full ${t.metGoal ? "bg-success" : "bg-primary"}`}
                         style={{ width: `${Math.min(t.percentage, 100)}%` }}
                       />
                     </div>
                     <span
-                      className={`text-xs tabular-nums w-10 text-right ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}
+                      className={`w-10 text-right text-xs tabular-nums ${t.metGoal ? "font-medium text-success" : "text-muted-foreground"}`}
                     >
                       {t.percentage}%
                     </span>
@@ -236,8 +243,9 @@ async function AdminTeamsInner({
                 {/* Streak */}
                 <div className="col-span-1 text-center pr-2">
                   {streakCount >= 2 ? (
-                    <span className="text-orange-500 text-sm font-bold">
-                      🔥 {streakCount}
+                    <span className="inline-flex items-center gap-1 text-sm font-bold text-competition">
+                      <Flame aria-hidden="true" className="h-3.5 w-3.5" />
+                      {streakCount}
                     </span>
                   ) : (
                     <span className="text-muted-foreground text-sm">—</span>
@@ -264,7 +272,7 @@ async function AdminTeamsInner({
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium truncate">{t.name}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {t.member1_name || "—"} • {t.member2_name || "—"}
+                      {t.member1_name || "—"} · {t.member2_name || "—"}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -281,12 +289,12 @@ async function AdminTeamsInner({
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${t.metGoal ? "bg-green-500" : "bg-primary"}`}
+                      className={`h-full ${t.metGoal ? "bg-success" : "bg-primary"}`}
                       style={{ width: `${Math.min(t.percentage, 100)}%` }}
                     />
                   </div>
                   <span
-                    className={`text-xs tabular-nums ${t.metGoal ? "text-green-600 dark:text-green-400 font-medium" : "text-muted-foreground"}`}
+                    className={`text-xs tabular-nums ${t.metGoal ? "font-medium text-success" : "text-muted-foreground"}`}
                   >
                     {t.percentage}%
                   </span>
@@ -296,8 +304,9 @@ async function AdminTeamsInner({
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span>Wins: {winsCount}</span>
                   {streakCount >= 2 && (
-                    <span className="text-orange-500 font-bold">
-                      🔥 {streakCount}
+                    <span className="inline-flex items-center gap-1 font-bold text-competition">
+                      <Flame aria-hidden="true" className="h-3.5 w-3.5" />
+                      {streakCount}
                     </span>
                   )}
                   <span className="ml-auto">
@@ -317,7 +326,7 @@ async function AdminTeamsInner({
                     payload={{ id: t.id }}
                     title="Delete Team"
                     description={`Are you sure you want to delete "${t.name}"? This action cannot be undone.`}
-                    className="h-8 px-3 text-xs border"
+                    className="h-11 px-3 text-xs border"
                     buttonSize="default"
                   />
                 </div>

@@ -1,103 +1,95 @@
-// app/admin/teams/tier-selector.tsx
 "use client";
 
 import { useState, useTransition } from "react";
+
 import { updateTeamTier } from "./actions";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const TIER_LABELS: Record<string, string> = {
-    gold: "🥇 Gold",
-    purple: "🟣 Purple",
-    red: "🔴 Red",
+  gold: "Gold",
+  purple: "Purple",
+  red: "Red",
 };
 
 const TIER_COLORS: Record<string, string> = {
-    gold: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30 dark:text-yellow-400",
-    purple: "bg-purple-500/20 text-purple-600 border-purple-500/30 dark:text-purple-300",
-    red: "bg-red-500/20 text-red-600 border-red-500/30 dark:text-red-400",
+  gold: "border-achievement/30 bg-achievement/10 text-achievement",
+  purple: "border-primary/30 bg-primary/10 text-primary",
+  red: "border-competition/30 bg-competition/10 text-competition",
 };
 
 type Team = {
-    id: string;
-    name: string;
-    tier: "gold" | "purple" | "red" | null;
+  id: string;
+  name: string;
+  tier: "gold" | "purple" | "red" | null;
 };
 
 export default function TierSelector({ team }: { team: Team }) {
-    const [showConfirm, setShowConfirm] = useState(false);
-    const [selectedTier, setSelectedTier] = useState(team.tier ?? "");
-    const [isPending, startTransition] = useTransition();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [selectedTier, setSelectedTier] = useState(team.tier ?? "");
+  const [isPending, startTransition] = useTransition();
 
-    const handleChange = (newTier: string) => {
-        if (newTier !== team.tier) {
-            setSelectedTier(newTier);
-            setShowConfirm(true);
-        }
-    };
+  const handleChange = (newTier: string) => {
+    if (newTier !== team.tier) {
+      setSelectedTier(newTier);
+      setShowConfirm(true);
+    }
+  };
 
-    const handleConfirm = () => {
-        startTransition(async () => {
-            const formData = new FormData();
-            formData.set("id", team.id);
-            formData.set("tier", selectedTier);
-            await updateTeamTier(formData);
-            setShowConfirm(false);
-        });
-    };
+  const handleConfirm = () => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("id", team.id);
+      formData.set("tier", selectedTier);
+      await updateTeamTier(formData);
+      setShowConfirm(false);
+    });
+  };
 
-    const handleCancel = () => {
-        setSelectedTier(team.tier ?? "");
-        setShowConfirm(false);
-    };
+  const handleCancel = () => {
+    setSelectedTier(team.tier ?? "");
+    setShowConfirm(false);
+  };
 
-    return (
-        <div className="relative">
-            <select
-                value={selectedTier}
-                onChange={(e) => handleChange(e.target.value)}
-                disabled={isPending}
-                className={`h-7 w-24 rounded border bg-background text-[11px] cursor-pointer text-foreground px-1 ${team.tier ? TIER_COLORS[team.tier] : ""}`}
-            >
-                <option value="" disabled>Select...</option>
-                <option value="gold">🥇 Gold</option>
-                <option value="purple">🟣 Purple</option>
-                <option value="red">🔴 Red</option>
-            </select>
+  return (
+    <div className="relative">
+      <select
+        value={selectedTier}
+        onChange={(event) => handleChange(event.target.value)}
+        disabled={isPending}
+        aria-label={`Tier for ${team.name}`}
+        className={`h-11 w-full min-w-24 cursor-pointer rounded-control border bg-background px-2 text-xs text-foreground ${team.tier ? TIER_COLORS[team.tier] : ""}`}
+      >
+        <option value="" disabled>Select...</option>
+        <option value="gold">Gold</option>
+        <option value="purple">Purple</option>
+        <option value="red">Red</option>
+      </select>
 
-            {/* Confirmation Modal */}
-            {showConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="rounded-xl border bg-background p-6 shadow-lg max-w-sm mx-4">
-                        <h3 className="text-lg font-semibold mb-2">Confirm Tier Change</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Change <strong>{team.name}</strong> from{" "}
-                            <span className={`px-1 rounded ${team.tier ? TIER_COLORS[team.tier] : ""}`}>
-                                {team.tier ? TIER_LABELS[team.tier] : "No Tier"}
-                            </span>{" "}
-                            to{" "}
-                            <span className={`px-1 rounded ${TIER_COLORS[selectedTier]}`}>
-                                {TIER_LABELS[selectedTier]}
-                            </span>
-                            ?
-                        </p>
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                onClick={handleCancel}
-                                disabled={isPending}
-                                className="h-9 rounded-md border px-4 text-sm hover:bg-muted/50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleConfirm}
-                                disabled={isPending}
-                                className="h-9 rounded-md bg-primary text-primary-foreground px-4 text-sm font-medium"
-                            >
-                                {isPending ? "Saving..." : "Confirm"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+      <Dialog open={showConfirm} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent onClose={handleCancel}>
+          <DialogHeader>
+            <DialogTitle>Confirm tier change</DialogTitle>
+            <DialogDescription>
+              Change {team.name} from {team.tier ? TIER_LABELS[team.tier] : "No Tier"} to {TIER_LABELS[selectedTier]}?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={handleCancel} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm} disabled={isPending}>
+              {isPending ? "Saving..." : "Confirm"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

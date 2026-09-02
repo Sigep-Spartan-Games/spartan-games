@@ -1,6 +1,8 @@
 // app/admin/settings/streak-settings-section.tsx
 import { createClient } from "@/lib/supabase/server";
 import { updateStreakSettings } from "./streak-settings-actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default async function StreakSettingsSection() {
     const supabase = await createClient();
@@ -22,13 +24,12 @@ export default async function StreakSettingsSection() {
                 <p className="text-xs text-muted-foreground">
                     Points added for each consecutive day (e.g., Day 1 = 1pt, Day 2 = 2pts).
                 </p>
-                <input
+                <Input
                     id="daily_bonus_increment"
                     name="daily_bonus_increment"
                     type="number"
                     min="0"
                     defaultValue={dailyBonusIncrement}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     required
                 />
             </div>
@@ -40,23 +41,19 @@ export default async function StreakSettingsSection() {
                 <p className="text-xs text-muted-foreground">
                     The maximum bonus points a team can earn from a streak per day.
                 </p>
-                <input
+                <Input
                     id="max_bonus"
                     name="max_bonus"
                     type="number"
                     min="0"
                     defaultValue={maxBonus}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     required
                 />
             </div>
 
-            <button
-                type="submit"
-                className="h-10 rounded-md bg-primary text-primary-foreground px-4 text-sm font-medium"
-            >
+            <Button type="submit">
                 Save Streak Settings
-            </button>
+            </Button>
         </form>
     );
 }

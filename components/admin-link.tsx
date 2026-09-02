@@ -4,11 +4,12 @@ import {
   getPendingEditRequestsCount,
 } from "@/lib/cached-data";
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 
 export default async function AdminLink({
   variant = "desktop",
 }: {
-  variant?: "desktop" | "mobile";
+  variant?: "desktop" | "mobile" | "compact";
 }) {
   const user = await getCachedUser();
 
@@ -23,18 +24,21 @@ export default async function AdminLink({
 
   const cls =
     variant === "desktop"
-      ? "sg-nav-link rounded-md px-3 py-2 flex items-center gap-2"
-      : "sg-nav-link flex items-center justify-center rounded-md px-2 py-4 text-base font-medium relative";
+      ? "sg-nav-link relative flex h-10 items-center gap-2 rounded-control px-3 text-sm font-semibold"
+      : variant === "compact"
+        ? "sg-nav-link relative flex h-11 w-11 items-center justify-center rounded-control"
+        : "sg-nav-link relative flex min-h-14 items-center justify-center rounded-control px-2 text-sm font-semibold";
 
   return (
     <Link href="/admin" className={cls}>
-      <span>Admin</span>
+      <ShieldCheck aria-hidden="true" className="h-4 w-4" />
+      {variant !== "compact" ? <span>Admin</span> : <span className="sr-only">Admin</span>}
       {pendingCount > 0 && (
         <span
           className={
             variant === "desktop"
-              ? "flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-lg animate-pulse"
-              : "absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-lg animate-pulse"
+              ? "flex h-5 min-w-5 items-center justify-center rounded-full bg-competition px-1 text-[10px] font-bold text-competition-foreground"
+              : "absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-competition px-1 text-[10px] font-bold text-competition-foreground"
           }
         >
           {pendingCount}

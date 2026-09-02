@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ConfirmDeleteButtonProps {
   action: (formData: FormData) => Promise<void>;
@@ -55,11 +56,12 @@ export function ConfirmDeleteButton({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 transition-colors",
-          buttonSize === "icon" ? "h-8 w-8" : "h-8 px-3 text-xs border",
+          "flex items-center justify-center rounded-control text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          buttonSize === "icon" ? "h-11 w-11" : "h-11 px-3 text-xs border",
           className,
         )}
         title={buttonText}
+        aria-label={buttonText}
       >
         {buttonSize === "icon" ? <Trash2 className="h-4 w-4" /> : buttonText}
       </button>
@@ -71,24 +73,24 @@ export function ConfirmDeleteButton({
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
-          <div className="flex justify-end gap-3 mt-4">
-            <button
+          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setOpen(false)}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
               Delete
-            </button>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

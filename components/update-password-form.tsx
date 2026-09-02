@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StatusBanner } from "@/components/ui/status-banner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,7 +45,7 @@ export function UpdatePasswordForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="shadow-lg shadow-foreground/[0.04]">
         <CardHeader>
           <CardTitle className="text-2xl">Reset Your Password</CardTitle>
           <CardDescription>
@@ -53,7 +54,7 @@ export function UpdatePasswordForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleForgotPassword}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
               <div className="grid gap-2">
                 <Label htmlFor="password">New password</Label>
                 <Input
@@ -65,7 +66,7 @@ export function UpdatePasswordForm({
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error ? <StatusBanner variant="error">{error}</StatusBanner> : null}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Saving..." : "Save new password"}
               </Button>

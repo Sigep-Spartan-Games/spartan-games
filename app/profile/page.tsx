@@ -1,33 +1,41 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import {
+  ArrowLeft,
+  CalendarDays,
+  ExternalLink,
+  Flame,
+  Medal,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
+
 import { RequestEditDialog } from "./request-edit-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBanner } from "@/components/ui/status-banner";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-
   const { data: auth, error: authError } = await supabase.auth.getUser();
   const user = auth?.user;
 
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
+  if (authError || !user) redirect("/auth/login");
 
-  // Fetch Team
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .select("*")
     .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
     .maybeSingle();
 
-  // Fetch Activity Rules
   const { data: activityRules } = await supabase
     .from("activity_rules")
     .select("*");
 
-  // Fetch Profile Name
   const { data: profile } = await supabase
     .from("profiles")
     .select("first_name, last_name, email")
@@ -39,7 +47,6 @@ export default async function ProfilePage() {
       ? `${profile.first_name} ${profile.last_name}`
       : `${user.email}`;
 
-  // Fetch user's individual submissions AND team streak bonuses
   let query = supabase
     .from("submissions")
     .select("*, submission_edit_requests(id, status)");
@@ -57,172 +64,210 @@ export default async function ProfilePage() {
     { ascending: false },
   );
 
-  // Calculate user-specific total points from these submissions
   const totalUserPoints = (submissions || []).reduce(
-    (acc, sub) => acc + (sub.points_awarded || 0),
+    (total, submission) => total + (submission.points_awarded || 0),
     0,
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader
+        title="Your profile"
+        description="Review your contributions, team progress, and recent activity."
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/">
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              Back to leaderboard
+            </Link>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
+        <Card className="overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-primary via-competition to-achievement" />
+          <CardContent className="pt-5 sm:pt-6">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-16 sm:w-16">
+                <UserRound aria-hidden="true" className="h-7 w-7" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xl font-semibold tracking-tight">
+                  {displayName}
+                </p>
+                <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+
+            <dl className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-lg border bg-muted/25 p-4">
+                <dt className="app-label">My contributions</dt>
+                <dd className="app-number mt-2 text-2xl text-achievement">
+                  {totalUserPoints.toLocaleString()}
+                  <span className="ml-1 text-sm font-semibold">pts</span>
+                </dd>
+              </div>
+              <div className="rounded-lg border bg-muted/25 p-4">
+                <dt className="app-label">Submissions</dt>
+                <dd className="app-number mt-2 text-2xl">
+                  {submissions?.length || 0}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <UsersRound aria-hidden="true" className="h-5 w-5" />
+            </div>
+            <CardTitle>Your team</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {teamError ? (
+              <StatusBanner variant="error">Your team could not be loaded.</StatusBanner>
+            ) : !team ? (
+              <EmptyState
+                title="You are not on a team"
+                description="Create a team or join one with an invite code to start competing."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/teams">Find a team</Link>
+                  </Button>
+                }
+                className="border-0 bg-transparent py-4"
+              />
+            ) : (
+              <dl className="divide-y">
+                <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                  <dt className="text-sm text-muted-foreground">Team name</dt>
+                  <dd className="text-right font-semibold">{team.name}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <dt className="text-sm text-muted-foreground">Weekly points</dt>
+                  <dd className="app-number font-semibold">{team.weekly_points || 0}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <dt className="text-sm text-muted-foreground">Season points</dt>
+                  <dd className="app-number font-semibold">{team.total_points || 0}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+                  <dt className="text-sm text-muted-foreground">Current streak</dt>
+                  <dd className="flex items-center gap-1.5 font-semibold text-competition">
+                    <Flame aria-hidden="true" className="h-4 w-4" />
+                    {team.streak_count || 0} days
+                  </dd>
+                </div>
+              </dl>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* User Card */}
-        <div className="rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/20 text-primary">
-              <User className="h-8 w-8" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold">{displayName}</h2>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-          </div>
-          <div className="mt-6 border-t pt-4">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">
-                My Total Contributions
-              </span>
-              <span className="font-bold text-base">{totalUserPoints} pts</span>
-            </div>
-            <div className="flex justify-between items-center text-sm mt-2">
-              <span className="text-muted-foreground">Total Submissions</span>
-              <span className="font-medium">{submissions?.length || 0}</span>
-            </div>
-          </div>
+      <section aria-labelledby="profile-submissions-heading" className="space-y-4">
+        <div>
+          <h2 id="profile-submissions-heading" className="app-section-heading">
+            My submissions
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your activity history and awarded points.
+          </p>
         </div>
 
-        {/* Team Card */}
-        <div className="rounded-2xl border bg-card p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 text-primary text-center">
-            Your Team
-          </h3>
-          {teamError || !team ? (
-            <div className="text-center text-muted-foreground pt-4">
-              You are not currently on a team.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">Team Name</span>
-                <span className="font-bold text-lg">{team.name}</span>
-              </div>
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">
-                  Team Weekly Points
-                </span>
-                <span className="font-medium">{team.weekly_points || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">Team Total Points</span>
-                <span className="font-medium">{team.total_points || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">Current Streak</span>
-                <span className="font-medium text-amber-500">
-                  {team.streak_count || 0} 🔥
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Submissions Section */}
-      <h3 className="text-2xl font-bold tracking-tight mt-10">
-        My Submissions
-      </h3>
-      <div className="rounded-2xl border bg-card overflow-hidden shadow-sm">
         {subError ? (
-          <div className="p-6 text-muted-foreground text-center">
-            Error loading submissions.
-          </div>
+          <StatusBanner variant="error" title="Submissions unavailable">
+            Your activity history could not be loaded. Please try again.
+          </StatusBanner>
         ) : submissions?.length === 0 ? (
-          <div className="p-10 text-center text-muted-foreground">
-            You haven't made any submissions yet. Let's get to work!
-          </div>
+          <EmptyState
+            title="No submissions yet"
+            description="Log your first activity to begin contributing points."
+            action={
+              <Button size="sm" variant="competition" asChild>
+                <Link href="/submit">Log an activity</Link>
+              </Button>
+            }
+          />
         ) : (
-          <div className="divide-y">
-            {submissions?.map((s) => {
-              const pendingRequest = s.submission_edit_requests?.find(
-                (r: any) => r.status === "pending",
-              );
-              const rule = activityRules?.find(
-                (r) => r.activity_key === s.activity_key,
-              );
+          <Card className="overflow-hidden">
+            <div className="divide-y">
+              {submissions?.map((submission) => {
+                const pendingRequest = submission.submission_edit_requests?.find(
+                  (request: any) => request.status === "pending",
+                );
+                const rule = activityRules?.find(
+                  (candidate) => candidate.activity_key === submission.activity_key,
+                );
+                const isStreakBonus = submission.activity_key === "daily_streak_bonus";
 
-              return (
-                <div
-                  key={s.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 hover:bg-muted/10 transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="font-semibold text-lg flex items-center gap-2">
-                      {s.activity_key === "daily_streak_bonus"
-                        ? "🔥 Daily Streak Bonus"
-                        : s.activity_key}
-                      {s.did_with_teammate && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                          Teammate Bonus
-                        </span>
-                      )}
+                return (
+                  <article
+                    key={submission.id}
+                    className="p-4 transition-colors hover:bg-muted/20 sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold">
+                            {isStreakBonus ? "Daily Streak Bonus" : submission.activity_key}
+                          </h3>
+                          {submission.did_with_teammate ? (
+                            <Badge variant="secondary">Teammate bonus</Badge>
+                          ) : null}
+                        </div>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <CalendarDays aria-hidden="true" className="h-3.5 w-3.5" />
+                          {new Date(submission.activity_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="app-number shrink-0 text-lg font-bold text-achievement">
+                        +{submission.points_awarded}
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground flex gap-4">
-                      <span>
-                        {new Date(s.activity_date).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 sm:mt-0 flex items-center gap-4">
-                    {s.activity_key === "daily_streak_bonus" ? (
-                      <span className="text-xs bg-amber-500/10 text-amber-600 px-3 py-1 rounded-full font-medium border border-amber-500/20">
-                        Team Reward
-                      </span>
-                    ) : pendingRequest ? (
-                      <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-1 rounded-full font-medium">
-                        Pending Edit
-                      </span>
-                    ) : (
-                      team &&
-                      rule && (
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      {isStreakBonus ? (
+                        <Badge variant="achievement">
+                          <Medal aria-hidden="true" className="h-3.5 w-3.5" />
+                          Team reward
+                        </Badge>
+                      ) : pendingRequest ? (
+                        <Badge variant="warning">Pending edit</Badge>
+                      ) : team && rule ? (
                         <RequestEditDialog
-                          submissionId={s.id}
+                          submissionId={submission.id}
                           teamId={team.id}
-                          activityKey={s.activity_key}
+                          activityKey={submission.activity_key}
                           rule={rule}
-                          originalSubmission={s}
+                          originalSubmission={submission}
                           allRules={activityRules || []}
                         />
-                      )
-                    )}
-                    {s.proof_image_path && (
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-500 hover:underline flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
-                      >
-                        📷 Proof
-                      </a>
-                    )}
-                    <div className="font-mono text-xl font-bold text-amber-400">
-                      +{s.points_awarded}
+                      ) : null}
+
+                      {submission.proof_image_path ? (
+                        <Button variant="ghost" size="sm" asChild>
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${submission.proof_image_path}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View proof
+                            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                      ) : null}
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          </Card>
         )}
-      </div>
+      </section>
     </div>
   );
 }

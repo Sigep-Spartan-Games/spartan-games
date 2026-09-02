@@ -42,7 +42,7 @@ export function RejectRequestButton({
       type="button"
       onClick={handleReject}
       disabled={isLoading}
-      className={`h-9 w-full rounded-md border border-destructive bg-transparent px-4 text-sm font-medium text-destructive shadow-sm hover:bg-destructive/10 ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+      className={`h-11 w-full rounded-control border border-destructive bg-transparent px-4 text-sm font-medium text-destructive hover:bg-destructive/10 ${isLoading ? "cursor-not-allowed opacity-50" : ""}`}
     >
       {isLoading ? "Rejecting..." : "Reject"}
     </button>

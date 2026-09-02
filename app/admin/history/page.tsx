@@ -7,12 +7,12 @@ import { HistoryFilters } from "./history-filters";
 function HistorySkeleton() {
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-lg border p-5">
         <div className="h-6 w-56 rounded bg-muted/40" />
         <div className="mt-2 h-4 w-72 rounded bg-muted/30" />
       </div>
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="rounded-2xl border p-4">
+        <div key={i} className="rounded-lg border p-4">
           <div className="h-4 w-full rounded bg-muted/25" />
         </div>
       ))}
@@ -53,7 +53,7 @@ async function AdminHistoryInner() {
 
   if (error || teamsError) {
     return (
-      <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
+      <div className="rounded-lg border p-5 text-sm text-muted-foreground">
         Error loading history: {error?.message || teamsError?.message}
       </div>
     );

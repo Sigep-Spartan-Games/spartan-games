@@ -41,6 +41,22 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        competition: {
+          DEFAULT: "hsl(var(--competition))",
+          foreground: "hsl(var(--competition-foreground))",
+        },
+        achievement: {
+          DEFAULT: "hsl(var(--achievement))",
+          foreground: "hsl(var(--achievement-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -56,6 +72,7 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        control: "var(--control-radius)",
       },
       keyframes: {
         "indeterminate-bar": {

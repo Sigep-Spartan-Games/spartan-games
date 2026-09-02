@@ -6,6 +6,9 @@ import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import EditSubmissionFormClient from "./edit-submission-form-client";
 import { updateSubmission } from "../actions";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StatusBanner } from "@/components/ui/status-banner";
 
 function EditSubmissionSkeleton() {
   return (
@@ -18,7 +21,7 @@ function EditSubmissionSkeleton() {
         <div className="h-10 w-24 rounded-md border bg-muted/10" />
       </div>
 
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-lg border p-5">
         <div className="h-10 w-full rounded bg-muted/20" />
         <div className="mt-3 h-10 w-full rounded bg-muted/20" />
         <div className="mt-3 h-10 w-2/3 rounded bg-muted/20" />
@@ -55,9 +58,7 @@ async function AdminSubmissionEditInner({
 
   if (teamsErr) {
     return (
-      <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-        Error loading teams: {teamsErr.message}
-      </div>
+      <StatusBanner variant="error" title="Teams unavailable">{teamsErr.message}</StatusBanner>
     );
   }
 
@@ -68,9 +69,7 @@ async function AdminSubmissionEditInner({
 
   if (rulesErr) {
     return (
-      <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-        Error loading activity rules: {rulesErr.message}
-      </div>
+      <StatusBanner variant="error" title="Activity rules unavailable">{rulesErr.message}</StatusBanner>
     );
   }
 
@@ -95,9 +94,9 @@ async function AdminSubmissionEditInner({
 
   if (error || !sub) {
     return (
-      <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-        Submission not found.
-      </div>
+      <StatusBanner variant="error" title="Submission not found">
+        The requested submission could not be loaded.
+      </StatusBanner>
     );
   }
 
@@ -130,12 +129,12 @@ async function AdminSubmissionEditInner({
           </p>
         </div>
 
-        <Link
-          className="h-10 rounded-md border px-3 text-sm flex items-center"
-          href={backHref}
-        >
-          Back
-        </Link>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={backHref}>
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            Back
+          </Link>
+        </Button>
       </div>
 
       <EditSubmissionFormClient

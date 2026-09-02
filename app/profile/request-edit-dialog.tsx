@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { PencilLine, Trash2 } from "lucide-react";
+
+import { requestSubmissionEdit, SuggestedChanges } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
-import { requestSubmissionEdit, SuggestedChanges } from "./actions";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { StatusBanner } from "@/components/ui/status-banner";
+import { Textarea } from "@/components/ui/textarea";
 import { ActivityRule } from "@/lib/types";
-import { useMemo } from "react";
 
 interface RequestEditDialogProps {
   submissionId: string;
@@ -32,14 +38,11 @@ export function RequestEditDialog({
   allRules,
 }: RequestEditDialogProps) {
   const [open, setOpen] = useState(false);
-
   const [selectedActivityKey, setSelectedActivityKey] = useState(activityKey);
   const activeRule = useMemo(
-    () => allRules?.find((r) => r.activity_key === selectedActivityKey) || rule,
+    () => allRules?.find((candidate) => candidate.activity_key === selectedActivityKey) || rule,
     [allRules, selectedActivityKey, rule],
   );
-
-  // Structured Form State
   const [date, setDate] = useState(originalSubmission.activity_date || "");
   const [units, setUnits] = useState<number | string>(
     originalSubmission.activity_units ?? "",
@@ -53,15 +56,14 @@ export function RequestEditDialog({
   const [didWithTeammate, setDidWithTeammate] = useState(
     originalSubmission.did_with_teammate || false,
   );
-
   const [reason, setReason] = useState("");
   const [isDeletion, setIsDeletion] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
@@ -93,13 +95,12 @@ export function RequestEditDialog({
         setError(result.error);
       } else {
         setSuccess(true);
-        setTimeout(() => {
-          setOpen(false);
-          // Optional reset
-        }, 1500);
+        setTimeout(() => setOpen(false), 1500);
       }
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (caughtError: unknown) {
+      setError(
+        caughtError instanceof Error ? caughtError.message : "Something went wrong.",
+      );
     } finally {
       setLoading(false);
     }
@@ -107,66 +108,55 @@ export function RequestEditDialog({
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-xs"
-        onClick={() => setOpen(true)}
-      >
-        Request Edit
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <PencilLine aria-hidden="true" className="h-3.5 w-3.5" />
+        Request edit
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          onClose={() => setOpen(false)}
-          className="max-h-[85vh] overflow-y-auto"
-        >
+        <DialogContent onClose={() => setOpen(false)}>
           <DialogHeader>
-            <DialogTitle>Request Edit: {activityKey}</DialogTitle>
+            <DialogTitle>Request submission edit</DialogTitle>
             <DialogDescription>
-              If your submission details were incorrect, you can request an edit
-              here. An admin will review it.
+              Suggest corrections to {activityKey}. An admin will review your request.
             </DialogDescription>
           </DialogHeader>
 
           {success ? (
-            <div className="py-6 text-center text-sm text-green-500 font-medium">
-              Edit request submitted successfully!
-            </div>
+            <StatusBanner variant="success" title="Request submitted">
+              Your edit request is ready for admin review.
+            </StatusBanner>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              {error && (
-                <div className="text-sm font-medium text-destructive">
-                  {error}
-                </div>
-              )}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {error ? <StatusBanner variant="error">{error}</StatusBanner> : null}
 
-              <div className="flex items-center space-x-2 bg-destructive/10 p-4 rounded-xl border border-destructive/20 text-destructive">
-                <input
-                  type="checkbox"
-                  id="isDeletion"
-                  className="h-4 w-4 accent-destructive"
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/[0.06] p-4">
+                <Checkbox
                   checked={isDeletion}
-                  onChange={(e) => setIsDeletion(e.target.checked)}
+                  onCheckedChange={(checked) => setIsDeletion(checked === true)}
+                  className="mt-0.5 data-[state=checked]:border-destructive data-[state=checked]:bg-destructive"
                 />
-                <label
-                  htmlFor="isDeletion"
-                  className="text-sm font-semibold cursor-pointer"
-                >
-                  I want to delete this submission entirely
-                </label>
-              </div>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                    Delete this submission
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                    Ask an admin to remove the submission entirely.
+                  </span>
+                </span>
+              </label>
 
-              {!isDeletion && (
-                <div className="space-y-4 bg-muted/30 p-4 rounded-xl border border-dashed">
+              {!isDeletion ? (
+                <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Activity Type</label>
+                    <Label>Activity type</Label>
                     <Combobox
                       name="activity_key"
-                      options={allRules.map((r) => ({
-                        value: r.activity_key,
-                        label: r.label ?? r.activity_key,
-                        description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • x${r.teammate_bonus} bonus`,
+                      options={allRules.map((candidate) => ({
+                        value: candidate.activity_key,
+                        label: candidate.label ?? candidate.activity_key,
+                        description: `${candidate.points_per_unit} pts${candidate.unit_label ? `/${candidate.unit_label}` : ""} · x${candidate.teammate_bonus} bonus`,
                       }))}
                       value={selectedActivityKey}
                       onChange={setSelectedActivityKey}
@@ -176,88 +166,79 @@ export function RequestEditDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Activity Date</label>
-                    <input
+                    <Label htmlFor="request-edit-date">Activity date</Label>
+                    <Input
+                      id="request-edit-date"
                       type="date"
                       required
-                      className="h-11 w-full max-w-full appearance-none rounded-md border bg-background px-3 text-sm cursor-pointer"
                       value={date}
-                      onChange={(e) => setDate(e.target.value)}
+                      onChange={(event) => setDate(event.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">
+                    <Label>
                       {rule.input_type === "boolean"
                         ? "Completed?"
                         : rule.unit_label
                           ? `Amount (${rule.unit_label})`
                           : "Details"}
-                    </label>
+                    </Label>
 
-                    {rule.input_type === "number" && (
-                      <input
+                    {rule.input_type === "number" ? (
+                      <Input
                         type="number"
                         required
                         min={rule.min_value ?? 0}
                         step={rule.step_value ?? "any"}
-                        className="w-full h-10 px-3 py-2 text-sm rounded-md border bg-background"
                         value={units}
-                        onChange={(e) => setUnits(e.target.value)}
+                        onChange={(event) => setUnits(event.target.value)}
                       />
-                    )}
+                    ) : null}
 
-                    {rule.input_type === "text" && (
-                      <input
+                    {rule.input_type === "text" ? (
+                      <Input
                         type="text"
                         required
-                        className="w-full h-10 px-3 py-2 text-sm rounded-md border bg-background"
                         value={textValue}
-                        onChange={(e) => setTextValue(e.target.value)}
+                        onChange={(event) => setTextValue(event.target.value)}
                       />
-                    )}
+                    ) : null}
 
-                    {rule.input_type === "boolean" && (
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4"
+                    {rule.input_type === "boolean" ? (
+                      <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border bg-card px-3">
+                        <Checkbox
                           checked={boolValue}
-                          onChange={(e) => setBoolValue(e.target.checked)}
+                          onCheckedChange={(checked) => setBoolValue(checked === true)}
                         />
-                        <span className="text-sm">
-                          {rule.label || "Completed"}
-                        </span>
+                        <span className="text-sm">{rule.label || "Completed"}</span>
                       </label>
-                    )}
+                    ) : null}
                   </div>
 
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border bg-card px-3">
+                    <Checkbox
                       checked={didWithTeammate}
-                      onChange={(e) => setDidWithTeammate(e.target.checked)}
+                      onCheckedChange={(checked) => setDidWithTeammate(checked === true)}
                     />
-                    <div className="text-sm">Did this with teammate</div>
+                    <span className="text-sm">Did this with teammate</span>
                   </label>
                 </div>
-              )}
+              ) : null}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Reason for Edit / Fix needed
-                </label>
-                <textarea
+                <Label htmlFor="request-edit-reason">Reason for edit / fix needed</Label>
+                <Textarea
+                  id="request-edit-reason"
                   required
                   placeholder="Why does this need to be changed?"
-                  className="w-full h-24 px-3 py-2 text-sm rounded-md border bg-background resize-none"
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
+                  onChange={(event) => setReason(event.target.value)}
+                  className="min-h-24 resize-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="ghost"
@@ -267,7 +248,7 @@ export function RequestEditDialog({
                   Cancel
                 </Button>
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Submitting..." : "Submit Request"}
+                  {loading ? "Submitting..." : "Submit request"}
                 </Button>
               </div>
             </form>

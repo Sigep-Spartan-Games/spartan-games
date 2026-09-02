@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef } from "react";
-import { Plus, Trash2, Edit2, Save, X } from "lucide-react";
+import { Plus, Edit2, Save, X } from "lucide-react";
 import { ActivityRule } from "@/lib/types";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
@@ -16,9 +16,7 @@ function generateActivityKey(label: string): string {
 
 export default function ScoringEditor({
   rules,
-  saveAllAction,
   updateAction,
-  resetDefaultsAction,
   addAction,
   deleteAction,
 }: {
@@ -36,7 +34,7 @@ export default function ScoringEditor({
   }, [rules]);
 
   return (
-    <div className="rounded-2xl border p-5 space-y-6">
+    <div className="space-y-6 rounded-lg border bg-card p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Activity Rules</h2>
@@ -46,8 +44,8 @@ export default function ScoringEditor({
         </div>
       </div>
 
-      <div className="rounded-xl border overflow-hidden">
-        <div className="grid grid-cols-12 gap-2 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
+      <div className="overflow-hidden rounded-lg border">
+        <div className="hidden grid-cols-12 gap-2 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid">
           <div className="col-span-4 sm:col-span-3">Activity / Label</div>
           <div className="hidden sm:block col-span-2">Input Type</div>
           <div className="col-span-3 sm:col-span-2">Points</div>
@@ -67,7 +65,7 @@ export default function ScoringEditor({
                     await updateAction(fd);
                     setEditingKey(null);
                   }}
-                  className="grid grid-cols-12 gap-2 items-start px-4 py-4 bg-muted/30 border-l-2 border-primary/50"
+                  className="grid grid-cols-12 items-start gap-3 border-l-2 border-primary/50 bg-muted/30 px-4 py-4"
                 >
                   <input
                     type="hidden"
@@ -177,7 +175,7 @@ export default function ScoringEditor({
                   <div className="col-span-12 sm:col-span-3 flex items-start justify-end gap-2 pt-6">
                     <button
                       type="submit"
-                      className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                      className="flex h-11 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       <Save className="h-4 w-4" />
                       Save
@@ -185,7 +183,7 @@ export default function ScoringEditor({
                     <button
                       type="button"
                       onClick={() => setEditingKey(null)}
-                      className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-md border border-input bg-background text-foreground text-sm font-medium hover:bg-muted transition-colors"
+                      className="flex h-11 items-center justify-center gap-1.5 rounded-control border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                     >
                       <X className="h-4 w-4" />
                       Cancel
@@ -198,7 +196,7 @@ export default function ScoringEditor({
             return (
               <div
                 key={r.activity_key}
-                className={`grid grid-cols-12 gap-2 items-center px-4 py-3 ${!r.active ? "opacity-50" : ""}`}
+                className={`grid grid-cols-12 items-center gap-2 px-4 py-3.5 transition-colors hover:bg-muted/20 ${!r.active ? "opacity-50" : ""}`}
               >
                 <div className="col-span-4 sm:col-span-3">
                   <div className="font-medium text-sm">
@@ -230,7 +228,7 @@ export default function ScoringEditor({
                 <div className="col-span-3 sm:col-span-3 flex justify-end gap-2">
                   <button
                     onClick={() => setEditingKey(r.activity_key)}
-                    className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted"
+                    className="flex h-11 w-11 items-center justify-center rounded-control hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     title="Edit"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -278,7 +276,7 @@ function AddNewActivityForm({
   };
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-muted/20 p-5">
+    <div className="rounded-lg border border-primary/20 bg-primary/[0.035] p-5">
       <h3 className="mb-4 text-base font-semibold text-foreground">
         Add New Activity
       </h3>
@@ -392,7 +390,7 @@ function AddNewActivityForm({
           <button
             type="submit"
             disabled={!label.trim()}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-5"
+            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
             Add
