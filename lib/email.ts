@@ -13,6 +13,19 @@ const transporter = nodemailer.createTransport({
 
 const FROM = process.env.SMTP_FROM || "sigep.spartangames@gmail.com";
 
+/**
+ * Safety check: when EMAIL_TEST_MODE=true, all outgoing emails are diverted
+ * to EMAIL_TEST_RECIPIENT instead of real users. This catches every code path
+ * (startGames, endGames, announcements, Slack commands) in one place.
+ */
+function isTestMode(): boolean {
+    return process.env.EMAIL_TEST_MODE === "true";
+}
+
+function getTestRecipient(): string | null {
+    return process.env.EMAIL_TEST_RECIPIENT || null;
+}
+
 /** Send a single email */
 export async function sendEmail({
     to,
@@ -23,9 +36,22 @@ export async function sendEmail({
     subject: string;
     html: string;
 }) {
+    let actualTo = to;
+
+    if (isTestMode()) {
+        const testRecipient = getTestRecipient();
+        if (!testRecipient) {
+            console.warn("[EMAIL_TEST_MODE] No EMAIL_TEST_RECIPIENT set — skipping email.");
+            return null;
+        }
+        console.log(`[EMAIL_TEST_MODE] Diverting email from "${to}" → "${testRecipient}"`);
+        actualTo = testRecipient;
+        subject = `[TEST] ${subject}`;
+    }
+
     return transporter.sendMail({
         from: `"Spartan Games" <${FROM}>`,
-        to,
+        to: actualTo,
         subject,
         html,
     });
@@ -42,6 +68,20 @@ export async function sendBulkEmail({
     html: string;
 }) {
     if (recipients.length === 0) return { sent: 0, errors: [] };
+
+    // ── Test Mode: divert ALL recipients to a single test address ──
+    if (isTestMode()) {
+        const testRecipient = getTestRecipient();
+        if (!testRecipient) {
+            console.warn("[EMAIL_TEST_MODE] No EMAIL_TEST_RECIPIENT set — skipping bulk email.");
+            return { sent: 0, errors: [] };
+        }
+        console.log(
+            `[EMAIL_TEST_MODE] Diverting bulk email from ${recipients.length} real recipients → "${testRecipient}"`
+        );
+        recipients = [testRecipient];
+        subject = `[TEST] ${subject}`;
+    }
 
     // Brevo free tier allows ~300 emails/day. Batch in groups of 50 to avoid
     // hitting per-request limits.
