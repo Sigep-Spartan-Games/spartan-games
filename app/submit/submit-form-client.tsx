@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Camera, CheckCircle2, UsersRound } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import { SubmitButton } from "@/components/submit-button";
 import { Combobox } from "@/components/ui/combobox";
 import { ActivityRule } from "@/lib/types";
-import imageCompression from "browser-image-compression";
 
 export default function SubmitFormClient({
   action,
@@ -17,19 +18,19 @@ export default function SubmitFormClient({
   teamName: string;
   activityRules: ActivityRule[];
 }) {
-  const sortedRules = useMemo(() => {
-    return [...activityRules].sort((a, b) => {
-      const labelA = (a.label || a.activity_key || "").toLowerCase();
-      const labelB = (b.label || b.activity_key || "").toLowerCase();
-      return labelA.localeCompare(labelB);
-    });
-  }, [activityRules]);
-
-  const [activityKey, setActivityKey] = useState<string>("");
+  const sortedRules = useMemo(
+    () =>
+      [...activityRules].sort((a, b) =>
+        (a.label || a.activity_key || "").toLowerCase().localeCompare(
+          (b.label || b.activity_key || "").toLowerCase(),
+        ),
+      ),
+    [activityRules],
+  );
+  const [activityKey, setActivityKey] = useState("");
   const [proofImage, setProofImage] = useState<File | null>(null);
   const [compressing, setCompressing] = useState(false);
 
-  // Default to first activity if available
   useEffect(() => {
     if (sortedRules.length > 0 && !activityKey) {
       setActivityKey(sortedRules[0].activity_key);
@@ -37,192 +38,160 @@ export default function SubmitFormClient({
   }, [sortedRules, activityKey]);
 
   const rule = useMemo(
-    () => activityRules.find((r) => r.activity_key === activityKey),
+    () => activityRules.find((item) => item.activity_key === activityKey),
     [activityRules, activityKey],
   );
-
   const today = useMemo(() => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }, []);
 
-  const handleImageChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setCompressing(true);
     try {
-      const options = {
-        maxSizeMB: 0.2, // ~200KB
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 0.2,
         maxWidthOrHeight: 1280,
         useWebWorker: true,
-      };
-      const compressedFile = await imageCompression(file, options);
+      });
       setProofImage(compressedFile);
     } catch (error) {
       console.error("Image compression error:", error);
-      // Fallback to original if compression fails, though unlikely
       setProofImage(file);
     } finally {
       setCompressing(false);
     }
-  };
+  }
 
-  const handleSubmit = async (formData: FormData) => {
-    if (proofImage) {
-      // Append the compressed file, overriding any original selection if needed
-      formData.set("proof_image", proofImage, proofImage.name);
-    }
+  async function handleSubmit(formData: FormData) {
+    if (proofImage) formData.set("proof_image", proofImage, proofImage.name);
     await action(formData);
-  };
+  }
 
   if (activityRules.length === 0) {
     return (
-      <div className="rounded-2xl border p-5 text-center text-muted-foreground">
+      <div className="rounded-lg border border-dashed bg-muted/25 p-8 text-center text-sm text-muted-foreground">
         No activities available to submit.
       </div>
     );
   }
 
+  const fieldClass =
+    "h-11 w-full rounded-control border border-input bg-card px-3 text-base shadow-sm shadow-foreground/[0.02] focus:outline-none focus:ring-2 focus:ring-ring/30 md:h-10 md:text-sm";
+
   return (
-    <form
-      action={handleSubmit}
-      className="space-y-3 rounded-2xl border p-4 md:p-5"
-    >
-      {/* Team */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Team</label>
-        <input type="hidden" name="team_id" value={teamId} />
-        <input
-          value={teamName}
-          disabled
-          className="h-11 w-full rounded-md border bg-muted px-3 text-sm"
-        />
-        <p className="text-xs text-muted-foreground">
-          You can only submit for your own team.
+    <form action={handleSubmit} className="app-surface-elevated space-y-5 p-4 sm:p-6">
+      <div className="border-b pb-4">
+        <h2 className="app-section-heading">Activity details</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Fields and scoring are controlled by the selected activity.
         </p>
       </div>
 
-      {/* Date */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Date</label>
+      <div className="space-y-2">
+        <label className="app-label">Team</label>
+        <input type="hidden" name="team_id" value={teamId} />
+        <input value={teamName} disabled className={`${fieldClass} bg-muted text-muted-foreground`} />
+        <p className="app-helper">You can only submit for your own team.</p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="app-label">Date</label>
         <input
           name="activity_date"
           type="date"
           defaultValue={today}
-          className="h-11 w-full max-w-full appearance-none rounded-md border bg-background px-3 text-sm cursor-pointer"
+          className={`${fieldClass} max-w-full appearance-none cursor-pointer`}
           required
-          onClick={(e) => e.currentTarget.showPicker()}
+          onClick={(event) => event.currentTarget.showPicker()}
         />
       </div>
 
-      {/* Activity */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Activity</label>
+      <div className="space-y-2">
+        <label className="app-label">Activity</label>
         <Combobox
           name="activity_key"
-          options={sortedRules.map((r) => ({
-            value: r.activity_key,
-            label: r.label ?? r.activity_key,
-            description: `${r.points_per_unit} pts${r.unit_label ? `/${r.unit_label}` : ""} • x${r.teammate_bonus} bonus`,
+          options={sortedRules.map((item) => ({
+            value: item.activity_key,
+            label: item.label ?? item.activity_key,
+            description: `${item.points_per_unit} pts${item.unit_label ? `/${item.unit_label}` : ""} / x${item.teammate_bonus} bonus`,
           }))}
           value={activityKey}
           onChange={setActivityKey}
           placeholder="Search activities..."
           required
         />
-        {rule && (
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">
-              {rule.points_per_unit} pts
-              {rule.unit_label ? `/${rule.unit_label}` : ""} • x
-              {rule.teammate_bonus} bonus
+        {rule ? (
+          <div className="rounded-control border border-primary/10 bg-primary/[0.04] p-3">
+            <p className="text-sm font-semibold text-primary">
+              {rule.points_per_unit} pts{rule.unit_label ? `/${rule.unit_label}` : ""} / x{rule.teammate_bonus} teammate bonus
             </p>
-            {rule.description && (
-              <p className="text-xs mt-2 p-2 rounded-md bg-muted/50 text-muted-foreground border border-primary/10">
-                {rule.description}
-              </p>
-            )}
+            {rule.description ? (
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{rule.description}</p>
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Value */}
-      {rule && (
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">
+      {rule ? (
+        <div className="space-y-2">
+          <label className="app-label">
             {rule.input_type === "boolean"
               ? "Completed?"
               : rule.unit_label
                 ? `Amount (${rule.unit_label})`
                 : "Details"}
           </label>
-
-          {rule.input_type === "number" && (
+          {rule.input_type === "number" ? (
             <input
               name="activity_value_number"
               type="number"
               min={rule.min_value ?? 0}
               step={rule.step_value ?? "any"}
-              placeholder={
-                rule.unit_label ? `Enter ${rule.unit_label}…` : "Enter amount…"
-              }
-              className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder={rule.unit_label ? `Enter ${rule.unit_label}...` : "Enter amount..."}
+              className={fieldClass}
               required
             />
-          )}
-
-          {rule.input_type === "text" && (
+          ) : null}
+          {rule.input_type === "text" ? (
             <input
               name="activity_value_text"
-              placeholder={
-                rule.unit_label ? `Enter ${rule.unit_label}…` : "Enter details…"
-              }
-              className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+              placeholder={rule.unit_label ? `Enter ${rule.unit_label}...` : "Enter details..."}
+              className={fieldClass}
               required
             />
-          )}
-
-          {rule.input_type === "boolean" && (
-            <label className="flex items-center gap-3 rounded-xl border p-3">
-              <input
-                type="checkbox"
-                name="activity_value_bool"
-                className="h-4 w-4"
-              />
+          ) : null}
+          {rule.input_type === "boolean" ? (
+            <label className="flex min-h-14 items-center gap-3 rounded-control border bg-card p-3">
+              <input type="checkbox" name="activity_value_bool" className="h-5 w-5 accent-primary" />
+              <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-primary" />
               <div>
-                <div className="text-sm font-medium">
-                  {rule.label || "Completed"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Check if completed.
-                </div>
+                <div className="text-sm font-semibold">{rule.label || "Completed"}</div>
+                <div className="text-xs text-muted-foreground">Check if completed.</div>
               </div>
             </label>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      {/* Proof Image */}
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Proof Photo (Optional)</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          className="w-full text-sm text-muted-foreground
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-md file:border-0
-            file:text-sm file:font-semibold
-            file:bg-primary/10 file:text-primary
-            hover:file:bg-primary/20"
-        />
-        <p className="text-xs text-muted-foreground">
+      <div className="space-y-2">
+        <label className="app-label">Proof Photo (Optional)</label>
+        <div className="rounded-control border border-dashed bg-muted/20 p-3">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Camera aria-hidden="true" className="h-4 w-4 text-primary" />
+            Add proof
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="mt-2 w-full text-sm text-muted-foreground file:mr-3 file:min-h-10 file:rounded-control file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/15"
+          />
+        </div>
+        <p className="app-helper" aria-live="polite">
           {compressing
             ? "Compressing image..."
             : proofImage
@@ -231,20 +200,17 @@ export default function SubmitFormClient({
         </p>
       </div>
 
-      {/* Teammate */}
-      <label className="flex items-center gap-3 rounded-xl border p-3">
-        <input type="checkbox" name="did_with_teammate" className="h-4 w-4" />
+      <label className="flex min-h-14 items-center gap-3 rounded-control border bg-card p-3">
+        <input type="checkbox" name="did_with_teammate" className="h-5 w-5 accent-primary" />
+        <UsersRound aria-hidden="true" className="h-5 w-5 text-primary" />
         <div>
-          <div className="text-sm font-medium">Did this with teammate</div>
-          <div className="text-xs text-muted-foreground">
-            Applies teammate multiplier automatically.
-          </div>
+          <div className="text-sm font-semibold">Did this with teammate</div>
+          <div className="text-xs text-muted-foreground">Applies teammate multiplier automatically.</div>
         </div>
       </label>
 
-      {/* Submit */}
       <SubmitButton
-        className="h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground disabled:opacity-50"
+        className="h-12 w-full rounded-control bg-competition text-sm font-semibold text-competition-foreground shadow-sm transition-[transform,background-color] hover:bg-competition/90 active:scale-[0.99] disabled:opacity-50 md:h-11"
         disabled={compressing}
       >
         {compressing ? "Processing Image..." : "Submit Activity"}

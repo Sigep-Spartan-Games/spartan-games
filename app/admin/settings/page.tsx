@@ -6,6 +6,9 @@ import { resetSpartanGames, startGames, endGames, toggleSubmissions, toggleRegis
 import TierGoalsSection from "./tier-goals-section";
 import StreakSettingsSection from "./streak-settings-section";
 import CollapsibleSection from "./collapsible-section";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { StatusBanner } from "@/components/ui/status-banner";
 
 function SettingsSkeleton() {
   return (
@@ -44,23 +47,13 @@ async function AdminSettingsInner({
 
   return (
     <div className="space-y-4">
-      {err && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
-          <div className="font-medium">Settings error</div>
-          <div className="mt-1 text-muted-foreground">{err}</div>
-        </div>
-      )}
+      {err && <StatusBanner variant="error" title="Settings error">{err}</StatusBanner>}
 
-      {ok && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm">
-          <div className="font-medium">Done</div>
-          <div className="mt-1 text-muted-foreground">{ok}</div>
-        </div>
-      )}
+      {ok && <StatusBanner variant="success" title="Done">{ok}</StatusBanner>}
 
       {/* Game Controls - Always visible */}
       <CollapsibleSection
-        title="🎮 Game Controls"
+        title="Game Controls"
         description="Start or end the games, and toggle submissions & registration"
         defaultOpen={true}
       >
@@ -70,21 +63,15 @@ async function AdminSettingsInner({
             <div className="text-sm font-medium">Quick Actions</div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <form action={startGames}>
-                <button
-                  type="submit"
-                  className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-                >
+                <Button type="submit">
                   Start Games
-                </button>
+                </Button>
               </form>
 
               <form action={endGames}>
-                <button
-                  type="submit"
-                  className="h-10 rounded-md border px-4 text-sm font-medium"
-                >
+                <Button type="submit" variant="outline">
                   End Games
-                </button>
+                </Button>
               </form>
             </div>
 
@@ -115,9 +102,12 @@ async function AdminSettingsInner({
                   className={[
                     "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     submissionsOpen
-                      ? "bg-emerald-500"
+                      ? "bg-success"
                       : "bg-muted-foreground/30",
                   ].join(" ")}
+                  role="switch"
+                  aria-checked={submissionsOpen}
+                  aria-label={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
                   title={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
                 >
                   <span
@@ -145,9 +135,12 @@ async function AdminSettingsInner({
                   className={[
                     "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
                     registrationOpen
-                      ? "bg-emerald-500"
+                      ? "bg-success"
                       : "bg-muted-foreground/30",
                   ].join(" ")}
+                  role="switch"
+                  aria-checked={registrationOpen}
+                  aria-label={registrationOpen ? "Turn off registration" : "Turn on registration"}
                   title={registrationOpen ? "Turn off registration" : "Turn on registration"}
                 >
                   <span
@@ -170,7 +163,7 @@ async function AdminSettingsInner({
 
       {/* Tier Weekly Goals */}
       <CollapsibleSection
-        title="🎯 Weekly Point Goals"
+        title="Weekly Point Goals"
         description="Set target weekly points for each tier"
       >
         <TierGoalsSection />
@@ -178,7 +171,7 @@ async function AdminSettingsInner({
 
       {/* Streak Bonus Settings */}
       <CollapsibleSection
-        title="🔥 Streak Bonus"
+        title="Streak Bonus"
         description="Configure streak bonus rewards"
       >
         <StreakSettingsSection />
@@ -186,27 +179,27 @@ async function AdminSettingsInner({
 
       {/* Export */}
       <CollapsibleSection
-        title="📤 Export Data"
+        title="Export Data"
         description="Download current Spartan Games data"
       >
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row">
             <a
-              className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground inline-flex items-center justify-center"
+              className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               href="/admin/settings/export/spartan-games.xlsx"
             >
               Download Excel (.xlsx)
             </a>
 
             <a
-              className="h-10 rounded-md border px-4 text-sm font-medium inline-flex items-center justify-center"
+              className="inline-flex min-h-11 items-center justify-center rounded-control border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted"
               href="/admin/settings/export/submissions.csv"
             >
               Download Submissions CSV
             </a>
 
             <a
-              className="h-10 rounded-md border px-4 text-sm font-medium inline-flex items-center justify-center"
+              className="inline-flex min-h-11 items-center justify-center rounded-control border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted"
               href="/admin/settings/export/teams.csv"
             >
               Download Teams CSV
@@ -221,7 +214,7 @@ async function AdminSettingsInner({
 
       {/* Reset - Danger Zone */}
       <CollapsibleSection
-        title="⚠️ Reset Spartan Games"
+        title="Reset Spartan Games"
         description="Permanently delete all teams and submissions"
         variant="danger"
       >
@@ -236,20 +229,17 @@ async function AdminSettingsInner({
             <div className="text-sm font-medium">
               Type <span className="font-mono">RESET</span> to confirm
             </div>
-            <input
+            <Input
               name="confirm"
               placeholder="RESET"
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm max-w-xs"
+              className="max-w-xs"
               required
             />
           </label>
 
-          <button
-            type="submit"
-            className="h-10 rounded-md bg-destructive px-4 text-sm font-medium text-destructive-foreground"
-          >
+          <Button type="submit" variant="destructive">
             Reset Spartan Games
-          </button>
+          </Button>
         </form>
       </CollapsibleSection>
     </div>

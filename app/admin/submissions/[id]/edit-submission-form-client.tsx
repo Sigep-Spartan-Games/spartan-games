@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { ActivityRule } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
 type Team = { id: string; name: string };
 
@@ -82,7 +83,7 @@ export default function EditSubmissionFormClient({
   }
 
   return (
-    <div className="rounded-2xl border p-5 space-y-4">
+    <div className="space-y-5 rounded-lg border bg-card p-5 sm:p-6">
       <div>
         <h2 className="text-lg font-semibold">Submission</h2>
         <p className="text-sm text-muted-foreground">
@@ -108,7 +109,7 @@ export default function EditSubmissionFormClient({
             <select
               name="team_id"
               defaultValue={initial.team_id}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="h-11 w-full rounded-control border bg-background px-3 text-sm"
             >
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -124,7 +125,7 @@ export default function EditSubmissionFormClient({
               name="activity_date"
               type="date"
               defaultValue={initial.activity_date}
-              className="h-11 w-full max-w-full appearance-none rounded-md border bg-background px-3 text-sm cursor-pointer"
+              className="h-11 w-full max-w-full cursor-pointer appearance-none rounded-control border bg-background px-3 text-sm"
               required
             />
           </label>
@@ -136,7 +137,7 @@ export default function EditSubmissionFormClient({
             name="activity_key"
             value={activityKey}
             onChange={(e) => onActivityChange(e.target.value)}
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            className="h-11 w-full rounded-control border bg-background px-3 text-sm"
             required
           >
             {activityRules.map((r) => (
@@ -158,7 +159,7 @@ export default function EditSubmissionFormClient({
               min="0"
               value={units}
               onChange={(e) => setUnits(e.target.value)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="h-11 w-full rounded-control border bg-background px-3 text-sm"
               placeholder="e.g. 2, 1.5, 0.75"
               required
             />
@@ -175,7 +176,7 @@ export default function EditSubmissionFormClient({
               name="activity_value_text"
               value={textVal}
               onChange={(e) => setTextVal(e.target.value)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="h-11 w-full rounded-control border bg-background px-3 text-sm"
               placeholder="e.g. Garden State Classic"
               required
             />
@@ -207,12 +208,9 @@ export default function EditSubmissionFormClient({
         </label>
 
         <div className="flex justify-end">
-          <button
-            type="submit"
-            className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-          >
+          <Button type="submit">
             Save changes
-          </button>
+          </Button>
         </div>
       </form>
     </div>

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import ScoringEditor from "./scoring-editor";
+import { StatusBanner } from "@/components/ui/status-banner";
 import {
   upsertActivityRulesBulk,
   updateActivityRule,
@@ -14,12 +15,12 @@ import {
 function ScoringSkeleton() {
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-lg border p-5">
         <div className="h-6 w-40 rounded bg-muted/40" />
         <div className="mt-2 h-4 w-64 rounded bg-muted/30" />
       </div>
 
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-lg border p-5">
         <div className="h-4 w-56 rounded bg-muted/40" />
         <div className="mt-4 space-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -54,35 +55,20 @@ async function AdminScoringInner({
 
   return (
     <div className="space-y-5">
-      {errorParam && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
-          <div className="font-medium">Admin error</div>
-          <div className="mt-1 text-muted-foreground">{errorParam}</div>
-        </div>
-      )}
+      {errorParam && <StatusBanner variant="error" title="Admin error">{errorParam}</StatusBanner>}
 
-      {savedParam && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm">
-          <div className="font-medium">Saved</div>
-          <div className="mt-1 text-muted-foreground">
-            Scoring rules updated.
-          </div>
-        </div>
-      )}
+      {savedParam && <StatusBanner variant="success" title="Saved">Scoring rules updated.</StatusBanner>}
 
       {resetParam && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm">
-          <div className="font-medium">Reset</div>
-          <div className="mt-1 text-muted-foreground">
-            Scoring rules reset to defaults (10 per unit, +15 teammate).
-          </div>
-        </div>
+        <StatusBanner variant="success" title="Reset">
+          Scoring rules reset to defaults (10 per unit, +15 teammate).
+        </StatusBanner>
       )}
 
       {rulesError ? (
-        <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-          Error loading rules: {rulesError.message}
-        </div>
+        <StatusBanner variant="error" title="Scoring rules unavailable">
+          {rulesError.message}
+        </StatusBanner>
       ) : (
         <ScoringEditor
           rules={(rules ?? []) as any}

@@ -1,16 +1,19 @@
-// app/teams/page.tsx
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
+import { KeyRound, UsersRound } from "lucide-react";
 import { createClient } from "../../lib/supabase/server";
 import {
   createTeamAction,
   joinByCodeAction,
-  leaveTeamAction,
   renameTeamAction,
   changeTierAction,
   leaveTeamActionFormData,
 } from "./actions";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { TierBadge } from "@/components/competition-badges";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBanner } from "@/components/ui/status-banner";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type TeamRow = {
   id: string;
@@ -24,65 +27,52 @@ type TeamRow = {
   tier?: "gold" | "purple" | "red" | null;
 };
 
-const TIER_LABELS: Record<string, string> = {
-  gold: "🥇 Gold (Competitive)",
-  purple: "🟣 Purple (Intermediate)",
-  red: "🔴 Red (Casual)",
+const tierOptions = [
+  { value: "gold", label: "Gold", description: "Competitive" },
+  { value: "purple", label: "Purple", description: "Intermediate" },
+  { value: "red", label: "Red", description: "Casual" },
+] as const;
+
+const tierRadioStyles = {
+  gold: "border-achievement/25 has-[:checked]:bg-achievement/10 has-[:checked]:text-achievement",
+  purple: "border-primary/25 has-[:checked]:bg-primary/10 has-[:checked]:text-primary",
+  red: "border-competition/25 has-[:checked]:bg-competition/10 has-[:checked]:text-competition",
 };
 
-const TIER_COLORS: Record<string, string> = {
-  gold: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  purple: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  red: "bg-red-500/20 text-red-300 border-red-500/30",
-};
-
-type SP = { success?: string; error?: string };
+type SearchFeedback = { success?: string; error?: string };
 
 function TeamsSkeleton() {
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="h-7 w-24 rounded bg-muted" />
-        <div className="mt-2 h-4 w-60 rounded bg-muted" />
+    <div className="space-y-6" aria-label="Loading teams">
+      <div className="space-y-2">
+        <div className="h-8 w-28 animate-pulse rounded bg-muted" />
+        <div className="h-5 w-72 animate-pulse rounded bg-muted" />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="h-40 rounded-2xl border bg-muted/20" />
-        <div className="h-40 rounded-2xl border bg-muted/20" />
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="h-28 rounded-2xl border bg-muted/20" />
-        <div className="h-28 rounded-2xl border bg-muted/20" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="h-64 animate-pulse rounded-lg border bg-muted/30" />
+        <div className="h-64 animate-pulse rounded-lg border bg-muted/30" />
       </div>
     </div>
   );
 }
 
-async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
-  // IMPORTANT: keep uncached work inside Suspense
+async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedback> }) {
   noStore();
-
-  const sp = await searchParams;
-
+  const feedback = await searchParams;
   const supabase = await createClient();
-
   const { data: auth } = await supabase.auth.getUser();
   const me = auth.user;
 
-  // ✅ registration gate
   const { data: settings, error: settingsError } = await supabase
     .from("game_settings")
     .select("registration_open")
     .eq("id", true)
     .single();
-
-  const registrationOpen = settingsError
-    ? true
-    : Boolean(settings?.registration_open);
+  const registrationOpen = settingsError ? true : Boolean(settings?.registration_open);
 
   const { data, error } = await supabase
     .from("teams")
-    .select(
-      `
+    .select(`
       id,
       name,
       weekly_points,
@@ -92,342 +82,206 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SP> }) {
       tier,
       member1:profiles!member1_id(first_name, last_name, email),
       member2:profiles!member2_id(first_name, last_name, email)
-    `,
-    )
+    `)
     .order("name", { ascending: true });
 
-  const teams = (data ?? []).map((t: any) => {
-    const m1 = t.member1;
-    const m1Name = m1
-      ? m1.first_name || m1.last_name
-        ? `${m1.first_name || ""} ${m1.last_name || ""}`.trim()
-        : m1.email
+  const teams = (data ?? []).map((team: any) => {
+    const member1 = team.member1;
+    const member2 = team.member2;
+    const member1Name = member1
+      ? member1.first_name || member1.last_name
+        ? `${member1.first_name || ""} ${member1.last_name || ""}`.trim()
+        : member1.email
       : null;
-
-    const m2 = t.member2;
-    const m2Name = m2
-      ? m2.first_name || m2.last_name
-        ? `${m2.first_name || ""} ${m2.last_name || ""}`.trim()
-        : m2.email
+    const member2Name = member2
+      ? member2.first_name || member2.last_name
+        ? `${member2.first_name || ""} ${member2.last_name || ""}`.trim()
+        : member2.email
       : null;
-
-    return {
-      ...t,
-      member1_name: m1Name,
-      member2_name: m2Name,
-    };
+    return { ...team, member1_name: member1Name, member2_name: member2Name };
   }) as TeamRow[];
 
-  const success = sp?.success ? decodeURIComponent(sp.success) : null;
-  const errorMsg = sp?.error ? decodeURIComponent(sp.error) : null;
-
+  const success = feedback?.success ? decodeURIComponent(feedback.success) : null;
+  const errorMessage = feedback?.error ? decodeURIComponent(feedback.error) : null;
   const myTeam = me
-    ? (teams.find((t) => t.member1_id === me.id || t.member2_id === me.id) ??
-      null)
+    ? teams.find((team) => team.member1_id === me.id || team.member2_id === me.id) ?? null
     : null;
-
   const canRegister = Boolean(me) && !myTeam && registrationOpen;
+  const fieldClass =
+    "h-11 w-full rounded-control border border-input bg-card px-3 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:bg-muted disabled:opacity-70 md:h-10 md:text-sm";
 
   return (
     <div className="space-y-6">
-      {(success || errorMsg) && (
-        <div
-          className={[
-            "rounded-xl border p-3 text-sm",
-            errorMsg ? "border-destructive/40 bg-destructive/5" : "bg-muted/30",
-          ].join(" ")}
-        >
-          {errorMsg ?? success}
-        </div>
-      )}
+      <PageHeader title="Teams" description="Create a team, invite your teammate, and track the competition." />
 
-      {!registrationOpen && (
-        <div className="rounded-xl border bg-muted/30 p-4 text-sm">
-          <div className="font-medium">Team registration is closed</div>
-          <div className="mt-1 text-muted-foreground">
-            You can still view teams. Registration will reopen when the games
-            end.
-          </div>
-        </div>
-      )}
+      {success || errorMessage ? (
+        <StatusBanner variant={errorMessage ? "error" : "success"} title={errorMessage ? "Team update failed" : "Team updated"}>
+          {errorMessage ?? success}
+        </StatusBanner>
+      ) : null}
+      {!registrationOpen ? (
+        <StatusBanner variant="warning" title="Team registration is closed">
+          You can still view teams. Registration will reopen when the games end.
+        </StatusBanner>
+      ) : null}
+      {settingsError ? (
+        <StatusBanner variant="warning" title="Settings warning">
+          Could not load game settings: {settingsError.message}. Defaulting registration to open.
+        </StatusBanner>
+      ) : null}
+      {error ? (
+        <StatusBanner variant="error" title="Could not load teams">{error.message}</StatusBanner>
+      ) : null}
 
-      {settingsError && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
-          <div className="font-medium">Settings warning</div>
-          <div className="mt-1 text-muted-foreground">
-            Couldn’t load game settings: {settingsError.message}. Defaulting
-            registration to open.
-          </div>
-        </div>
-      )}
-
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
-        <p className="text-sm text-muted-foreground">
-          Create a team, invite your teammate, and track points.
-        </p>
-      </div>
-
-      {registrationOpen && !myTeam && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {/* Create */}
-          <div className="rounded-2xl border p-4">
-            <div className="text-sm font-medium">Register a team</div>
-            {myTeam ? (
-              ""
-            ) : (
-              <form action={createTeamAction} className="mt-3 space-y-3">
-                <input
-                  name="teamName"
-                  placeholder="Team name"
-                  className="h-10 w-full rounded-xl border bg-transparent px-3 text-sm outline-none"
-                  maxLength={40}
-                  required
-                  disabled={!canRegister}
-                />
-
-                <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Select Tier:
-                  </span>
-                  <div className="flex flex-col gap-1.5">
-                    {Object.entries(TIER_LABELS).map(([tierKey, label]) => (
-                      <label
-                        key={tierKey}
-                        className={`flex items-center gap-2 rounded-lg border p-2 text-xs cursor-pointer transition-colors hover:bg-muted/50 ${TIER_COLORS[tierKey].split(" ")[2]}`}
-                      >
-                        <input
-                          type="radio"
-                          name="tier"
-                          value={tierKey}
-                          required
-                          disabled={!canRegister}
-                          className="accent-primary"
-                        />
-                        <span className={TIER_COLORS[tierKey].split(" ")[1]}>
-                          {label}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+      {registrationOpen && !myTeam ? (
+        <section className="grid gap-4 md:grid-cols-2" aria-label="Join or create a team">
+          <div className="app-surface p-5 sm:p-6">
+            <h2 className="app-section-heading">Register a team</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Choose a name and competition tier.</p>
+            <form action={createTeamAction} className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="teamName" className="app-label">Team name</label>
+                <input id="teamName" name="teamName" className={fieldClass} maxLength={40} required disabled={!canRegister} />
+              </div>
+              <fieldset className="space-y-2">
+                <legend className="app-label">Team tier</legend>
+                <div className="grid gap-2">
+                  {tierOptions.map((tier) => (
+                    <label
+                      key={tier.value}
+                      className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-control border px-3 py-2 transition-colors ${tierRadioStyles[tier.value]}`}
+                    >
+                      <input type="radio" name="tier" value={tier.value} required disabled={!canRegister} className="h-5 w-5 accent-primary" />
+                      <span className="text-sm font-semibold">{tier.label}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{tier.description}</span>
+                    </label>
+                  ))}
                 </div>
-
-                <button
-                  className="h-10 w-full rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
-                  type="submit"
-                  disabled={!canRegister}
-                >
-                  Create
-                </button>
-              </form>
-            )}
-
-            <p className="mt-2 text-xs text-muted-foreground">
-              {!me
-                ? "Sign in to create a team."
-                : myTeam
-                  ? "You’re already on a team. Leave it to create a new one."
-                  : registrationOpen
-                    ? "Creating a team auto-joins you and generates an invite code."
-                    : "Registration is closed right now."}
+              </fieldset>
+              <button className="h-11 w-full rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50" type="submit" disabled={!canRegister}>
+                Create team
+              </button>
+            </form>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {!me ? "Sign in to create a team." : "Creating a team auto-joins you and generates an invite code."}
             </p>
           </div>
 
-          {/* Join */}
-          <div className="rounded-2xl border p-4">
-            <div className="text-sm font-medium">Join a team</div>
-            {myTeam ? (
-              ""
-            ) : (
-              <form action={joinByCodeAction} className="mt-3 flex gap-2">
-                <input
-                  name="inviteCode"
-                  placeholder="Invite code"
-                  className="h-10 w-full rounded-xl border bg-transparent px-3 text-sm uppercase tracking-wider outline-none"
-                  maxLength={16}
-                  required
-                  disabled={!canRegister}
-                />
-                <button
-                  className="h-10 shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
-                  type="submit"
-                  disabled={!canRegister}
-                >
-                  Join
-                </button>
-              </form>
-            )}
-
-            <p className="mt-2 text-xs text-muted-foreground">
-              {!me
-                ? "Sign in to join a team."
-                : myTeam
-                  ? "Leave your current team to join another."
-                  : registrationOpen
-                    ? "Enter an invite code your teammate gives you."
-                    : "Registration is closed right now."}
+          <div className="app-surface p-5 sm:p-6">
+            <h2 className="app-section-heading">Join a team</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Use the invite code from your teammate.</p>
+            <form action={joinByCodeAction} className="mt-5 space-y-3">
+              <div className="space-y-2">
+                <label htmlFor="inviteCode" className="app-label">Invite code</label>
+                <input id="inviteCode" name="inviteCode" className={`${fieldClass} uppercase tracking-wider`} maxLength={16} required disabled={!canRegister} />
+              </div>
+              <button className="h-11 w-full rounded-control border border-primary bg-primary/5 px-4 text-sm font-semibold text-primary disabled:opacity-50" type="submit" disabled={!canRegister}>
+                Join team
+              </button>
+            </form>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {!me ? "Sign in to join a team." : "Enter the private invite code your teammate gives you."}
             </p>
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
 
-      {error && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
-          <div className="font-medium">Supabase error</div>
-          <div className="mt-1 text-muted-foreground">{error.message}</div>
-        </div>
-      )}
-
-      {/* My team */}
-      {me && myTeam && (
-        <div className="rounded-2xl border p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">Your team</div>
-              <div className="mt-1 truncate text-base font-semibold">
-                {myTeam.name}
-              </div>
-              <div className="mt-1 truncate text-sm text-muted-foreground">
-                {myTeam.member1_name ?? "—"} &nbsp;•&nbsp;{" "}
-                {myTeam.member2_name ?? "—"}
-              </div>
-
-              {myTeam.invite_code && (
-                <div className="mt-3 text-xs text-muted-foreground">
-                  Invite code:{" "}
-                  <span className="rounded-md border px-2 py-1 font-mono text-xs tracking-widest">
-                    {myTeam.invite_code}
-                  </span>
+      {me && myTeam ? (
+        <section className="app-surface-elevated overflow-hidden" aria-labelledby="my-team-heading">
+          <div className="border-l-4 border-primary p-5 sm:p-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-primary">Your team</p>
+                <h2 id="my-team-heading" className="mt-1 truncate text-2xl font-semibold tracking-tight">{myTeam.name}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {myTeam.member1_name ?? "Open spot"} / {myTeam.member2_name ?? "Open spot"}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {myTeam.tier ? <TierBadge tier={myTeam.tier} /> : null}
+                  {myTeam.invite_code ? (
+                    <span className="inline-flex min-h-8 items-center gap-2 rounded-control border bg-muted/35 px-2.5 font-mono text-xs tracking-wider">
+                      <KeyRound aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
+                      {myTeam.invite_code}
+                    </span>
+                  ) : null}
                 </div>
-              )}
-
-              {/* Display Tier & Change Tier UI */}
-              <div className="mt-4 border-t pt-3">
-                <div className="text-xs font-medium text-muted-foreground mb-2">
-                  Team Tier
-                </div>
-                {myTeam.tier && (
-                  <span
-                    className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}
-                  >
-                    {TIER_LABELS[myTeam.tier]}
-                  </span>
-                )}
-
-                {/* Captain can change tier if registration is open */}
-                {myTeam.member1_id === me.id && registrationOpen && (
-                  <form action={changeTierAction} className="mt-3 space-y-2">
+                {myTeam.member1_id === me.id && registrationOpen ? (
+                  <form action={changeTierAction} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <input type="hidden" name="teamId" value={myTeam.id} />
-                    <div className="text-xs text-muted-foreground mb-1">
-                      Change Tier:
-                    </div>
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <select
-                        name="tier"
-                        defaultValue={myTeam.tier ?? ""}
-                        className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
-                      >
-                        <option value="gold">🥇 Gold (Competitive)</option>
-                        <option value="purple">🟣 Purple (Intermediate)</option>
-                        <option value="red">🔴 Red (Casual)</option>
+                    <label className="flex-1 space-y-2">
+                      <span className="app-label">Change tier</span>
+                      <select name="tier" defaultValue={myTeam.tier ?? ""} className={fieldClass}>
+                        {tierOptions.map((tier) => <option key={tier.value} value={tier.value}>{tier.label} ({tier.description})</option>)}
                       </select>
-                      <button
-                        type="submit"
-                        className="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted/50"
-                      >
-                        Update
-                      </button>
+                    </label>
+                    <button type="submit" className="h-11 rounded-control border px-4 text-sm font-semibold md:h-10">Update tier</button>
+                  </form>
+                ) : null}
+              </div>
+              <div className="w-full space-y-3 border-t pt-5 lg:w-auto lg:min-w-72 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                {myTeam.member1_id === me.id ? (
+                  <form action={renameTeamAction} className="space-y-2">
+                    <input type="hidden" name="teamId" value={myTeam.id} />
+                    <label htmlFor="newName" className="app-label">Rename team</label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input id="newName" name="newName" className={fieldClass} maxLength={40} required />
+                      <button className="h-11 shrink-0 rounded-control border px-4 text-sm font-semibold md:h-10">Rename</button>
                     </div>
                   </form>
-                )}
+                ) : null}
+                <ConfirmDeleteButton
+                  action={leaveTeamActionFormData}
+                  payload={{ teamId: myTeam.id }}
+                  title="Leave Team"
+                  description="Are you sure you want to leave your team? If you are the last member, the team will be deleted."
+                  buttonText="Leave team"
+                  className="h-11 w-full rounded-control border px-4 text-sm font-semibold md:h-10"
+                  buttonSize="default"
+                />
               </div>
             </div>
-
-            <div className="flex flex-col gap-2">
-              {myTeam.member1_id === me.id && (
-                <form action={renameTeamAction} className="flex gap-2">
-                  <input type="hidden" name="teamId" value={myTeam.id} />
-                  <input
-                    name="newName"
-                    placeholder="New team name"
-                    className="h-9 w-44 rounded-xl border bg-transparent px-3 text-sm outline-none"
-                    maxLength={40}
-                    required
-                  />
-                  <button className="h-9 rounded-xl border px-3 text-sm font-medium">
-                    Rename
-                  </button>
-                </form>
-              )}
-
-              <ConfirmDeleteButton
-                action={leaveTeamActionFormData}
-                payload={{ teamId: myTeam.id }}
-                title="Leave Team"
-                description="Are you sure you want to leave your team? If you are the last member, the team will be deleted."
-                buttonText="Leave team"
-                className="h-9 w-full rounded-xl border px-3 text-sm font-medium"
-                buttonSize="default"
-              />
-            </div>
           </div>
+        </section>
+      ) : null}
+
+      <section className="space-y-3" aria-labelledby="all-teams-heading">
+        <div className="flex items-center gap-2">
+          <UsersRound aria-hidden="true" className="h-5 w-5 text-primary" />
+          <h2 id="all-teams-heading" className="app-section-heading">All teams</h2>
+          <span className="ml-auto text-sm text-muted-foreground">{teams.length} total</span>
         </div>
-      )}
-
-      {/* Teams list */}
-      <div className="grid gap-3 md:grid-cols-2">
         {teams.length === 0 ? (
-          <div className="rounded-2xl border p-4 text-sm text-muted-foreground">
-            No teams yet.
-          </div>
+          <EmptyState title="No teams yet" description="Registered teams will appear here." />
         ) : (
-          teams.map((t) => {
-            const isFull = Boolean(t.member2_id);
-            return (
-              <div key={t.id} className="rounded-2xl border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-base font-semibold">
-                        {t.name}
-                      </span>
-                      {t.tier && (
-                        <span
-                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
-                        >
-                          {TIER_LABELS[t.tier].split(" ")[0]}{" "}
-                          {TIER_LABELS[t.tier].split(" ")[1]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 truncate text-sm text-muted-foreground">
-                      {t.member1_name ?? "—"} &nbsp;•&nbsp;{" "}
-                      {t.member2_name ?? "—"}
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      {isFull ? "Full" : "Open spot (invite-only)"}
-                    </div>
+          <div className="app-surface grid divide-y overflow-hidden md:grid-cols-2 md:divide-x md:divide-y-0">
+            {teams.map((team) => (
+              <div key={team.id} className="flex min-w-0 items-start justify-between gap-4 p-4 sm:p-5">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate font-semibold">{team.name}</h3>
+                    {team.tier ? <TierBadge tier={team.tier} /> : null}
                   </div>
-
-                  <div className="shrink-0 text-right">
-                    <div className="text-xs text-muted-foreground">
-                      Weekly Pts
-                    </div>
-                    <div className="text-base font-semibold tabular-nums">
-                      {t.weekly_points ?? 0}
-                    </div>
-                  </div>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">
+                    {team.member1_name ?? "Open spot"} / {team.member2_name ?? "Open spot"}
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">
+                    {team.member2_id ? "Team full" : "Open spot (invite-only)"}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
+                  <p className="text-xs text-muted-foreground">weekly pts</p>
                 </div>
               </div>
-            );
-          })
+            ))}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
 
-export default function TeamsPage(props: { searchParams: Promise<SP> }) {
+export default function TeamsPage(props: { searchParams: Promise<SearchFeedback> }) {
   return (
     <Suspense fallback={<TeamsSkeleton />}>
       <TeamsInner {...props} />

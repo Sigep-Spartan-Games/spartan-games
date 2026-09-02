@@ -1,4 +1,3 @@
-// app/leaderboard/page.tsx
 import { Suspense } from "react";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
@@ -6,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCachedUser } from "@/lib/cached-data";
 import WeeklyProgressBar from "@/components/weekly-progress-bar";
 import PullToRefresh from "@/components/pull-to-refresh";
+import { StreakBadge, TierBadge, TIER_LABELS } from "@/components/competition-badges";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBanner } from "@/components/ui/status-banner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
 
 type TeamRow = {
   id: string;
@@ -21,35 +25,24 @@ type TeamRow = {
   streak_count: number | null;
 };
 
-const TIER_LABELS: Record<string, string> = {
-  gold: "Gold",
-  purple: "Purple",
-  red: "Red",
-};
-
-const TIER_COLORS: Record<string, string> = {
-  gold: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30",
-  purple:
-    "bg-purple-500/10 text-purple-700 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30",
-  red: "bg-red-500/10 text-red-700 border-red-500/20 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30",
+const tierTabStyles = {
+  all: "border-primary bg-primary text-primary-foreground",
+  gold: "border-achievement/30 bg-achievement/10 text-achievement",
+  purple: "border-primary/30 bg-primary/10 text-primary",
+  red: "border-competition/30 bg-competition/10 text-competition",
 };
 
 function LeaderboardSkeleton() {
   return (
-    <div className="space-y-5">
-      <div>
-        <div className="h-8 w-40 rounded bg-muted/40" />
-        <div className="mt-2 h-4 w-64 rounded bg-muted/30" />
+    <div className="space-y-6" aria-label="Loading leaderboard">
+      <div className="space-y-2">
+        <div className="h-8 w-44 animate-pulse rounded bg-muted" />
+        <div className="h-5 w-64 animate-pulse rounded bg-muted" />
       </div>
-
-      <div className="overflow-hidden rounded-2xl border">
-        <div className="bg-muted/50 px-4 py-3">
-          <div className="h-4 w-56 rounded bg-muted/40" />
-        </div>
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="border-t px-4 py-3">
-            <div className="h-4 w-full rounded bg-muted/30" />
-          </div>
+      <div className="h-40 animate-pulse rounded-lg border bg-muted/40" />
+      <div className="overflow-hidden rounded-lg border bg-card">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <div key={index} className="h-20 animate-pulse border-b border-border/70 bg-muted/20 last:border-0" />
         ))}
       </div>
     </div>
@@ -58,22 +51,16 @@ function LeaderboardSkeleton() {
 
 type SearchParams = Promise<{ tier?: string }>;
 
-async function LeaderboardInner({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }) {
   noStore();
 
   const supabase = await createClient();
   const user = await getCachedUser();
   const sp = await searchParams;
 
-  // Fetch all teams (with tier and member IDs)
   const { data, error } = await supabase
     .from("teams")
-    .select(
-      `
+    .select(`
       id,
       name,
       weekly_points,
@@ -85,383 +72,189 @@ async function LeaderboardInner({
       streak_count,
       member1:profiles!member1_id(first_name, last_name, email),
       member2:profiles!member2_id(first_name, last_name, email)
-    `,
-    )
+    `)
     .order("weekly_points", { ascending: false })
     .order("total_points", { ascending: false })
     .order("name", { ascending: true });
 
-  const teams = (data ?? []).map((t: any) => {
-    const m1 = t.member1;
-    const m1Name = m1
-      ? m1.first_name || m1.last_name
-        ? `${m1.first_name || ""} ${m1.last_name || ""}`.trim()
-        : m1.email
+  const teams = (data ?? []).map((team: any) => {
+    const member1 = team.member1;
+    const member2 = team.member2;
+    const member1Name = member1
+      ? member1.first_name || member1.last_name
+        ? `${member1.first_name || ""} ${member1.last_name || ""}`.trim()
+        : member1.email
+      : null;
+    const member2Name = member2
+      ? member2.first_name || member2.last_name
+        ? `${member2.first_name || ""} ${member2.last_name || ""}`.trim()
+        : member2.email
       : null;
 
-    const m2 = t.member2;
-    const m2Name = m2
-      ? m2.first_name || m2.last_name
-        ? `${m2.first_name || ""} ${m2.last_name || ""}`.trim()
-        : m2.email
-      : null;
-
-    return {
-      ...t,
-      member1_name: m1Name,
-      member2_name: m2Name,
-    };
+    return { ...team, member1_name: member1Name, member2_name: member2Name };
   }) as TeamRow[];
 
-  // Find my team in memory (need ID to identify default tier)
   const myTeam = user
-    ? (teams.find(
-        (t) => t.member1_id === user.id || t.member2_id === user.id,
-      ) ?? null)
+    ? teams.find((team) => team.member1_id === user.id || team.member2_id === user.id) ?? null
     : null;
-
-  // Determine active tier filter
-  // Priority: URL Param -> My Team's Tier -> "All"
   const tierParam = sp?.tier?.toLowerCase();
-  const isValidTier =
-    tierParam && ["gold", "purple", "red", "all"].includes(tierParam);
+  const isValidTier = tierParam && ["gold", "purple", "red", "all"].includes(tierParam);
+  let activeTier = isValidTier ? tierParam : myTeam?.tier ?? "all";
+  if (!isValidTier && !myTeam?.tier) activeTier = "all";
 
-  let activeTier = isValidTier ? tierParam : (myTeam?.tier ?? "all");
-
-  // If my team has no tier (legacy), default to 'all' unless param is set
-  if (!isValidTier && !myTeam?.tier) {
-    activeTier = "all";
-  }
-
-  // Filter teams based on active tier
-  const filteredTeams =
-    activeTier === "all" ? teams : teams.filter((t) => t.tier === activeTier);
-
-  // My Rank within the current view
-  const myRank = myTeam
-    ? filteredTeams.findIndex((t) => t.id === myTeam.id) + 1
-    : null;
-
-  const isMyTeamInView = myRank !== null && myRank > 0;
+  const filteredTeams = activeTier === "all"
+    ? teams
+    : teams.filter((team) => team.tier === activeTier);
+  const myRankIndex = myTeam ? filteredTeams.findIndex((team) => team.id === myTeam.id) : -1;
+  const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
 
   return (
     <PullToRefresh>
-      <div className="space-y-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Leaderboard
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Live standings sorted by points.
-            </p>
-          </div>
-
-          {/* Tier Tabs */}
-          <div className="flex flex-wrap gap-2">
-            {["all", "gold", "purple", "red"].map((t) => {
-              const isActive = activeTier === t;
-              const label = t === "all" ? "All" : TIER_LABELS[t];
-              // Style based on tier color if active
-              let styleClass =
-                "text-muted-foreground hover:bg-muted/50 hover:text-foreground";
-              if (isActive) {
-                if (t === "all")
-                  styleClass =
-                    "bg-primary/10 text-primary font-semibold ring-1 ring-primary/20";
-                else
-                  styleClass = `${TIER_COLORS[t]} font-semibold ring-1 ring-inset`;
-              }
-
-              return (
-                <Link
-                  key={t}
-                  href={`?tier=${t}`}
-                  scroll={false}
-                  className={`rounded-full px-3 py-1 text-xs transition-colors ${styleClass}`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        {error && (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
-            <div className="font-medium">Supabase error</div>
-            <div className="mt-1 text-muted-foreground">{error.message}</div>
-          </div>
-        )}
-
-        {/* MOBILE */}
-        <div className="overflow-hidden rounded-2xl border md:hidden">
-          <div className="grid grid-cols-[48px_1fr_48px_72px] items-center bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
-            <div>Rank</div>
-            <div>Team</div>
-            <div className="text-center">Wins</div>
-            <div className="text-right">Points</div>
-          </div>
-
-          {isMyTeamInView && myTeam && (
-            <div className="grid grid-cols-[48px_1fr_48px_72px] items-center border-t border-l-4 border-l-primary bg-background px-4 py-3 dark:bg-primary/20">
-              <div className="font-medium">#{myRank}</div>
-
-              <div className="min-w-0 pr-2">
-                <div className="flex flex-col gap-0.5">
-                  <span className="truncate font-semibold">{myTeam.name}</span>
-                  <div className="text-[10px] text-muted-foreground truncate">
-                    {myTeam.member1_name || "—"} • {myTeam.member2_name || "—"}
-                  </div>
-                  {(myTeam.streak_count ?? 0) >= 2 && (
-                    <span
-                      className="text-orange-500 text-[10px] ml-1"
-                      title="Active Streak"
-                    >
-                      🔥 {myTeam.streak_count}
-                    </span>
-                  )}
-                  {myTeam.tier && (
-                    <span
-                      className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}
-                    >
-                      {TIER_LABELS[myTeam.tier]}
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-primary mt-0.5">Your team</div>
-                <WeeklyProgressBar
-                  weeklyPoints={myTeam.weekly_points ?? 0}
-                  tier={myTeam.tier}
-                  className="mt-2"
-                />
-              </div>
-
-              <div className="text-center font-semibold tabular-nums">
-                {myTeam.weeks_won?.length ?? 0}
-              </div>
-
-              <div className="text-right font-semibold tabular-nums">
-                {myTeam.weekly_points ?? 0}
-                <div className="text-[10px] text-muted-foreground font-normal">
-                  Total:{" "}
-                  {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {filteredTeams.map((t, idx) => {
-            const rank = idx + 1;
-            const isMine = myTeam?.id === t.id;
-            const effectiveTotal =
-              (t.total_points ?? 0) + (t.weekly_points ?? 0);
-
-            return (
-              <div
-                key={t.id}
-                className={[
-                  "grid grid-cols-[48px_1fr_48px_72px] items-center border-t px-4 py-3",
-                  isMine ? "bg-primary/5 dark:bg-primary/10" : "",
-                ].join(" ")}
-              >
-                <div
-                  className={isMine ? "font-medium" : "text-muted-foreground"}
-                >
-                  #{rank}
-                </div>
-
-                <div className="min-w-0 pr-2">
-                  <div className="flex flex-col gap-0.5">
-                    <span
-                      className={
-                        isMine
-                          ? "truncate font-semibold"
-                          : "truncate font-medium"
-                      }
-                    >
-                      {t.name}
-                    </span>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {t.member1_name || "—"} • {t.member2_name || "—"}
-                    </div>
-                    {(t.streak_count ?? 0) >= 2 && (
-                      <span
-                        className="text-orange-500 text-[10px] inline-flex items-center gap-0.5"
-                        title="Active Streak"
-                      >
-                        🔥 {t.streak_count}
-                      </span>
+      <div className="space-y-6">
+        <PageHeader
+          title="Leaderboard"
+          description="Live weekly standings, season totals, wins, and team goal progress."
+          actions={
+            <div className="grid grid-cols-4 rounded-lg border bg-card p-1" aria-label="Filter leaderboard by tier">
+              {(["all", "gold", "purple", "red"] as const).map((tier) => {
+                const active = activeTier === tier;
+                return (
+                  <Link
+                    key={tier}
+                    href={`?tier=${tier}`}
+                    scroll={false}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-10 items-center justify-center rounded-control border border-transparent px-2 text-xs font-semibold transition-colors sm:min-w-16",
+                      active ? tierTabStyles[tier] : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
-                    {t.tier && activeTier === "all" && (
-                      <span
-                        className={`w-fit inline-flex items-center rounded-sm px-1 py-0 text-[9px] font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
-                      >
-                        {TIER_LABELS[t.tier]}
-                      </span>
-                    )}
-                  </div>
-                  {isMine && (
-                    <div className="text-[10px] text-primary mt-0.5">
-                      Your team
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  className={
-                    isMine
-                      ? "text-center font-semibold tabular-nums"
-                      : "text-center tabular-nums text-muted-foreground"
-                  }
-                >
-                  {t.weeks_won?.length ?? 0}
-                </div>
-
-                <div
-                  className={
-                    isMine
-                      ? "text-right font-semibold tabular-nums"
-                      : "text-right tabular-nums"
-                  }
-                >
-                  {t.weekly_points ?? 0}
-                  <div className="text-[10px] text-muted-foreground font-normal">
-                    Total: {effectiveTotal}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredTeams.length === 0 && (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No teams in this tier yet.
-            </div>
-          )}
-        </div>
-
-        {/* DESKTOP */}
-        <div className="hidden overflow-hidden rounded-2xl border md:block">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left w-16">Rank</th>
-                <th className="px-4 py-3 text-left">Team</th>
-                <th className="px-4 py-3 text-center w-24">Weeks Won</th>
-                <th className="px-4 py-3 text-right w-32">Weekly Pts</th>
-                <th className="px-4 py-3 text-right w-32">Total Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isMyTeamInView && myTeam && (
-                <tr className="border-t bg-background border-l-4 border-l-primary/50">
-                  <td className="px-4 py-3 font-medium">#{myRank}</td>
-                  <td className="px-4 py-3 font-semibold">
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-col">
-                        <span>{myTeam.name}</span>
-                        <span className="text-xs text-muted-foreground font-normal">
-                          {myTeam.member1_name || "—"} •{" "}
-                          {myTeam.member2_name || "—"}
-                        </span>
-                      </div>
-                      {(myTeam.streak_count ?? 0) >= 2 && (
-                        <span
-                          className="text-orange-500 text-[10px] font-bold ml-1"
-                          title="Active Streak"
-                        >
-                          🔥 {myTeam.streak_count}
-                        </span>
-                      )}
-                      {myTeam.tier && (
-                        <span
-                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[myTeam.tier]}`}
-                        >
-                          {TIER_LABELS[myTeam.tier]}
-                        </span>
-                      )}
-                      <span className="ml-2 text-xs text-primary font-normal">
-                        (Your team)
-                      </span>
-                    </div>
-                    <WeeklyProgressBar
-                      weeklyPoints={myTeam.weekly_points ?? 0}
-                      tier={myTeam.tier}
-                      className="mt-2"
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-center font-semibold tabular-nums">
-                    {myTeam.weeks_won?.length ?? 0}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                    {myTeam.weekly_points ?? 0}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                    {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
-                  </td>
-                </tr>
-              )}
-
-              {filteredTeams.map((t, idx) => (
-                <tr
-                  key={t.id}
-                  className={`border-t ${myTeam?.id === t.id ? "bg-primary/5" : ""}`}
-                >
-                  <td className="px-4 py-3">{idx + 1}</td>
-                  <td className="px-4 py-3 font-medium">
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-col">
-                        <span>{t.name}</span>
-                        <span className="text-xs text-muted-foreground font-normal">
-                          {t.member1_name || "—"} • {t.member2_name || "—"}
-                        </span>
-                      </div>
-                      {(t.streak_count ?? 0) >= 2 && (
-                        <span
-                          className="text-orange-500 text-[10px] font-bold"
-                          title="Active Streak"
-                        >
-                          🔥 {t.streak_count}
-                        </span>
-                      )}
-                      {t.tier && activeTier === "all" && (
-                        <span
-                          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${TIER_COLORS[t.tier]}`}
-                        >
-                          {TIER_LABELS[t.tier]}
-                        </span>
-                      )}
-                      {myTeam?.id === t.id && (
-                        <span className="text-xs text-primary">(You)</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">
-                    {t.weeks_won?.length ?? 0}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {t.weekly_points ?? 0}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {(t.total_points ?? 0) + (t.weekly_points ?? 0)}
-                  </td>
-                </tr>
-              ))}
-
-              {filteredTeams.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="p-8 text-center text-muted-foreground"
                   >
-                    No teams found in this tier.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    {tier === "all" ? "All" : TIER_LABELS[tier]}
+                  </Link>
+                );
+              })}
+            </div>
+          }
+        />
+
+        {error ? (
+          <StatusBanner variant="error" title="Could not load the leaderboard">
+            {error.message}
+          </StatusBanner>
+        ) : null}
+
+        {myTeam ? (
+          <section className="app-surface-elevated overflow-hidden" aria-labelledby="your-team-heading">
+            <div className="border-l-4 border-primary p-5 sm:p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p id="your-team-heading" className="text-sm font-semibold text-primary">Your team</p>
+                  <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight">{myTeam.name}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {myTeam.member1_name || "Open spot"} / {myTeam.member2_name || "Open spot"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {myTeam.tier ? <TierBadge tier={myTeam.tier} /> : null}
+                    <StreakBadge count={myTeam.streak_count ?? 0} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-5 border-t pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Rank</p>
+                    <p className="app-number mt-1 text-2xl font-semibold text-primary">{myRank ? `#${myRank}` : "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Weekly</p>
+                    <p className="app-number mt-1 text-2xl font-semibold">{myTeam.weekly_points ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Season</p>
+                    <p className="app-number mt-1 text-2xl font-semibold text-achievement">
+                      {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <WeeklyProgressBar
+                weeklyPoints={myTeam.weekly_points ?? 0}
+                tier={myTeam.tier}
+                className="mt-5 max-w-2xl"
+              />
+            </div>
+          </section>
+        ) : null}
+
+        {filteredTeams.length === 0 ? (
+          <EmptyState
+            title="No teams in this tier yet"
+            description="Teams will appear here after they register for the selected tier."
+          />
+        ) : (
+          <section className="app-surface overflow-hidden" aria-label="Team standings">
+            <div className="hidden grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] items-center border-b bg-muted/45 px-5 py-3 text-xs font-semibold text-muted-foreground lg:grid">
+              <div>Rank</div>
+              <div>Team</div>
+              <div className="text-right">Weekly</div>
+              <div className="text-right">Season</div>
+              <div className="text-right">Wins</div>
+            </div>
+            <div className="divide-y divide-border/70">
+              {filteredTeams.map((team, index) => {
+                const rank = index + 1;
+                const isMine = myTeam?.id === team.id;
+                const seasonTotal = (team.total_points ?? 0) + (team.weekly_points ?? 0);
+
+                return (
+                  <div
+                    key={team.id}
+                    className={cn(
+                      "grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-3 px-4 py-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:items-center lg:px-5",
+                      isMine && "bg-primary/[0.055]",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "app-number flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold lg:h-auto lg:w-auto lg:justify-start lg:rounded-none",
+                        rank === 1
+                          ? "bg-achievement/10 text-achievement"
+                          : rank <= 3
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground lg:bg-transparent",
+                      )}
+                    >
+                      #{rank}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-semibold">{team.name}</p>
+                        {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
+                        {team.tier && activeTier === "all" ? <TierBadge tier={team.tier} /> : null}
+                        <StreakBadge count={team.streak_count ?? 0} />
+                      </div>
+                      <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
+                        {team.member1_name || "Open spot"} / {team.member2_name || "Open spot"}
+                      </p>
+                      <div className="mt-2 flex gap-4 text-xs text-muted-foreground lg:hidden">
+                        <span>Season <strong className="app-number text-foreground">{seasonTotal}</strong></span>
+                        <span>Wins <strong className="app-number text-foreground">{team.weeks_won?.length ?? 0}</strong></span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
+                      <p className="text-[11px] text-muted-foreground lg:hidden">weekly pts</p>
+                    </div>
+                    <div className="hidden text-right lg:block">
+                      <span className="app-number font-semibold text-achievement">{seasonTotal}</span>
+                    </div>
+                    <div className="hidden text-right lg:block">
+                      <span className="app-number text-muted-foreground">{team.weeks_won?.length ?? 0}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </PullToRefresh>
   );

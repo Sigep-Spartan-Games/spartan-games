@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useId } from "react";
+import { ChevronDown } from "lucide-react";
 
 export type ComboboxOption = {
     value: string;
@@ -33,6 +34,7 @@ export function Combobox({
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
+    const listId = useId();
 
     const selectedOption = useMemo(
         () => options.find((o) => o.value === value),
@@ -135,28 +137,35 @@ export function Combobox({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={isOpen ? placeholder : selectedOption?.label ?? placeholder}
-                className="h-11 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={isOpen}
+                aria-controls={listId}
+                aria-activedescendant={
+                    isOpen && filteredOptions[highlightIndex]
+                        ? `${listId}-option-${highlightIndex}`
+                        : undefined
+                }
+                className="h-11 w-full rounded-control border border-input bg-card px-3 pr-10 text-base shadow-sm shadow-foreground/[0.02] placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-ring/30 md:h-10 md:text-sm"
                 required={required && !value}
                 autoComplete="off"
             />
 
             {/* Dropdown chevron */}
             <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                <svg
+                <ChevronDown
+                    aria-hidden="true"
                     className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                />
             </div>
 
             {/* Dropdown list */}
             {isOpen && (
                 <ul
                     ref={listRef}
-                    className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-background py-1 shadow-lg"
+                    id={listId}
+                    role="listbox"
+                    className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-popover p-1 text-popover-foreground shadow-xl shadow-foreground/10"
                 >
                     {filteredOptions.length === 0 ? (
                         <li className="px-3 py-2 text-sm text-muted-foreground">
@@ -166,9 +175,13 @@ export function Combobox({
                         filteredOptions.map((option, idx) => (
                             <li
                                 key={option.value}
+                                id={`${listId}-option-${idx}`}
+                                role="option"
+                                aria-selected={option.value === value}
                                 onClick={() => handleSelect(option.value)}
+                                onMouseDown={(event) => event.preventDefault()}
                                 onMouseEnter={() => setHighlightIndex(idx)}
-                                className={`cursor-pointer px-3 py-2 text-sm ${idx === highlightIndex
+                                className={`min-h-11 cursor-pointer rounded-md px-3 py-2 text-sm ${idx === highlightIndex
                                         ? "bg-primary/10 text-primary"
                                         : option.value === value
                                             ? "bg-muted"

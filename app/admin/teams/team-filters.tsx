@@ -32,7 +32,7 @@ export default function TeamFilters({
     };
 
     return (
-        <div className="rounded-2xl border p-4 space-y-3">
+        <div className="space-y-3 rounded-lg border bg-card p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 {/* Search by name */}
                 <div className="flex-1 space-y-1">
@@ -45,7 +45,7 @@ export default function TeamFilters({
                         placeholder="Search by name..."
                         defaultValue={currentSearch}
                         onChange={(e) => updateFilters("search", e.target.value)}
-                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        className="h-11 w-full rounded-control border bg-background px-3 text-sm"
                     />
                 </div>
 
@@ -58,7 +58,7 @@ export default function TeamFilters({
                         id="progress"
                         value={currentProgress}
                         onChange={(e) => updateFilters("progress", e.target.value)}
-                        className="h-9 rounded-md border bg-background px-3 text-sm min-w-[140px]"
+                        className="h-11 w-full min-w-[140px] rounded-control border bg-background px-3 text-sm"
                     >
                         <option value="">All Teams</option>
                         <option value="below">Below Goal</option>
@@ -75,12 +75,12 @@ export default function TeamFilters({
                         id="tier"
                         value={currentTier}
                         onChange={(e) => updateFilters("tier", e.target.value)}
-                        className="h-9 rounded-md border bg-background px-3 text-sm min-w-[120px]"
+                        className="h-11 w-full min-w-[120px] rounded-control border bg-background px-3 text-sm"
                     >
                         <option value="">All Tiers</option>
-                        <option value="gold">🥇 Gold</option>
-                        <option value="purple">🟣 Purple</option>
-                        <option value="red">🔴 Red</option>
+                        <option value="gold">Gold</option>
+                        <option value="purple">Purple</option>
+                        <option value="red">Red</option>
                     </select>
                 </div>
             </div>

@@ -1,19 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Flame } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 const TIER_LABELS: Record<string, string> = {
-  gold: "🥇 Gold",
-  purple: "🟣 Purple",
-  red: "🔴 Red",
+  gold: "Gold",
+  purple: "Purple",
+  red: "Red",
 };
 
 const TIER_COLORS: Record<string, string> = {
-  gold: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30 dark:text-yellow-400",
-  purple:
-    "bg-purple-500/20 text-purple-600 border-purple-500/30 dark:text-purple-300",
-  red: "bg-red-500/20 text-red-600 border-red-500/30 dark:text-red-400",
+  gold: "border-achievement/30 bg-achievement/10 text-achievement",
+  purple: "border-primary/30 bg-primary/10 text-primary",
+  red: "border-competition/30 bg-competition/10 text-competition",
 };
 
 type HistoryEntry = {
@@ -134,44 +134,36 @@ export function HistoryFilters({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Weekly Performance History
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Historical record of team goal achievement
-        </p>
-      </div>
+      <PageHeader
+        title="Weekly performance history"
+        description="Historical record of team goal achievement."
+      />
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-muted-foreground">
-            Tier:
-          </label>
+      <div className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="space-y-1.5">
+          <label className="app-label">Tier</label>
           <select
             value={tierFilter}
             onChange={(e) => setTierFilter(e.target.value)}
-            className="rounded-lg border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-11 w-full rounded-control border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="all">All Tiers</option>
-            <option value="gold">🥇 Gold</option>
-            <option value="purple">🟣 Purple</option>
-            <option value="red">🔴 Red</option>
+            <option value="gold">Gold</option>
+            <option value="purple">Purple</option>
+            <option value="red">Red</option>
           </select>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-muted-foreground">
-            Goal:
-          </label>
+        <div className="space-y-1.5">
+          <label className="app-label">Goal</label>
           <select
             value={goalFilter}
             onChange={(e) => setGoalFilter(e.target.value)}
-            className="rounded-lg border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-11 w-full rounded-control border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="all">All Teams</option>
-            <option value="met">✓ Met Goal</option>
-            <option value="not_met">✗ Did Not Meet Goal</option>
+            <option value="met">Met Goal</option>
+            <option value="not_met">Did Not Meet Goal</option>
           </select>
         </div>
         {(tierFilter !== "all" || goalFilter !== "all") && (
@@ -180,7 +172,7 @@ export function HistoryFilters({
               setTierFilter("all");
               setGoalFilter("all");
             }}
-            className="rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+            className="h-11 rounded-control border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
           >
             Clear Filters
           </button>
@@ -192,7 +184,8 @@ export function HistoryFilters({
         <div className="space-y-3">
           <button
             onClick={() => setShowTotals((prev) => !prev)}
-            className="w-full flex items-center justify-between hover:bg-muted/30 p-2 -mx-2 rounded-lg transition-colors"
+            className="flex min-h-11 w-full items-center justify-between rounded-lg p-2 transition-colors hover:bg-muted/30"
+            aria-expanded={showTotals}
           >
             <div className="flex items-center gap-2">
               {showTotals ? (
@@ -208,15 +201,15 @@ export function HistoryFilters({
           </button>
 
           {showTotals && (
-            <div className="rounded-2xl border overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="animate-in fade-in slide-in-from-top-2 overflow-hidden rounded-lg border bg-card duration-200">
               <div className="hidden md:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
                 <div className="col-span-4">Team</div>
                 <div className="col-span-2">Tier</div>
                 <div className="col-span-2 text-right">All-Time Pts</div>
-                <div className="col-span-2 text-center text-green-600 dark:text-green-500">
+                <div className="col-span-2 text-center text-success">
                   Goals Met
                 </div>
-                <div className="col-span-2 text-center text-red-500">
+                <div className="col-span-2 text-center text-destructive">
                   Goals Missed
                 </div>
               </div>
@@ -239,10 +232,10 @@ export function HistoryFilters({
                     <div className="col-span-2 text-sm text-right tabular-nums font-semibold">
                       {t.all_time_points}
                     </div>
-                    <div className="col-span-2 text-sm text-center tabular-nums text-green-600 dark:text-green-500 font-medium">
+                    <div className="col-span-2 text-center text-sm font-medium tabular-nums text-success">
                       {t.goals_met}
                     </div>
-                    <div className="col-span-2 text-sm text-center tabular-nums text-red-500 font-medium">
+                    <div className="col-span-2 text-center text-sm font-medium tabular-nums text-destructive">
                       {t.goals_missed}
                     </div>
                   </div>
@@ -268,10 +261,10 @@ export function HistoryFilters({
                       </div>
                     </div>
                     <div className="flex justify-between text-xs pt-1 border-t mt-2 border-border/50">
-                      <div className="text-green-600 dark:text-green-500 font-medium">
+                      <div className="font-medium text-success">
                         Goals Met: {t.goals_met}
                       </div>
-                      <div className="text-red-500 font-medium">
+                      <div className="font-medium text-destructive">
                         Goals Missed: {t.goals_missed}
                       </div>
                     </div>
@@ -284,7 +277,7 @@ export function HistoryFilters({
       )}
 
       {weeks.length === 0 ? (
-        <div className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
           {history.length === 0
             ? 'No weekly history recorded yet. Use "Finalize Week" to start tracking performance.'
             : "No results match the selected filters."}
@@ -303,7 +296,8 @@ export function HistoryFilters({
             <div key={week} className="space-y-3">
               <button
                 onClick={() => toggleWeek(week)}
-                className="w-full flex items-center justify-between hover:bg-muted/30 p-2 -mx-2 rounded-lg transition-colors"
+                className="flex min-h-11 w-full items-center justify-between rounded-lg p-2 transition-colors hover:bg-muted/30"
+                aria-expanded={isOpen}
               >
                 <div className="flex items-center gap-2">
                   {isOpen ? (
@@ -317,7 +311,7 @@ export function HistoryFilters({
                   <span
                     className={
                       successRate >= 70
-                        ? "text-green-600 dark:text-green-400 font-medium"
+                        ? "font-medium text-success"
                         : "text-muted-foreground"
                     }
                   >
@@ -327,7 +321,7 @@ export function HistoryFilters({
               </button>
 
               {isOpen && (
-                <div className="rounded-2xl border overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
+                <div className="animate-in fade-in slide-in-from-top-2 overflow-hidden rounded-lg border bg-card duration-200">
                   {/* Desktop header */}
                   <div className="hidden md:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
                     <div className="col-span-3">Team</div>
@@ -369,8 +363,9 @@ export function HistoryFilters({
 
                           <div className="col-span-2 text-center">
                             {h.met_goal ? (
-                              <span className="text-green-600 dark:text-green-400 font-medium text-sm">
-                                ✓ Met Goal
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-success">
+                                <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                Met Goal
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">
@@ -386,8 +381,9 @@ export function HistoryFilters({
 
                           <div className="col-span-2 text-center">
                             {(h.streak_count ?? 0) >= 2 ? (
-                              <span className="text-orange-500 text-sm font-bold">
-                                🔥 {h.streak_count}
+                              <span className="inline-flex items-center gap-1 text-sm font-bold text-competition">
+                                <Flame aria-hidden="true" className="h-3.5 w-3.5" />
+                                {h.streak_count}
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">
@@ -424,8 +420,9 @@ export function HistoryFilters({
 
                           <div className="flex items-center justify-between text-xs">
                             {h.met_goal ? (
-                              <span className="text-green-600 dark:text-green-400 font-medium">
-                                ✓ Met Goal
+                              <span className="inline-flex items-center gap-1 font-medium text-success">
+                                <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                Met Goal
                               </span>
                             ) : (
                               <span className="text-muted-foreground">
@@ -438,8 +435,9 @@ export function HistoryFilters({
                                 Wins: {h.weeks_won_count}
                               </span>
                               {(h.streak_count ?? 0) >= 2 && (
-                                <span className="text-orange-500 font-bold">
-                                  🔥 {h.streak_count}
+                                <span className="inline-flex items-center gap-1 font-bold text-competition">
+                                  <Flame aria-hidden="true" className="h-3.5 w-3.5" />
+                                  {h.streak_count}
                                 </span>
                               )}
                             </div>

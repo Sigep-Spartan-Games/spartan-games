@@ -1,7 +1,8 @@
 // app/admin/settings/collapsible-section.tsx
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 interface CollapsibleSectionProps {
     title: string;
@@ -19,17 +20,20 @@ export default function CollapsibleSection({
     variant = "default",
 }: CollapsibleSectionProps) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
+    const contentId = useId();
 
     const titleClass = variant === "danger"
         ? "text-lg font-semibold text-destructive"
         : "text-lg font-semibold";
 
     return (
-        <div className="rounded-2xl border overflow-hidden">
+        <section className="overflow-hidden rounded-lg border bg-card">
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full p-5 flex items-center justify-between text-left hover:bg-muted/30 transition-colors"
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                className="flex min-h-14 w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:p-6"
             >
                 <div>
                     <h2 className={titleClass}>{title}</h2>
@@ -37,23 +41,19 @@ export default function CollapsibleSection({
                         <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
                     )}
                 </div>
-                <svg
-                    className={`w-5 h-5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <ChevronDown
+                    aria-hidden="true"
+                    className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
             </button>
 
             {isOpen && (
-                <div className="px-5 pb-5 pt-0 border-t">
+                <div id={contentId} className="border-t px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
                     <div className="pt-4">
                         {children}
                     </div>
                 </div>
             )}
-        </div>
+        </section>
     );
 }

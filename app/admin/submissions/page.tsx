@@ -4,17 +4,24 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteSubmission, resolveEditRequest } from "./actions";
+import { deleteSubmission } from "./actions";
 import SubmissionFilters from "./submission-filters";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { RejectRequestButton } from "./reject-request-button";
+import { ChevronDown, ExternalLink, TriangleAlert } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBanner } from "@/components/ui/status-banner";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
 function SubmissionsSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border p-4">
+    <div className="space-y-5">
+      <PageHeader
+        title="Submissions"
+        description="Review activity logs, proof, and member edit requests."
+      />
+      <div className="rounded-lg border bg-card p-4">
         <div className="h-10 w-full rounded bg-muted/20" />
       </div>
       <div className="rounded-2xl border overflow-hidden">
@@ -139,33 +146,31 @@ async function AdminSubmissionsInner({
       </div>
 
       {error ? (
-        <div className="rounded-2xl border p-5 text-sm text-muted-foreground">
-          Error loading submissions: {error.message}
-        </div>
+        <StatusBanner variant="error" title="Submissions unavailable">
+          {error.message}
+        </StatusBanner>
       ) : (
         <div className="space-y-4">
           {pendingRequests && pendingRequests.length > 0 && (
-            <details className="rounded-2xl border bg-card overflow-hidden group mb-6">
-              <summary className="cursor-pointer border-b bg-muted/40 px-4 py-3 font-medium flex justify-between items-center group-open:border-b">
+            <details className="group mb-6 overflow-hidden rounded-lg border border-warning/25 bg-card">
+              <summary className="flex min-h-11 cursor-pointer items-center justify-between border-b bg-warning/[0.06] px-4 py-3 font-medium group-open:border-b">
                 <span className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-xs text-amber-500 font-bold">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning/15 text-xs font-bold text-warning">
                     {pendingRequests.length}
                   </span>
                   Pending Submission Edits
                 </span>
-                <span className="text-muted-foreground text-sm group-open:rotate-180 transition-transform">
-                  ▼
-                </span>
+                <ChevronDown aria-hidden="true" className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
               </summary>
               <div className="divide-y p-0">
                 {pendingRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="p-4 sm:p-5 flex flex-col md:flex-row gap-4 md:items-start justify-between bg-amber-500/5"
+                    className="flex flex-col justify-between gap-4 bg-warning/[0.035] p-4 sm:p-5 md:flex-row md:items-start"
                   >
                     <div className="space-y-2 flex-1">
-                      <div className="font-semibold text-sm text-amber-500">
-                        {teamMap.get(req.team_id) ?? "Unknown Team"} •{" "}
+                      <div className="text-sm font-semibold text-warning">
+                        {teamMap.get(req.team_id) ?? "Unknown Team"} ·{" "}
                         {userMap.get(req.user_id) ?? "Unknown User"}
                       </div>
                       <div className="text-sm">
@@ -186,15 +191,16 @@ async function AdminSubmissionsInner({
                           </div>
                           <div className="text-sm font-medium space-y-1">
                             {req.suggested_changes?.is_deletion ? (
-                              <div className="text-destructive font-bold flex items-center gap-2">
-                                ⚠️ User requested deletion
+                              <div className="flex items-center gap-2 font-bold text-destructive">
+                                <TriangleAlert aria-hidden="true" className="h-4 w-4" />
+                                User requested deletion
                               </div>
                             ) : (
                               <>
                                 {req.suggested_changes?.activity_key &&
                                   req.suggested_changes.activity_key !==
                                     req.submissions?.activity_key && (
-                                    <div className="text-amber-500">
+                                    <div className="text-warning">
                                       New Activity:{" "}
                                       {req.suggested_changes.activity_key}
                                     </div>
@@ -248,7 +254,7 @@ async function AdminSubmissionsInner({
                             Current Values
                           </div>
                           <div className="text-sm font-medium">
-                            {req.submissions?.activity_units ?? "N/A"} units •{" "}
+                            {req.submissions?.activity_units ?? "N/A"} units ·{" "}
                             {req.submissions?.points_awarded ?? "N/A"} pts
                           </div>
                         </div>
@@ -257,7 +263,7 @@ async function AdminSubmissionsInner({
                     <div className="flex flex-row md:flex-col gap-2 shrink-0">
                       <Link
                         href={`/admin/submissions/${req.submission_id}?requestId=${req.id}&team=${teamId}`}
-                        className="h-9 rounded-md bg-primary disabled:opacity-50 px-4 text-sm font-medium text-primary-foreground shadow flex items-center justify-center flex-1"
+                        className="flex min-h-11 flex-1 items-center justify-center rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
                       >
                         Approve / Edit
                       </Link>
@@ -274,7 +280,7 @@ async function AdminSubmissionsInner({
             </details>
           )}
 
-          <div className="rounded-2xl border overflow-hidden">
+          <div className="overflow-hidden rounded-lg border bg-card">
             {/* Desktop header */}
             <div className="hidden md:grid grid-cols-12 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground">
               <div className="col-span-3">When</div>
@@ -337,9 +343,10 @@ async function AdminSubmissionsInner({
                             href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-500 hover:underline flex items-center gap-1"
+                            className="flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline"
                           >
-                            📷 View Proof
+                            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                            View proof
                           </a>
                         </div>
                       )}
@@ -351,7 +358,7 @@ async function AdminSubmissionsInner({
                     <span className="font-medium text-foreground">
                       {teamName}
                     </span>
-                    <span>•</span>
+                    <span>·</span>
                     <span>{userName}</span>
                   </div>
 
@@ -367,10 +374,11 @@ async function AdminSubmissionsInner({
                         href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="h-8 rounded-md border px-3 text-xs flex items-center hover:bg-muted/50 text-blue-600"
+                        className="flex h-11 w-11 items-center justify-center rounded-control border text-primary hover:bg-muted/50"
                         title="View Proof"
                       >
-                        📷
+                        <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                        <span className="sr-only">View proof</span>
                       </a>
                     )}
 
@@ -378,7 +386,7 @@ async function AdminSubmissionsInner({
                       href={`/admin/submissions/${encodeURIComponent(
                         s.id,
                       )}?team=${encodeURIComponent(teamId || "")}`}
-                      className="h-8 rounded-md border px-3 text-xs flex items-center hover:bg-muted/50"
+                      className="flex h-11 items-center rounded-control border px-3 text-xs hover:bg-muted/50"
                     >
                       Edit
                     </Link>
@@ -391,7 +399,7 @@ async function AdminSubmissionsInner({
                       }}
                       title="Delete Submission"
                       description="Are you sure you want to delete this submission? This action cannot be undone."
-                      className="h-8 rounded-md border px-3 text-xs text-destructive hover:bg-destructive/10"
+                      className="h-11 rounded-control border px-3 text-xs text-destructive hover:bg-destructive/10"
                       buttonSize="default"
                     />
                   </div>

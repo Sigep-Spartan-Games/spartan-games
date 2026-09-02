@@ -26,13 +26,13 @@ export default function SubmissionFilters({
     }
 
     return (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end overflow-hidden">
+        <div className="flex flex-col gap-3 overflow-hidden sm:flex-row sm:items-end">
             <div className="space-y-1 flex-1 min-w-0">
                 <div className="text-sm font-medium">Filter by team</div>
                 <select
                     value={teamId}
                     onChange={(e) => updateParams("team", e.target.value)}
-                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    className="h-11 w-full rounded-control border bg-background px-3 text-sm"
                 >
                     <option value="">All teams</option>
                     {teams.map((t) => (
@@ -49,7 +49,7 @@ export default function SubmissionFilters({
                     type="date"
                     value={dateFilter}
                     onChange={(e) => updateParams("date", e.target.value)}
-                    className="h-10 w-full box-border rounded-md border bg-background px-3 text-sm cursor-pointer"
+                    className="box-border h-11 w-full cursor-pointer rounded-control border bg-background px-3 text-sm"
                     onClick={(e) => e.currentTarget.showPicker()}
                 />
             </div>
@@ -58,7 +58,7 @@ export default function SubmissionFilters({
                 <button
                     type="button"
                     onClick={() => router.replace("/admin/submissions")}
-                    className="h-10 rounded-md border px-4 text-sm hover:bg-muted/50"
+                    className="h-11 rounded-control border px-4 text-sm hover:bg-muted/50"
                 >
                     Clear filters
                 </button>
