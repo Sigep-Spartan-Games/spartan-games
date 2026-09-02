@@ -60,14 +60,7 @@ export async function internalBroadcastAnnouncement(
         errors.push("Could not fetch user emails.");
       }
 
-      // const recipients = ["loffm300334@gmail.com"];
-      // console.log(
-      //   "TEST MODE: Sending to " +
-      //     recipients[0] +
-      //     ". Real user count: " +
-      //     (data?.length || 0),
-      // );
-
+      // NOTE: Test mode is handled centrally in lib/email.ts via EMAIL_TEST_MODE env var.
       const recipients = (data ?? []).map(
         (row: { email: string }) => row.email,
       );

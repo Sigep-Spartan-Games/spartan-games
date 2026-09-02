@@ -6,6 +6,7 @@ import { resetSpartanGames, startGames, endGames, toggleSubmissions, toggleRegis
 import TierGoalsSection from "./tier-goals-section";
 import StreakSettingsSection from "./streak-settings-section";
 import CollapsibleSection from "./collapsible-section";
+import GameControls from "./game-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBanner } from "@/components/ui/status-banner";
@@ -14,7 +15,7 @@ function SettingsSkeleton() {
   return (
     <div className="space-y-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-2xl border p-5">
+        <div key={i} className="rounded-lg border p-5">
           <div className="h-5 w-40 rounded bg-muted/35" />
           <div className="mt-2 h-4 w-64 rounded bg-muted/25" />
         </div>
@@ -58,27 +59,11 @@ async function AdminSettingsInner({
         defaultOpen={true}
       >
         <div className="space-y-5">
-          {/* Start / End Games buttons */}
-          <div className="space-y-3">
-            <div className="text-sm font-medium">Quick Actions</div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <form action={startGames}>
-                <Button type="submit">
-                  Start Games
-                </Button>
-              </form>
-
-              <form action={endGames}>
-                <Button type="submit" variant="outline">
-                  End Games
-                </Button>
-              </form>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Start Games closes team registration and opens submissions. End Games does the opposite.
-            </p>
-          </div>
+          {/* Start / End Games buttons with confirmation + email toggle */}
+          <GameControls
+            startGamesAction={startGames}
+            endGamesAction={endGames}
+          />
 
           {/* Divider */}
           <div className="border-t" />
@@ -88,7 +73,7 @@ async function AdminSettingsInner({
             <div className="text-sm font-medium">Independent Toggles</div>
 
             {/* Submissions Toggle */}
-            <div className="flex items-center justify-between rounded-xl border p-3">
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
               <div className="min-w-0">
                 <div className="text-sm font-medium">Submissions</div>
                 <div className="text-xs text-muted-foreground">
@@ -99,29 +84,32 @@ async function AdminSettingsInner({
                 <input type="hidden" name="value" value={submissionsOpen ? "false" : "true"} />
                 <button
                   type="submit"
-                  className={[
-                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-                    submissionsOpen
-                      ? "bg-success"
-                      : "bg-muted-foreground/30",
-                  ].join(" ")}
+                  className="inline-flex h-11 w-14 items-center justify-center rounded-control transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   role="switch"
                   aria-checked={submissionsOpen}
                   aria-label={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
                   title={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
                 >
                   <span
+                    aria-hidden="true"
                     className={[
-                      "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-                      submissionsOpen ? "translate-x-6" : "translate-x-1",
+                      "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                      submissionsOpen ? "bg-success" : "bg-muted-foreground/30",
                     ].join(" ")}
-                  />
+                  >
+                    <span
+                      className={[
+                        "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                        submissionsOpen ? "translate-x-6" : "translate-x-1",
+                      ].join(" ")}
+                    />
+                  </span>
                 </button>
               </form>
             </div>
 
             {/* Registration Toggle */}
-            <div className="flex items-center justify-between rounded-xl border p-3">
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
               <div className="min-w-0">
                 <div className="text-sm font-medium">Team Registration</div>
                 <div className="text-xs text-muted-foreground">
@@ -132,23 +120,26 @@ async function AdminSettingsInner({
                 <input type="hidden" name="value" value={registrationOpen ? "false" : "true"} />
                 <button
                   type="submit"
-                  className={[
-                    "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-                    registrationOpen
-                      ? "bg-success"
-                      : "bg-muted-foreground/30",
-                  ].join(" ")}
+                  className="inline-flex h-11 w-14 items-center justify-center rounded-control transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   role="switch"
                   aria-checked={registrationOpen}
                   aria-label={registrationOpen ? "Turn off registration" : "Turn on registration"}
                   title={registrationOpen ? "Turn off registration" : "Turn on registration"}
                 >
                   <span
+                    aria-hidden="true"
                     className={[
-                      "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-                      registrationOpen ? "translate-x-6" : "translate-x-1",
+                      "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
+                      registrationOpen ? "bg-success" : "bg-muted-foreground/30",
                     ].join(" ")}
-                  />
+                  >
+                    <span
+                      className={[
+                        "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                        registrationOpen ? "translate-x-6" : "translate-x-1",
+                      ].join(" ")}
+                    />
+                  </span>
                 </button>
               </form>
             </div>

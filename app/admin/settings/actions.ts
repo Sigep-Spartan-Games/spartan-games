@@ -16,17 +16,29 @@ async function getAllUserEmails(
     return [];
   }
 
-  // SAFETY: During testing, only return my email.
-  // console.log(
-  //   `[TEST MODE] Would have emailed ${data?.length || 0} users. Sending to loffm300334@gmail.com only.`,
-  // );
-  // return ["loffm300334@gmail.com"];
+  // NOTE: Test mode is handled centrally in lib/email.ts via EMAIL_TEST_MODE env var.
+  // When EMAIL_TEST_MODE=true, sendBulkEmail() diverts all recipients automatically.
 
   return (data ?? []).map((row: { email: string }) => row.email);
 }
 
-export async function startGames() {
+export async function startGames(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/settings");
+  const shouldSendEmail = formData.get("sendEmail") === "on";
+
+  // ── Idempotency: skip if games are already running ──
+  const { data: current } = await supabase
+    .from("game_settings")
+    .select("submissions_open, games_started_at, games_ended_at")
+    .eq("id", true)
+    .single();
+
+  if (current?.submissions_open && current?.games_started_at && !current?.games_ended_at) {
+    redirect(
+      "/admin/settings?error=" +
+        encodeURIComponent("Games are already running. No action taken."),
+    );
+  }
 
   const { error } = await supabase
     .from("game_settings")
@@ -41,51 +53,70 @@ export async function startGames() {
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
 
-  // Send notification emails (non-blocking — don't let email failure block the redirect)
-  try {
-    const emails = await getAllUserEmails(supabase);
-    if (emails.length > 0) {
-      await sendBulkEmail({
-        recipients: emails,
-        subject: "🏆 Spartan Games Have Started!",
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
-              <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">🏆 The Games Have Started!</h1>
-              <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">Spartan Games are now live — time to compete!</p>
-              <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 0 0 24px 0;">
-                <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">✅ <strong style="color: #4ade80;">Submissions are now OPEN</strong></p>
-                <p style="color: #cbd5e1; font-size: 14px; margin: 0;">🔒 Team registration is now closed</p>
+  // Send notification emails only if the admin opted in
+  if (shouldSendEmail) {
+    try {
+      const emails = await getAllUserEmails(supabase);
+      if (emails.length > 0) {
+        await sendBulkEmail({
+          recipients: emails,
+          subject: "🏆 Spartan Games Have Started!",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
+                <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">🏆 The Games Have Started!</h1>
+                <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">Spartan Games are now live — time to compete!</p>
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 0 0 24px 0;">
+                  <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">✅ <strong style="color: #4ade80;">Submissions are now OPEN</strong></p>
+                  <p style="color: #cbd5e1; font-size: 14px; margin: 0;">🔒 Team registration is now closed</p>
+                </div>
+                <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Start logging your activities and earning points for your team!</p>
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/submit"
+                   style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                  Submit an Activity →
+                </a>
               </div>
-              <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Start logging your activities and earning points for your team!</p>
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/submit"
-                 style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                Submit an Activity →
-              </a>
+              <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 16px;">
+                SigEp Spartan Games • You're receiving this because you have an account.
+              </p>
             </div>
-            <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 16px;">
-              SigEp Spartan Games • You're receiving this because you have an account.
-            </p>
-          </div>
-        `,
-      });
-      console.log(`Games started: notification sent to ${emails.length} users`);
+          `,
+        });
+        console.log(`Games started: notification sent to ${emails.length} users`);
+      }
+    } catch (emailError) {
+      console.error("Failed to send start-games emails:", emailError);
+      // Don't block the action if emails fail
     }
-  } catch (emailError) {
-    console.error("Failed to send start-games emails:", emailError);
-    // Don't block the action if emails fail
   }
 
   redirect(
     "/admin/settings?ok=" +
       encodeURIComponent(
-        "Games started: registration closed, submissions opened. Notification emails sent!",
+        shouldSendEmail
+          ? "Games started: registration closed, submissions opened. Notification emails sent!"
+          : "Games started: registration closed, submissions opened. (No emails sent)",
       ),
   );
 }
 
-export async function endGames() {
+export async function endGames(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/settings");
+  const shouldSendEmail = formData.get("sendEmail") === "on";
+
+  // ── Idempotency: skip if games have already ended ──
+  const { data: current } = await supabase
+    .from("game_settings")
+    .select("submissions_open, games_ended_at")
+    .eq("id", true)
+    .single();
+
+  if (!current?.submissions_open && current?.games_ended_at) {
+    redirect(
+      "/admin/settings?error=" +
+        encodeURIComponent("Games have already ended. No action taken."),
+    );
+  }
 
   const { error } = await supabase
     .from("game_settings")
@@ -99,44 +130,48 @@ export async function endGames() {
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
 
-  // Send notification emails
-  try {
-    const emails = await getAllUserEmails(supabase);
-    if (emails.length > 0) {
-      await sendBulkEmail({
-        recipients: emails,
-        subject: "🏁 Spartan Games Have Ended",
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
-              <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">🏁 The Games Have Ended</h1>
-              <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">This round of Spartan Games is now over.</p>
-              <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 0 0 24px 0;">
-                <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">🔒 Submissions are now closed</p>
-                <p style="color: #cbd5e1; font-size: 14px; margin: 0;">✅ <strong style="color: #4ade80;">Team registration is now OPEN</strong></p>
+  // Send notification emails only if the admin opted in
+  if (shouldSendEmail) {
+    try {
+      const emails = await getAllUserEmails(supabase);
+      if (emails.length > 0) {
+        await sendBulkEmail({
+          recipients: emails,
+          subject: "🏁 Spartan Games Have Ended",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
+                <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">🏁 The Games Have Ended</h1>
+                <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">This round of Spartan Games is now over.</p>
+                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 0 0 24px 0;">
+                  <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">🔒 Submissions are now closed</p>
+                  <p style="color: #cbd5e1; font-size: 14px; margin: 0;">✅ <strong style="color: #4ade80;">Team registration is now OPEN</strong></p>
+                </div>
+                <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Check the leaderboard to see the final standings!</p>
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/leaderboard"
+                   style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                  View Leaderboard →
+                </a>
               </div>
-              <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Check the leaderboard to see the final standings!</p>
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/leaderboard"
-                 style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                View Leaderboard →
-              </a>
+              <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 16px;">
+                SigEp Spartan Games • You're receiving this because you have an account.
+              </p>
             </div>
-            <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 16px;">
-              SigEp Spartan Games • You're receiving this because you have an account.
-            </p>
-          </div>
-        `,
-      });
-      console.log(`Games ended: notification sent to ${emails.length} users`);
+          `,
+        });
+        console.log(`Games ended: notification sent to ${emails.length} users`);
+      }
+    } catch (emailError) {
+      console.error("Failed to send end-games emails:", emailError);
     }
-  } catch (emailError) {
-    console.error("Failed to send end-games emails:", emailError);
   }
 
   redirect(
     "/admin/settings?ok=" +
       encodeURIComponent(
-        "Games ended: registration opened, submissions closed. Notification emails sent!",
+        shouldSendEmail
+          ? "Games ended: registration opened, submissions closed. Notification emails sent!"
+          : "Games ended: registration opened, submissions closed. (No emails sent)",
       ),
   );
 }
