@@ -6,6 +6,7 @@ import { resetSpartanGames, startGames, endGames, toggleSubmissions, toggleRegis
 import TierGoalsSection from "./tier-goals-section";
 import StreakSettingsSection from "./streak-settings-section";
 import CollapsibleSection from "./collapsible-section";
+import GameControls from "./game-controls";
 
 function SettingsSkeleton() {
   return (
@@ -65,33 +66,11 @@ async function AdminSettingsInner({
         defaultOpen={true}
       >
         <div className="space-y-5">
-          {/* Start / End Games buttons */}
-          <div className="space-y-3">
-            <div className="text-sm font-medium">Quick Actions</div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <form action={startGames}>
-                <button
-                  type="submit"
-                  className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-                >
-                  Start Games
-                </button>
-              </form>
-
-              <form action={endGames}>
-                <button
-                  type="submit"
-                  className="h-10 rounded-md border px-4 text-sm font-medium"
-                >
-                  End Games
-                </button>
-              </form>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Start Games closes team registration and opens submissions. End Games does the opposite.
-            </p>
-          </div>
+          {/* Start / End Games buttons with confirmation + email toggle */}
+          <GameControls
+            startGamesAction={startGames}
+            endGamesAction={endGames}
+          />
 
           {/* Divider */}
           <div className="border-t" />
