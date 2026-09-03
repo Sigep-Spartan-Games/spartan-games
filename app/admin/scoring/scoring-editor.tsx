@@ -4,6 +4,13 @@ import { useMemo, useState, useRef } from "react";
 import { Plus, Edit2, Save, X } from "lucide-react";
 import { ActivityRule } from "@/lib/types";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import {
+  ACTIVITY_UNIT_OPTIONS,
+  getActivityUnitLabel,
+  getInputTypeForActivityUnit,
+  normalizeActivityUnit,
+  type ActivityUnitValue,
+} from "@/lib/activity-units";
 
 // Helper to generate activity_key from label
 function generateActivityKey(label: string): string {
@@ -12,6 +19,34 @@ function generateActivityKey(label: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "") // remove special chars
     .replace(/\s+/g, "_"); // spaces to underscores
+}
+
+function ActivityUnitField({ rule }: { rule?: ActivityRule }) {
+  const [unit, setUnit] = useState<ActivityUnitValue>(() =>
+    normalizeActivityUnit(getActivityUnitLabel(rule), rule?.input_type),
+  );
+
+  return (
+    <>
+      <select
+        name="unit_label"
+        value={unit}
+        onChange={(event) => setUnit(event.target.value as ActivityUnitValue)}
+        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {ACTIVITY_UNIT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <input
+        type="hidden"
+        name="input_type"
+        value={getInputTypeForActivityUnit(unit)}
+      />
+    </>
+  );
 }
 
 export default function ScoringEditor({
@@ -39,7 +74,7 @@ export default function ScoringEditor({
         <div>
           <h2 className="text-lg font-semibold">Activity Rules</h2>
           <p className="text-sm text-muted-foreground">
-            Manage activities, point values, and input types.
+            Manage activities, units, and point values.
           </p>
         </div>
       </div>
@@ -47,7 +82,7 @@ export default function ScoringEditor({
       <div className="overflow-hidden rounded-lg border">
         <div className="hidden grid-cols-12 gap-2 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid">
           <div className="col-span-4 sm:col-span-3">Activity / Label</div>
-          <div className="hidden sm:block col-span-2">Input Type</div>
+          <div className="hidden sm:block col-span-2">Unit</div>
           <div className="col-span-3 sm:col-span-2">Points</div>
           <div className="col-span-2 sm:col-span-1">Bonus</div>
           <div className="hidden sm:block sm:col-span-1">Cap</div>
@@ -78,48 +113,29 @@ export default function ScoringEditor({
                     value={r.activity_key}
                   />
 
-                  <div className="col-span-12 sm:col-span-3 space-y-1">
+                  <div className="col-span-12 space-y-1 sm:col-span-4">
                     <label className="text-xs font-medium text-foreground/70">
                       Activity Label
                     </label>
-                    <div className="text-xs font-mono text-muted-foreground mb-1">
-                      {r.activity_key}
-                    </div>
                     <input
                       name="label"
                       defaultValue={r.label ?? ""}
                       placeholder="Label"
                       className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     />
-                  </div>
-
-                  <div className="col-span-6 sm:col-span-2 space-y-1">
-                    <label className="text-xs font-medium text-foreground/70">
-                      Input Type
-                    </label>
-                    <select
-                      name="input_type"
-                      defaultValue={r.input_type ?? "number"}
-                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="number">Number</option>
-                      <option value="text">Text</option>
-                      <option value="boolean">True/False</option>
-                    </select>
-                    <div className="space-y-1 mt-2">
-                      <label className="text-xs font-medium text-foreground/70">
-                        Unit Label
-                      </label>
-                      <input
-                        name="unit_label"
-                        defaultValue={r.unit_label ?? ""}
-                        placeholder="e.g. miles"
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
+                    <div className="text-xs font-mono text-muted-foreground">
+                      {r.activity_key}
                     </div>
                   </div>
 
-                  <div className="col-span-12 sm:col-span-5 space-y-1">
+                  <div className="col-span-6 space-y-1 sm:col-span-2">
+                    <label className="text-xs font-medium text-foreground/70">
+                      Unit
+                    </label>
+                    <ActivityUnitField rule={r} />
+                  </div>
+
+                  <div className="col-span-12 space-y-1 sm:col-span-6">
                     <label className="text-xs font-medium text-foreground/70">
                       Description
                     </label>
@@ -131,7 +147,7 @@ export default function ScoringEditor({
                     />
                   </div>
 
-                  <div className="col-span-3 sm:col-span-2 space-y-1">
+                  <div className="col-span-4 space-y-1 sm:col-span-2">
                     <label className="text-xs font-medium text-foreground/70">
                       Points
                     </label>
@@ -144,7 +160,7 @@ export default function ScoringEditor({
                     />
                   </div>
 
-                  <div className="col-span-3 sm:col-span-1 space-y-1">
+                  <div className="col-span-4 space-y-1 sm:col-span-2">
                     <label className="text-xs font-medium text-foreground/70">
                       Bonus
                     </label>
@@ -157,7 +173,7 @@ export default function ScoringEditor({
                     />
                   </div>
 
-                  <div className="col-span-3 sm:col-span-1 space-y-1">
+                  <div className="col-span-4 space-y-1 sm:col-span-2">
                     <label className="text-xs font-medium text-foreground/70">
                       Cap
                     </label>
@@ -172,7 +188,7 @@ export default function ScoringEditor({
                     />
                   </div>
 
-                  <div className="col-span-12 sm:col-span-3 flex items-start justify-end gap-2 pt-6">
+                  <div className="col-span-12 flex items-center justify-end gap-2 pt-1">
                     <button
                       type="submit"
                       className="flex h-11 items-center justify-center gap-1.5 rounded-control bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -207,14 +223,11 @@ export default function ScoringEditor({
                   </div>
                 </div>
                 <div className="hidden sm:block col-span-2 text-sm">
-                  <span className="capitalize">
-                    {r.input_type === "boolean" ? "True/False" : r.input_type}
-                  </span>
-                  {r.unit_label && (
-                    <span className="text-muted-foreground text-xs ml-1">
-                      ({r.unit_label})
-                    </span>
-                  )}
+                  {ACTIVITY_UNIT_OPTIONS.find(
+                    (option) =>
+                      option.value ===
+                      normalizeActivityUnit(getActivityUnitLabel(r), r.input_type),
+                  )?.label}
                 </div>
                 <div className="col-span-3 sm:col-span-2 text-sm">
                   {r.points_per_unit}
@@ -257,7 +270,6 @@ export default function ScoringEditor({
   );
 }
 
-// Separate component for Add New Activity to manage state for auto-generating activity_key
 function AddNewActivityForm({
   addAction,
 }: {
@@ -282,7 +294,7 @@ function AddNewActivityForm({
       </h3>
       <form
         action={addAction}
-        className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-end"
+        className="grid grid-cols-12 items-start gap-3 px-0 py-0"
       >
         {/* Hidden field for auto-generated activity_key */}
         <input
@@ -291,7 +303,8 @@ function AddNewActivityForm({
           name="activity_key"
           defaultValue=""
         />
-        <div className="sm:col-span-4 space-y-1">
+
+        <div className="col-span-12 space-y-1 sm:col-span-4">
           <label className="text-xs font-medium text-foreground/70">
             Activity Name
           </label>
@@ -311,31 +324,15 @@ function AddNewActivityForm({
             </p>
           )}
         </div>
-        <div className="sm:col-span-2 space-y-1">
+
+        <div className="col-span-6 space-y-1 sm:col-span-2">
           <label className="text-xs font-medium text-foreground/70">
-            Input Type
+            Unit
           </label>
-          <select
-            name="input_type"
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="number">Number</option>
-            <option value="text">Text</option>
-            <option value="boolean">True/False</option>
-          </select>
+          <ActivityUnitField />
         </div>
-        <div className="sm:col-span-2 space-y-1">
-          <label className="text-xs font-medium text-foreground/70">
-            Unit (optional)
-          </label>
-          <input
-            name="unit_label"
-            type="text"
-            placeholder="e.g. miles"
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-        <div className="sm:col-span-12 space-y-1">
+
+        <div className="col-span-12 space-y-1 sm:col-span-6">
           <label className="text-xs font-medium text-foreground/70">
             Description (optional)
           </label>
@@ -345,7 +342,8 @@ function AddNewActivityForm({
             className="min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <div className="sm:col-span-1 space-y-1">
+
+        <div className="col-span-4 space-y-1 sm:col-span-2">
           <label className="text-xs font-medium text-foreground/70">
             Points
           </label>
@@ -360,7 +358,8 @@ function AddNewActivityForm({
             required
           />
         </div>
-        <div className="sm:col-span-1 space-y-1">
+
+        <div className="col-span-4 space-y-1 sm:col-span-2">
           <label className="text-xs font-medium text-foreground/70">
             Bonus
           </label>
@@ -375,7 +374,8 @@ function AddNewActivityForm({
             required
           />
         </div>
-        <div className="sm:col-span-1 space-y-1">
+
+        <div className="col-span-4 space-y-1 sm:col-span-2">
           <label className="text-xs font-medium text-foreground/70">Cap</label>
           <input
             name="weekly_cap"
@@ -386,11 +386,12 @@ function AddNewActivityForm({
             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <div className="sm:col-span-1">
+
+        <div className="col-span-12 flex items-center justify-end gap-2 pt-1">
           <button
             type="submit"
             disabled={!label.trim()}
-            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             Add

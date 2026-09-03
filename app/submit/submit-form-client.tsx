@@ -6,6 +6,11 @@ import imageCompression from "browser-image-compression";
 import { SubmitButton } from "@/components/submit-button";
 import { Combobox } from "@/components/ui/combobox";
 import { ActivityRule } from "@/lib/types";
+import { TimeDurationInput } from "@/components/time-duration-input";
+import {
+  getActivityUnitLabel,
+  isTimeActivityUnit,
+} from "@/lib/activity-units";
 
 export default function SubmitFormClient({
   action,
@@ -30,6 +35,7 @@ export default function SubmitFormClient({
   const [activityKey, setActivityKey] = useState("");
   const [proofImage, setProofImage] = useState<File | null>(null);
   const [compressing, setCompressing] = useState(false);
+  const [timeValue, setTimeValue] = useState(0);
 
   useEffect(() => {
     if (sortedRules.length > 0 && !activityKey) {
@@ -41,6 +47,13 @@ export default function SubmitFormClient({
     () => activityRules.find((item) => item.activity_key === activityKey),
     [activityRules, activityKey],
   );
+  const unitLabel = getActivityUnitLabel(rule);
+  const usesTimePicker =
+    rule?.input_type === "number" && isTimeActivityUnit(unitLabel);
+
+  useEffect(() => {
+    setTimeValue(0);
+  }, [activityKey]);
   const today = useMemo(() => {
     const date = new Date();
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -117,7 +130,7 @@ export default function SubmitFormClient({
           options={sortedRules.map((item) => ({
             value: item.activity_key,
             label: item.label ?? item.activity_key,
-            description: `${item.points_per_unit} pts${item.unit_label ? `/${item.unit_label}` : ""} / x${item.teammate_bonus} bonus`,
+            description: `${item.points_per_unit} pts${getActivityUnitLabel(item) ? `/${getActivityUnitLabel(item)}` : ""} / x${item.teammate_bonus} bonus`,
           }))}
           value={activityKey}
           onChange={setActivityKey}
@@ -127,7 +140,7 @@ export default function SubmitFormClient({
         {rule ? (
           <div className="rounded-control border border-primary/10 bg-primary/[0.04] p-3">
             <p className="text-sm font-semibold text-primary">
-              {rule.points_per_unit} pts{rule.unit_label ? `/${rule.unit_label}` : ""} / x{rule.teammate_bonus} teammate bonus
+              {rule.points_per_unit} pts{unitLabel ? `/${unitLabel}` : ""} / x{rule.teammate_bonus} teammate bonus
             </p>
             {rule.description ? (
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{rule.description}</p>
@@ -141,17 +154,27 @@ export default function SubmitFormClient({
           <label className="app-label">
             {rule.input_type === "boolean"
               ? "Completed?"
-              : rule.unit_label
-                ? `Amount (${rule.unit_label})`
+              : usesTimePicker
+                ? "Duration"
+                : unitLabel
+                  ? `Amount (${unitLabel})`
                 : "Details"}
           </label>
-          {rule.input_type === "number" ? (
+          {usesTimePicker ? (
+            <TimeDurationInput
+              key={rule.activity_key}
+              name="activity_value_number"
+              unitLabel={unitLabel}
+              onValueChange={setTimeValue}
+            />
+          ) : null}
+          {rule.input_type === "number" && !usesTimePicker ? (
             <input
               name="activity_value_number"
               type="number"
               min={rule.min_value ?? 0}
               step={rule.step_value ?? "any"}
-              placeholder={rule.unit_label ? `Enter ${rule.unit_label}...` : "Enter amount..."}
+              placeholder={unitLabel ? `Enter ${unitLabel}...` : "Enter amount..."}
               className={fieldClass}
               required
             />
@@ -159,7 +182,7 @@ export default function SubmitFormClient({
           {rule.input_type === "text" ? (
             <input
               name="activity_value_text"
-              placeholder={rule.unit_label ? `Enter ${rule.unit_label}...` : "Enter details..."}
+              placeholder={unitLabel ? `Enter ${unitLabel}...` : "Enter details..."}
               className={fieldClass}
               required
             />
@@ -211,7 +234,7 @@ export default function SubmitFormClient({
 
       <SubmitButton
         className="h-12 w-full rounded-control bg-competition text-sm font-semibold text-competition-foreground shadow-sm transition-[transform,background-color] hover:bg-competition/90 active:scale-[0.99] disabled:opacity-50 md:h-11"
-        disabled={compressing}
+        disabled={compressing || (usesTimePicker && timeValue <= 0)}
       >
         {compressing ? "Processing Image..." : "Submit Activity"}
       </SubmitButton>

@@ -3,6 +3,11 @@
 import { createClient } from "../../../lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ActivityRule } from "@/lib/types";
+import {
+  getInputTypeForActivityUnit,
+  getStepValueForActivityUnit,
+  normalizeActivityUnit,
+} from "@/lib/activity-units";
 
 function toNumber(v: FormDataEntryValue | null) {
   const n = Number(v);
@@ -93,8 +98,10 @@ export async function updateActivityRule(formData: FormData) {
   const teammateBonus = toNumber(formData.get("teammate_bonus"));
 
   const label = toStringOrNull(formData.get("label"));
-  const inputType = toStringOrNull(formData.get("input_type"));
-  const unitLabel = toStringOrNull(formData.get("unit_label"));
+  const unitLabel = normalizeActivityUnit(
+    toStringOrNull(formData.get("unit_label")),
+  );
+  const normalizedInputType = getInputTypeForActivityUnit(unitLabel);
   const weeklyCap = toNumberOrNull(formData.get("weekly_cap"));
 
   if (!activityKey) redirect("/admin?error=missing_activity_key");
@@ -107,8 +114,9 @@ export async function updateActivityRule(formData: FormData) {
     points_per_unit: pointsPerUnit,
     teammate_bonus: teammateBonus,
     label: label,
-    input_type: inputType as any,
+    input_type: normalizedInputType,
     unit_label: unitLabel,
+    step_value: getStepValueForActivityUnit(unitLabel),
     weekly_cap: weeklyCap != null ? Math.trunc(weeklyCap) : null,
     description: toStringOrNull(formData.get("description")),
     updated_at: new Date().toISOString(),
@@ -137,8 +145,10 @@ export async function addActivityRule(formData: FormData) {
   const pointsPerUnit = toNumber(formData.get("points_per_unit"));
   const teammateBonus = toNumber(formData.get("teammate_bonus"));
   const label = toStringOrNull(formData.get("label"));
-  const inputType = toStringOrNull(formData.get("input_type"));
-  const unitLabel = toStringOrNull(formData.get("unit_label"));
+  const unitLabel = normalizeActivityUnit(
+    toStringOrNull(formData.get("unit_label")),
+  );
+  const normalizedInputType = getInputTypeForActivityUnit(unitLabel);
   const weeklyCap = toNumberOrNull(formData.get("weekly_cap"));
 
   // If activity_key is empty, generate it from the label
@@ -174,14 +184,14 @@ export async function addActivityRule(formData: FormData) {
     points_per_unit: pointsPerUnit,
     teammate_bonus: teammateBonus,
     label: label ?? activityKey,
-    input_type: inputType,
+    input_type: normalizedInputType,
     unit_label: unitLabel,
     weekly_cap: weeklyCap != null ? Math.trunc(weeklyCap) : null,
     description: toStringOrNull(formData.get("description")),
     active: true, // Default to active
     updated_at: new Date().toISOString(),
     min_value: 0,
-    step_value: inputType === "number" ? 0.01 : null,
+    step_value: getStepValueForActivityUnit(unitLabel),
   });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);

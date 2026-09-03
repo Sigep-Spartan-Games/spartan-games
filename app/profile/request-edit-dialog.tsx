@@ -19,13 +19,24 @@ import { Label } from "@/components/ui/label";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { Textarea } from "@/components/ui/textarea";
 import { ActivityRule } from "@/lib/types";
+import { TimeDurationInput } from "@/components/time-duration-input";
+import {
+  getActivityUnitLabel,
+  isTimeActivityUnit,
+} from "@/lib/activity-units";
 
 interface RequestEditDialogProps {
   submissionId: string;
   teamId: string;
   activityKey: string;
   rule: ActivityRule;
-  originalSubmission: any;
+  originalSubmission: {
+    activity_date: string | null;
+    activity_units: number | null;
+    activity_value_text: string | null;
+    activity_value_bool: boolean | null;
+    did_with_teammate: boolean | null;
+  };
   allRules: ActivityRule[];
 }
 
@@ -61,6 +72,9 @@ export function RequestEditDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const unitLabel = getActivityUnitLabel(activeRule);
+  const usesTimePicker =
+    activeRule.input_type === "number" && isTimeActivityUnit(unitLabel);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -178,25 +192,36 @@ export function RequestEditDialog({
 
                   <div className="space-y-2">
                     <Label>
-                      {rule.input_type === "boolean"
+                      {activeRule.input_type === "boolean"
                         ? "Completed?"
-                        : rule.unit_label
-                          ? `Amount (${rule.unit_label})`
+                        : usesTimePicker
+                          ? "Duration"
+                          : unitLabel
+                            ? `Amount (${unitLabel})`
                           : "Details"}
                     </Label>
 
-                    {rule.input_type === "number" ? (
+                    {usesTimePicker ? (
+                      <TimeDurationInput
+                        key={selectedActivityKey}
+                        unitLabel={unitLabel}
+                        initialValue={units}
+                        onValueChange={(value) => setUnits(value)}
+                      />
+                    ) : null}
+
+                    {activeRule.input_type === "number" && !usesTimePicker ? (
                       <Input
                         type="number"
                         required
-                        min={rule.min_value ?? 0}
-                        step={rule.step_value ?? "any"}
+                        min={activeRule.min_value ?? 0}
+                        step={activeRule.step_value ?? "any"}
                         value={units}
                         onChange={(event) => setUnits(event.target.value)}
                       />
                     ) : null}
 
-                    {rule.input_type === "text" ? (
+                    {activeRule.input_type === "text" ? (
                       <Input
                         type="text"
                         required
@@ -205,13 +230,13 @@ export function RequestEditDialog({
                       />
                     ) : null}
 
-                    {rule.input_type === "boolean" ? (
+                    {activeRule.input_type === "boolean" ? (
                       <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-control border bg-card px-3">
                         <Checkbox
                           checked={boolValue}
                           onCheckedChange={(checked) => setBoolValue(checked === true)}
                         />
-                        <span className="text-sm">{rule.label || "Completed"}</span>
+                        <span className="text-sm">{activeRule.label || "Completed"}</span>
                       </label>
                     ) : null}
                   </div>
