@@ -4,6 +4,11 @@
 import { useMemo, useState } from "react";
 import { ActivityRule } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { TimeDurationInput } from "@/components/time-duration-input";
+import {
+  getActivityUnitLabel,
+  isTimeActivityUnit,
+} from "@/lib/activity-units";
 
 type Team = { id: string; name: string };
 
@@ -46,6 +51,8 @@ export default function EditSubmissionFormClient({
 
   const kind = activeRule?.input_type || "number";
   const step = activeRule?.step_value || 0.25;
+  const unitLabel = getActivityUnitLabel(activeRule);
+  const usesTimePicker = kind === "number" && isTimeActivityUnit(unitLabel);
 
   // Preload “amount” values but let the user change them
   const [units, setUnits] = useState<string>(
@@ -149,7 +156,20 @@ export default function EditSubmissionFormClient({
         </label>
 
         {/* Dynamic Amount */}
-        {kind === "number" && (
+        {kind === "number" && usesTimePicker && (
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Duration</div>
+            <TimeDurationInput
+              key={activityKey}
+              name="activity_units"
+              unitLabel={unitLabel}
+              initialValue={units}
+              onValueChange={(value) => setUnits(String(value))}
+            />
+          </div>
+        )}
+
+        {kind === "number" && !usesTimePicker && (
           <label className="space-y-1 block">
             <div className="text-sm font-medium">Amount</div>
             <input
@@ -208,7 +228,10 @@ export default function EditSubmissionFormClient({
         </label>
 
         <div className="flex justify-end">
-          <Button type="submit">
+          <Button
+            type="submit"
+            disabled={usesTimePicker && Number(units) <= 0}
+          >
             Save changes
           </Button>
         </div>
