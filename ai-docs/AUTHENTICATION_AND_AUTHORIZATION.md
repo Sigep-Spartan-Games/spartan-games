@@ -3,15 +3,15 @@
 > **Purpose:** Document all authentication and authorization mechanisms in the application.
 > **Audience:** Developers, AI agents, security reviewers.
 > **Source of truth:** `middleware.ts`, `lib/supabase/proxy.ts`, `lib/admin.ts`, `lib/is-admin.ts`, all `actions.ts` files.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Authentication Provider
 
-**Supabase Auth** with email/password strategy. No OAuth providers are configured.
+**Supabase Auth** with an email/password flow in application code. No OAuth flow appears in the repository. Whether email confirmation is required is a Supabase dashboard setting and cannot be confirmed from this repository.
 
 ## Session Lifecycle
 
-1. **Sign-up:** Client-side `supabase.auth.signUp()` in `components/sign-up-form.tsx` → Supabase sends verification email → User confirms via `/auth/confirm` route → OTP verified → Session created
+1. **Sign-up:** Client-side `supabase.auth.signUp()` in `components/sign-up-form.tsx` requests an email redirect to `/protected`. The `/auth/confirm` handler can verify `token_hash` callbacks, but the actual email template and confirmation requirement live in Supabase configuration
 2. **Login:** Server action `loginAction()` in `app/auth/login/actions.ts` → `supabase.auth.signInWithPassword()` → Session cookie set → Redirect to `/leaderboard`
 3. **Session refresh:** Middleware (`lib/supabase/proxy.ts`) calls `supabase.auth.getUser()` on every request, which validates and refreshes the JWT
 4. **Sign-out:** `LogoutButton` component calls `supabase.auth.signOut()` → Cookie cleared → Redirect to `/auth/login`
@@ -19,7 +19,7 @@
 
 ## Middleware Behavior (`middleware.ts` → `lib/supabase/proxy.ts`)
 
-Every request (except static files and images) passes through the middleware:
+`middleware()` delegates to `updateSession()` in `lib/supabase/proxy.ts`. Every request except matcher-excluded static/image paths passes through it:
 
 1. Creates a Supabase server client with cookie handling
 2. Calls `supabase.auth.getUser()` to validate the session
@@ -28,6 +28,8 @@ Every request (except static files and images) passes through the middleware:
 5. Redirects authenticated users away from login/signup to `/leaderboard`
 
 ### Public Routes (no auth required)
+
+The implementation uses `pathname.startsWith(...)`, so these entries behave as path prefixes rather than exact route matches.
 
 | Route | Purpose |
 |-------|---------|
@@ -84,40 +86,39 @@ The scoring actions file has its own inline `requireAdmin()` function (lines 29-
 
 | Route / Action | Auth Required | Admin Required | Additional Checks |
 |----------------|:---:|:---:|---|
-| `/auth/*` | No | No | Logged-in users redirected to `/leaderboard` |
+| `/auth/*` | No | No | Only exact `/auth/login` and `/auth/sign-up` redirect signed-in users |
 | `/` (root) | Yes | No | Redirects to `/leaderboard` |
 | `/leaderboard` | Yes | No | — |
 | `/submit` | Yes | No | Must be on a team, submissions must be open |
 | `/teams` | Yes | No | Registration must be open for create/join/change-tier |
-| `/profile` | Yes | No | Can only see own submissions |
+| `/profile` | Yes | No | Shows caller's submissions plus synthetic streak-bonus rows for the caller's team |
 | `/rules` | Yes | No | — |
-| `/admin/*` (layout) | Yes | No | Layout itself doesn't enforce admin; individual pages/actions do |
+| `/admin` | Yes | Yes | Redirects to the guarded `/admin/scoring` page |
+| Most `/admin/*` pages | Yes | Yes | Page loader calls `requireAdmin()` |
+| `/admin/announcements` page | Yes | No | Form is visible; `sendAnnouncement()` requires admin |
 | `/admin/scoring` actions | Yes | Yes | `requireAdmin()` |
 | `/admin/submissions` actions | Yes | Yes | `requireAdmin()` |
 | `/admin/teams` actions | Yes | Yes | `requireAdmin()` |
 | `/admin/settings` actions | Yes | Yes | `requireAdmin()` |
 | `/admin/announcements` actions | Yes | Yes | `requireAdmin()` |
-| `/api/cron/finalize-week` | No* | No | `CRON_SECRET` bearer token check |
+| `/api/cron/finalize-week` | Yes* | No | Middleware currently requires a Supabase session, then the handler checks `CRON_SECRET` |
 | `/api/slack/command` | No | No | Slack signature verification |
 | `/api/slack/notify` | No | No | Slack signature verification |
 
 > [!WARNING]
-> The admin layout (`app/admin/layout.tsx`) does NOT enforce admin access. It renders for any authenticated user. Authorization is only enforced at the server action level when mutations are attempted. This means non-admin users can see the admin UI but cannot perform actions.
+> The shared admin layout does not enforce admin access. The scoring, submissions, submission-detail, teams, history, and settings pages each call `requireAdmin()` while loading. The announcements page does not, so any authenticated user can render that form; its send action is admin-protected. `/admin` redirects to `/admin/scoring`, which is page-protected.
 
 ## Server-Side Authorization Checks
 
-All mutations in server actions verify:
-1. User is authenticated (`supabase.auth.getUser()`)
-2. User has appropriate role (`requireAdmin()` for admin actions)
-3. Business rules are met (e.g., `submissions_open`, `registration_open`, team membership)
+Admin mutations use `requireAdmin()`, and the main submission/team mutations authenticate explicitly. Do not assume every object relationship is checked: `renameTeamAction()` does not verify team membership, and `requestSubmissionEdit()` does not verify that the supplied submission/team belongs to the user.
 
 ## Client-Side Visibility Checks
 
 - `AdminLink` component (`components/admin-link.tsx`) uses `isAdmin()` to conditionally show the admin link in navigation
-- `SpartanNavLinks` (`components/spartan-nav-links.tsx`) shows navigation items based on authentication state
+- `SpartanNavLinks` is always rendered outside auth routes; middleware is what prevents unauthenticated access to its destinations
 
 > [!IMPORTANT]
-> Client-side visibility checks are NOT authorization. They are convenience features only. All security is enforced server-side.
+> Client-side visibility checks are not authorization. Security must be enforced by explicit server checks and RLS; the known gaps below show where that enforcement is incomplete.
 
 ## Row Level Security (RLS)
 
@@ -134,11 +135,11 @@ All mutations in server actions verify:
 - `game_settings` — `Needs maintainer confirmation`
 - `streak_settings` — `Needs maintainer confirmation`
 
-The `is_admin(auth.uid())` SQL function is used in RLS policies, confirming its existence in the database but not in migration files.
+The checked-in policies require an `is_admin(auth.uid())` SQL function, but its definition is absent and a reference does not prove it exists in every deployed database.
 
 ## Cron Authentication
 
-The `/api/cron/finalize-week` route checks for a `Bearer {CRON_SECRET}` authorization header. If `CRON_SECRET` is not set, the check is skipped (allowing unauthenticated access).
+The route handler checks for a `Bearer {CRON_SECRET}` header and fails open when the secret is missing. However, `/api/cron/finalize-week` is not in `publicRoutes`, so middleware first requires a Supabase user cookie. A normal Vercel cron request has the bearer header but no user session and is therefore expected to be redirected to `/auth/login`. Treat scheduled finalization as broken until the route/middleware interaction is tested and fixed.
 
 ## Slack Authentication
 
@@ -146,10 +147,13 @@ Both `/api/slack/command` and `/api/slack/notify` verify the request signature u
 
 ## Known Authorization Risks
 
-1. **Admin UI visible to non-admins** — The admin layout and pages render for any authenticated user. Only mutations are protected.
-2. **CRON_SECRET bypass** — If `CRON_SECRET` is not set, the cron endpoint is publicly accessible.
+1. **Announcements UI visible to non-admins** — The shared admin layout and announcements page lack a page-level guard. Other current admin pages guard their data loaders.
+2. **CRON_SECRET fail-open** — If the handler is reached without `CRON_SECRET`, any middleware-authenticated user can trigger it. Bearer-only cron calls currently appear to be blocked by middleware.
 3. **Team membership not verified for rename** — `renameTeamAction` updates the team name without verifying the user is a member of that team. RLS may protect this depending on policy configuration.
 4. **RLS configuration unknown** — Several tables' RLS policies are only in the Supabase dashboard, making them undocumented and potentially misconfigured.
+5. **Edit-request ownership is not checked** — The action accepts caller-supplied `submissionId` and `teamId`; the checked-in insert policy checks only `auth.uid() = user_id`.
+6. **Slack user authorization is absent** — A valid Slack signature proves the workspace/app origin, but the handler does not allowlist Slack user IDs.
+7. **Manifest is session-protected** — `/manifest.json` is not excluded by the matcher or public-route list, so signed-out requests are redirected to login even though the build emits it as a static asset.
 
 ## How to Add or Change a Role Safely
 

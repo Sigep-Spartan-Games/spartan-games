@@ -3,25 +3,25 @@
 > **Purpose:** Document security posture, known risks, and secret management.
 > **Audience:** Developers, security reviewers, future maintainers.
 > **Source of truth:** Source code, `.gitignore`, `check_schema.js`.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 > [!CAUTION]
 > This document catalogs secrets and security issues found in the codebase. Do NOT copy actual secret values into this document or any tracked file.
 
 ## Committed Secrets
 
-### `check_schema.js` — Hardcoded Credentials
+### `check_schema.js` — Hardcoded Public Project Configuration
 
 | File | Line | Issue | Severity |
 |------|------|-------|----------|
-| `check_schema.js` | 5 | Hardcoded Supabase URL and publishable key in plaintext | **Medium** |
+| `check_schema.js` | 5 | Hardcoded Supabase URL and publishable key in plaintext | **Low** |
 
-**Details:** The file `check_schema.js` contains a hardcoded Supabase project URL and publishable API key. While publishable keys are designed to be public (they're embedded in client-side code), having them hardcoded in a utility script is poor practice and confirms the project's Supabase URL.
+**Details:** The file contains a Supabase project URL and publishable key. These values are intentionally public client configuration, not service-role credentials, but hardcoding them creates configuration drift and discloses which project the script targets.
 
 **Recommended remediation:**
 1. Delete `check_schema.js` from the repository
 2. If the script is needed, modify it to read from environment variables
-3. Consider rotating the publishable key if the repository is public
+3. Confirm no service-role key or private credential was ever committed; rotate only if provider policy or incident response requires it
 
 ### Development Artifacts
 
@@ -70,8 +70,8 @@ There is no documented process for rotating secrets. To rotate:
 
 | Control | Status | Notes |
 |---------|--------|-------|
-| Password hashing | ✅ | Handled by Supabase Auth (bcrypt) |
-| Email verification | ✅ | Required on sign-up |
+| Password hashing | ✅ | Handled by Supabase Auth; algorithm/configuration is external |
+| Email verification | ⚠️ | Callback flow exists, but the confirmation requirement is dashboard configuration |
 | Password reset | ✅ | Via email link |
 | Session management | ✅ | JWT via cookies, refreshed in middleware |
 | CSRF protection | ✅ | Server Actions use POST with cookie verification |
@@ -84,7 +84,7 @@ There is no documented process for rotating secrets. To rotate:
 | Route protection | ✅ | Middleware checks auth on all non-public routes |
 | Admin action guards | ✅ | `requireAdmin()` on all admin mutations |
 | RLS (Row Level Security) | ⚠️ | Enabled on some tables; configuration partially undocumented |
-| Admin UI visibility | ⚠️ | Admin pages render for any auth user; only actions are protected |
+| Admin UI visibility | ⚠️ | Most pages are guarded; announcements page and shared layout are not |
 
 ### Data
 
@@ -93,32 +93,32 @@ There is no documented process for rotating secrets. To rotate:
 | Input validation | ✅ | Server-side in all actions |
 | SQL injection protection | ✅ | Supabase client uses parameterized queries |
 | XSS protection | ✅ | React auto-escapes by default; dangerouslySetInnerHTML not used |
-| File upload validation | ⚠️ | Client-side compression only; no server-side type checking |
-| CORS | ✅ | Handled by Next.js and Vercel defaults |
+| File upload validation | ⚠️ | Server checks browser MIME prefix only; no size, signature, or extension validation |
+| CORS | ⚠️ | No explicit policy; Slack/cron routes are intended for server-to-server requests |
 
 ### Infrastructure
 
 | Control | Status | Notes |
 |---------|--------|-------|
 | HTTPS | ✅ | Enforced by Vercel |
-| Environment separation | ⚠️ | No staging environment; dev uses production database |
+| Environment separation | ⚠️ | No environment topology is versioned; local development uses whichever hosted project is in `.env.local` |
 | Secrets in env vars | ✅ | Correctly gitignored |
 | Cron endpoint auth | ⚠️ | Auth skipped if `CRON_SECRET` not set |
 | Monitoring | ❌ | No error tracking or security monitoring |
 
 ## Known Vulnerabilities
 
-### 1. No Server-Side File Validation
+### 1. Weak Server-Side File Validation
 **Severity:** Medium  
 **File:** `app/submit/actions.ts`  
-**Issue:** Uploaded proof images are compressed client-side but not validated server-side. A malicious user could bypass client compression and upload arbitrary files to the `submission-proofs` bucket.  
-**Recommendation:** Add server-side MIME type checking before uploading to storage.
+**Issue:** The action checks only `File.type.startsWith("image/")`. A caller can bypass client compression; there is no server-side size limit, signature inspection, or extension allowlist.
+**Recommendation:** Enforce size and supported MIME types server-side, inspect file signatures, generate the extension from validated content, and configure bucket policies.
 
-### 2. Admin UI Accessible to Non-Admins
+### 2. Announcements UI Accessible to Non-Admins
 **Severity:** Low  
 **File:** `app/admin/layout.tsx`  
-**Issue:** The admin layout renders for any authenticated user. While mutations are protected by `requireAdmin()`, the admin pages (including team data, submission details) are visible.  
-**Recommendation:** Add `requireAdmin()` check in the admin layout.
+**Issue:** The shared layout and `/admin/announcements` page render for any authenticated user. Other current admin data pages call `requireAdmin()`, and the announcement action is guarded.
+**Recommendation:** Guard the admin layout (or at minimum the announcements page) for defense in depth.
 
 ### 3. Team Rename Without Membership Check
 **Severity:** Low  
@@ -129,18 +129,42 @@ There is no documented process for rotating secrets. To rotate:
 ### 4. Cron Endpoint Open Without Secret
 **Severity:** Medium  
 **File:** `app/api/cron/finalize-week/route.ts`  
-**Issue:** If `CRON_SECRET` is not set, the cron endpoint is accessible without authentication. Anyone could trigger weekly finalization.  
+**Issue:** If `CRON_SECRET` is not set, the handler accepts any request that reaches it. Current middleware still requires a Supabase session, so this is fail-open to authenticated application users rather than reliably public; bearer-only Vercel cron calls have the opposite problem and appear blocked.
 **Recommendation:** Always require `CRON_SECRET` and fail closed if not configured.
 
-### 5. Shared Development Database
+### 5. Hosted Development Database
 **Severity:** Low  
-**Issue:** No local Supabase setup exists. All developers share the production database. Development actions affect production data.  
-**Recommendation:** Set up a local Supabase instance or create a separate development project.
+**Issue:** No local Supabase configuration exists. The application connects to whichever hosted project a developer places in `.env.local`; the repository does not identify whether that target is development, staging, or production.
+**Recommendation:** Verify the project ref before mutations and establish a dedicated development project or local Supabase setup.
 
 ### 6. No Rate Limiting
 **Severity:** Medium  
 **Issue:** No application-level rate limiting exists. Supabase has built-in rate limits, but submission forms, login attempts, and API endpoints are not rate-limited at the app level.  
 **Recommendation:** Add rate limiting middleware for sensitive endpoints.
+
+### 7. Edit-Request Object Ownership Is Not Verified
+**Severity:** Medium
+**File:** `app/profile/actions.ts`, `supabase/migrations/add_submission_edit_requests.sql`
+**Issue:** The action accepts submission/team IDs from the client. The checked-in insert policy verifies only that `user_id` is the caller; it does not prove ownership of the referenced submission or team.
+**Recommendation:** Fetch the submission server-side and verify `submitted_by`/team membership, and enforce the same relationship in RLS.
+
+### 8. Slack Commands Do Not Authorize the Slack User
+**Severity:** Medium
+**File:** `app/api/slack/command/route.ts`, `app/api/slack/notify/route.ts`
+**Issue:** Signature verification authenticates Slack as the sender, but any workspace user able to invoke the configured command can trigger Slack and bulk-email announcements.
+**Recommendation:** Allowlist Slack user IDs or map them to application admins before broadcasting.
+
+### 9. Cron Authentication Layers Conflict
+**Severity:** High (availability)
+**File:** `lib/supabase/proxy.ts`, `app/api/cron/finalize-week/route.ts`
+**Issue:** Middleware requires a Supabase user session for the cron path, while Vercel cron authenticates with a bearer token. The handler also fails open if `CRON_SECRET` is absent.
+**Recommendation:** Exempt only the exact cron path from session middleware and make the handler fail closed on a missing or invalid secret.
+
+### 10. Announcement Email HTML Is Not Escaped
+**Severity:** Medium
+**File:** `app/admin/announcements/actions.ts`
+**Issue:** Announcement text is interpolated directly into HTML after newline replacement. Combined with missing Slack-user authorization, a Slack command caller can inject arbitrary email markup.
+**Recommendation:** Escape plain text before converting newlines, or sanitize against a strict HTML allowlist.
 
 ## PII Inventory
 
@@ -151,6 +175,7 @@ There is no documented process for rotating secrets. To rotate:
 | `teams` | member1_name, member2_name | Denormalized from profiles |
 | `submissions` | submitted_by (UUID) | Links to auth user |
 | `submission_edit_requests` | user_id (UUID), reason (free text) | May contain PII in reason |
+| Storage proofs | User-uploaded images | Public URLs are constructed; images can contain sensitive personal/location information |
 
 ## Change this document when…
 

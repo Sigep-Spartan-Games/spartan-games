@@ -3,7 +3,7 @@
 > **Purpose:** Centralize all domain rules found throughout the code.
 > **Audience:** Developers, AI agents, future maintainers.
 > **Source of truth:** Server action files, especially `app/submit/actions.ts`.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Points Calculation
 
@@ -18,7 +18,7 @@ if (did_with_teammate): points_awarded = floor(points_awarded × teammate_bonus)
 Points are always floored to integers. Minimum base_points is 1.
 
 > [!WARNING]
-> The submit action and admin edit action compute points slightly differently. The submit action uses `Math.floor(pointsPerUnit * units)` then `Math.floor(result * teammateBonus)`. The admin action additionally applies an admin `multiplier` field. This is a subtle inconsistency to watch.
+> The submit action rejects a final value of zero. The admin edit action applies the stored `multiplier` and then clamps the final value to at least 1. These paths are not identical and must be changed together.
 
 ## Streak Bonus
 
@@ -53,6 +53,7 @@ Streak bonus is inserted as a **separate submission** with `activity_key = "dail
 - If `weekly_cap` is set and > 0, the system sums `points_awarded` for all existing submissions by the same team for the same activity in the current week
 - If the sum >= cap, new submissions for that activity are blocked
 - Cap is checked BEFORE the new submission is created (doesn't prevent partial over-cap)
+- Query errors are ignored, so the cap check fails open if existing submissions cannot be loaded
 
 ## Activity Input Types
 
@@ -93,7 +94,9 @@ Time-based activities use a duration picker (hours:minutes). Values are converte
 | Tier must be gold, purple, or red | Validated in server actions + DB CHECK constraint |
 | Invite code is 6 characters uppercase alphanumeric | Generated with `Math.random().toString(36)` |
 | Last member leaving deletes the team | `leaveTeamAction` checks if other member exists |
-| Team operations require registration to be open | `requireRegistrationOpen()` helper |
+| Create, join, and tier change require registration to be open | `requireRegistrationOpen()` helper; rename and leave do not use it |
+
+The code assumes a user belongs to at most one team (`maybeSingle()` is used in several places), but the checked-in migrations do not define that constraint and the create/join actions do not explicitly check existing membership. This invariant must be enforced by the live database/RLS or added to the application.
 
 ## Registration and Submission Gates
 
@@ -150,15 +153,19 @@ Leaderboard can be filtered by tier. Default view matches the user's team tier.
 - Skipped if games have ended
 - Skipped if finalization already in progress
 
+The behavior above is an application assumption: the SQL function and trigger definitions are not in the repository. The cron route is also currently behind Supabase-session middleware, and neither exported manual-finalization action is wired into the Settings UI. See `AUTHENTICATION_AND_AUTHORIZATION.md` and `BACKEND_AND_APIS.md` before relying on either trigger path.
+
 ## Reset
 
 **File:** `app/admin/settings/actions.ts` (lines 244-297)
 
 1. Requires typing "RESET" as confirmation
-2. Attempts to delete all files from `submission-proofs` storage bucket
+2. Attempts to delete files returned by a root-level listing of `submission-proofs`
 3. Deletes all submissions
 4. Deletes all teams (cascades to weekly_history)
 5. Does NOT delete: user accounts, activity rules, game settings, tier settings, streak settings
+
+Proofs are uploaded under `{userId}/...`; the current cleanup is not recursive, so nested proof objects may remain. Storage cleanup errors are logged and do not stop the database reset.
 
 ## Edit Request Workflow
 
@@ -171,6 +178,8 @@ Leaderboard can be filtered by tier. Default view matches the user's team tier.
    - Reject the request
 4. Status transitions: `pending` → `approved` | `rejected`
 
+The profile UI offers requests only for the current user's rows, but the server action does not independently verify that its caller-supplied submission and team IDs belong to that user. The checked-in RLS insert policy validates only `user_id`.
+
 ## Permission Rules Summary
 
 | Action | Who | When |
@@ -179,7 +188,7 @@ Leaderboard can be filtered by tier. Default view matches the user's team tier.
 | Join team | Any authenticated user | Registration open, team not full |
 | Change tier | Team captain (member1) | Registration open |
 | Submit activity | Team member | Submissions open, on a team |
-| Request edit | Team member | Always (for own submissions) |
+| Request edit | Authenticated user | UI limits to own rows; server-side object ownership is not verified |
 | Admin actions | User with `is_admin = true` | Always |
 
 ## Duplicated Business Logic

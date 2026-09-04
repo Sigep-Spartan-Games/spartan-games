@@ -3,16 +3,16 @@
 > **Purpose:** Document all technologies used and explain how each is employed in the project.
 > **Audience:** New developers, AI coding agents.
 > **Source of truth:** `package.json`, `tsconfig.json`, `tailwind.config.ts`, `next.config.ts`, `eslint.config.mjs`, `vercel.json`.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Core Technologies
 
 | Technology | Version | Role |
 |-----------|---------|------|
-| **TypeScript** | ^5 | Primary language for all application code |
-| **Next.js** | latest (16.1.4 at time of review) | React framework with App Router, server components, server actions, middleware |
-| **React** | ^19.0.0 | UI library; uses server components by default, client components where needed |
-| **Node.js** | v18+ recommended | Runtime for server-side code and build |
+| **TypeScript** | ^5; 5.9.3 in current install | Primary language for application code |
+| **Next.js** | `latest` specifier; 16.1.4 in current lock/install | React framework with App Router, server components, server actions, middleware |
+| **React** | ^19.0.0; 19.2.3 in current install | UI library; uses server components by default, client components where needed |
+| **Node.js** | >=20.9.0 | Minimum required by installed Next.js 16.1.4 |
 | **npm** | Default package manager | Dependency management (`package-lock.json` present) |
 
 ## Framework Configuration
@@ -22,6 +22,7 @@
 - Uses App Router (directory-based routing under `app/`)
 - `cacheComponents` is commented out
 - Turbopack enabled for dev (Next.js 16 default)
+- Next.js 16 emits a deprecation warning for the `middleware.ts` file convention and recommends the `proxy` convention
 
 ### TypeScript (`tsconfig.json`)
 - `strict: true`
@@ -66,8 +67,8 @@ The `components.json` file configures shadcn/ui generation paths and styles.
 | Technology | Role |
 |-----------|------|
 | **Supabase** | PostgreSQL database, authentication, storage, Row Level Security |
-| **@supabase/ssr** | latest — Server-side Supabase client for Next.js (cookies-based auth) |
-| **@supabase/supabase-js** | latest — Core Supabase JavaScript client |
+| **@supabase/ssr** | `latest`; 0.8.0 in current install — cookie-based server/browser helpers |
+| **@supabase/supabase-js** | `latest`; 2.91.0 in current install — core Supabase client |
 
 ### Supabase Client Architecture
 - **Browser client** (`lib/supabase/client.ts`): `createBrowserClient()` for client components
@@ -101,7 +102,7 @@ Email is NOT sent via Brevo's API — the README mentions Brevo but the code use
 | Technology | Role |
 |-----------|------|
 | **Vercel** | Hosting, serverless functions, cron jobs, preview deployments |
-| **GitHub** | Source control, CI/CD trigger via Vercel integration |
+| **GitHub** | Source control; a Vercel Git integration is expected but is dashboard state |
 
 ### Vercel Configuration (`vercel.json`)
 - Single cron job: `/api/cron/finalize-week` runs `0 6 * * 1` (every Monday at 6:00 AM UTC)
@@ -120,13 +121,15 @@ Email is NOT sent via Brevo's API — the README mentions Brevo but the code use
 
 | Tool | Configuration |
 |------|--------------|
-| **ESLint** | `eslint.config.mjs` — extends `next/core-web-vitals` and `next/typescript` |
+| **ESLint** | `eslint.config.mjs` — extends `next/core-web-vitals` and `next/typescript`; currently lacks generated-directory ignores and does not pass |
 | **TypeScript** | `strict: true` in `tsconfig.json` |
 
 ### Notable Absences
 - **No test framework** — No Jest, Vitest, Playwright, or Cypress configured
 - **No CI pipeline** — No GitHub Actions workflows
 - **No Prettier** — No explicit formatting configuration (may rely on editor settings)
+- **Version mismatch** — `eslint-config-next` is pinned to 15.3.1 while Next.js resolves to 16.1.4
+- **Floating production dependencies** — `next` and both Supabase packages use `latest`; a fresh install can move major/minor versions when the lockfile is regenerated
 
 ## Additional Dependencies
 

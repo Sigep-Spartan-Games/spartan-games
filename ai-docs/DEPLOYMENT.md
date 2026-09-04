@@ -3,7 +3,7 @@
 > **Purpose:** Document how code is deployed and production infrastructure is managed.
 > **Audience:** Developers, DevOps, future maintainers.
 > **Source of truth:** `vercel.json`, `vercel-ignore-build.sh`, `package.json`.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Deployment Pipeline
 
@@ -19,9 +19,11 @@ graph LR
 
 ### How Deployment Works
 
-1. Developer pushes to `main` branch on GitHub
-2. Vercel automatically detects the push via GitHub integration
-3. `vercel-ignore-build.sh` checks if the commit is on `main`:
+The repository is configured for Vercel and contains a branch-gating script. The Git integration, production branch, ignored-build command, domains, and plan are Vercel dashboard state and still require maintainer confirmation. If the script is configured as the ignored-build step, the intended flow is:
+
+1. Developer pushes to `main` on GitHub
+2. Vercel detects the push through its configured Git integration
+3. `vercel-ignore-build.sh` checks the commit branch:
    - `main` branch → build proceeds (`exit 1`)
    - Any other branch → build cancelled (`exit 0`)
 4. Vercel runs `npm run build` (`next build`)
@@ -31,10 +33,10 @@ graph LR
 
 | Trigger | Deploys? |
 |---------|:--------:|
-| Push to `main` | Yes |
-| Push to feature branch | No (skipped by ignore script) |
-| Pull request | No |
-| Manual Vercel dashboard deploy | Yes |
+| Push to `main` | Intended to deploy; confirm dashboard integration |
+| Push to feature branch | Script requests skip; confirm ignored-build setting |
+| Pull request | Script requests skip for non-`main` refs |
+| Manual Vercel dashboard deploy | Dashboard-dependent |
 
 ## Production URL
 
@@ -78,7 +80,7 @@ See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for the complete list
 | Build Command | `npm run build` (default) |
 | Output Directory | `.next` (default) |
 | Install Command | `npm install` (default) |
-| Node.js Version | Auto (recommend 18.x or 20.x) |
+| Node.js Version | Must satisfy Next.js: >=20.9.0 |
 | Ignored Build Step | `vercel-ignore-build.sh` |
 
 ## Rollback
@@ -98,7 +100,7 @@ Vercel maintains deployment history. To rollback:
 | **Endpoint** | `GET /api/cron/finalize-week` |
 | **Authentication** | `Authorization: Bearer {CRON_SECRET}` |
 | **Runtime** | Node.js (serverless function) |
-| **Timeout** | Default Vercel function timeout (10s hobby / 60s pro) |
+| **Timeout** | Vercel plan/project setting; not configured in this repository |
 
 **What happens when it runs:**
 1. Validates `CRON_SECRET`
@@ -111,10 +113,11 @@ Vercel maintains deployment history. To rollback:
 - If `CRON_SECRET` is not set, endpoint is accessible without auth
 - If the database trigger fails, `finalize_requested` may stay `true`
 - If games haven't started or have ended, finalization is skipped gracefully
+- Middleware currently requires a Supabase session for this path, so a normal bearer-only Vercel cron request is expected to redirect before the handler runs
 
 ### Manual Finalization
 
-Admins can also trigger finalization manually from the admin Settings page via the "Finalize Week" button.
+Two admin server actions can request finalization, but neither is currently imported by the Settings page. There is no rendered "Finalize Week" button in the current UI.
 
 ## Monitoring
 
@@ -143,12 +146,13 @@ git push origin main
    - TypeScript type errors
    - Missing environment variables
    - Import resolution failures
+   - Node.js runtime older than 20.9.0
 3. Fix locally, push again
 
 ## How to Add a New Cron Job
 
 1. Add a new API route in `app/api/cron/your-job/route.ts`
-2. Export `GET` handler with `CRON_SECRET` validation
+2. Export a `GET` handler that fails closed when `CRON_SECRET` is missing or invalid
 3. Set `export const dynamic = "force-dynamic"` and `export const runtime = "nodejs"`
 4. Add to `vercel.json`:
    ```json
@@ -159,6 +163,8 @@ git push origin main
    }
    ```
 5. Redeploy
+6. Exempt the exact endpoint from Supabase-session middleware (without making other protected routes public)
+7. Test the deployed endpoint with no auth, bad bearer auth, and valid bearer auth
 
 ## Change this document when…
 

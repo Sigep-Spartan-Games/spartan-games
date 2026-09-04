@@ -3,7 +3,7 @@
 > **Purpose:** Provide a complete understanding of what Spartan Games is, who it serves, and what it does.
 > **Audience:** New developers, AI coding agents, and future maintainers.
 > **Source of truth:** `README.md`, `app/layout.tsx`, `app/manifest.json`, all page/action files.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## What is Spartan Games?
 
@@ -20,17 +20,17 @@ There are no other formal roles. Admin status is a boolean flag on the `profiles
 
 ### Key Capabilities
 
-1. **User Registration & Authentication** — Email/password sign-up via Supabase Auth with email verification
+1. **User Registration & Authentication** — Email/password flows via Supabase Auth; confirmation policy is configured outside the repository
 2. **Team Management** — Create two-person teams with invite codes, select a competition tier (Gold/Purple/Red), rename, leave, change tier
 3. **Activity Submission** — Log activities with date, type, units, optional proof photo, and teammate bonus
 4. **Scoring Engine** — Points calculated from admin-defined `activity_rules` (points per unit × units × optional teammate bonus)
 5. **Streak Tracking** — Consecutive daily activity bonuses tracked per team
-6. **Weekly Leaderboard** — Real-time standings with tier filtering, progress bars toward weekly goals
-7. **Weekly Finalization** — Automated (cron) or manual weekly cycle: records history, picks winners, rolls up points, resets weekly counters
+6. **Weekly Leaderboard** — Request-time standings with tier filtering and progress bars toward weekly goals (no realtime subscription)
+7. **Weekly Finalization** — Intended scheduled weekly cycle: records history, picks winners, rolls up points, resets weekly counters; current cron routing and missing SQL must be verified
 8. **Admin Dashboard** — Six tabs: Activities (scoring rules), Submissions (review/edit/delete), Teams (manage/tier), History (weekly records), Notices (announcements via Slack/Email), Settings (game controls, goals, export, reset)
 9. **Notifications** — Email (via Nodemailer/SMTP) and Slack webhook announcements
 10. **Data Export** — Excel and CSV downloads for submissions and teams
-11. **Progressive Web App (PWA)** — Installable with `manifest.json`, `apple-icon.png`, standalone display
+11. **Web app manifest** — Includes standalone display metadata and app icons; there is no service worker or offline support
 12. **Edit Requests** — Members can request edits to their submissions; admins approve/reject
 
 ### Competition Tiers
@@ -52,13 +52,13 @@ stateDiagram-v2
     [*] --> Registration: Admin opens registration
     Registration --> Active: Admin clicks "Start Games"
     Active --> Active: Weekly cycles (finalize every Monday)
-    Active --> Ended: Admin clicks "End Games"
-    Ended --> Registration: Admin opens registration for next season
+    Active --> Ended: Admin clicks "End Games" (registration also opens)
+    Ended --> Active: Admin starts another round
     Ended --> Reset: Admin resets all data
 
     state Active {
         [*] --> WeekRunning
-        WeekRunning --> Finalized: Cron job Monday 6AM UTC or manual
+        WeekRunning --> Finalized: Intended Monday cron
         Finalized --> WeekRunning: New week begins
     }
 ```
@@ -67,7 +67,7 @@ stateDiagram-v2
 
 **End Games:** Sets `submissions_open = false`, `registration_open = true`, records `games_ended_at`. Optionally emails all users.
 
-**Reset:** Deletes all teams, submissions, and proof images. Does NOT delete user accounts or activity rules.
+**Reset:** Deletes submissions and teams and attempts proof cleanup. The cleanup is not recursive even though proofs are stored in user folders, so nested files may remain. User accounts and activity rules are not deleted.
 
 ### Important Terminology
 
@@ -98,11 +98,15 @@ stateDiagram-v2
 
 - **`resetActivityRulesDefaults()`** is stub — redirects with "not_implemented" (`app/admin/scoring/actions.ts:138`)
 - **`/app/protected`** directory exists but appears to be a legacy placeholder from the Next.js Supabase template
-- **`/app/time-picker-preview`** directory exists — appears to be a development preview page
 - **Slack commands** — `/api/slack/command` and `/api/slack/notify` are identical duplicates
 - **`check_schema.js`** contains a hardcoded Supabase URL and publishable key (security concern)
 - **`data.json`**, `dump.txt`, `out.txt`, `tsc_output.txt`, `dev_log.txt` — development artifacts committed to repo
-- No formal test suite exists
+- No configured test framework or repeatable automated test suite exists
+- The initial database schema and critical trigger/function definitions are not versioned in migrations
+- Vercel cron requests appear to be blocked by Supabase-session middleware before route authentication
+- Manual finalization actions exist but are not connected to the Settings UI
+- `/rules` and the submit-page rules modal are static copy, not generated from `activity_rules`
+- Signed-out requests for `/manifest.json` are currently intercepted by authentication middleware
 
 ## Change this document when…
 

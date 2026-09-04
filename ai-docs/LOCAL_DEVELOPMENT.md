@@ -3,11 +3,11 @@
 > **Purpose:** Fresh-machine setup guide.
 > **Audience:** New developers.
 > **Source of truth:** `package.json`, `README.md`, `.gitignore`, `tsconfig.json`.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Prerequisites
 
-- **Node.js** v18 or higher
+- **Node.js** v20.9.0 or higher (required by the installed Next.js version)
 - **npm** (included with Node.js)
 - **Git**
 - Access to the Supabase project dashboard
@@ -21,21 +21,22 @@ git clone https://github.com/Sigep-Spartan-Games/spartan-games.git
 cd spartan-games
 
 # Install dependencies
-npm install
+npm ci
 ```
 
 ## Environment Configuration
 
 Create a `.env.local` file in the project root. See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for the complete catalog.
 
-Minimum required for local development:
+Minimum required for the authenticated application UI:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is needed for cron finalization, Slack-command broadcasts, and admin edit-request reads/updates. Keep it server-only. SMTP and Slack variables are needed only for those integrations.
 
 For email testing:
 
@@ -69,13 +70,13 @@ Uses Next.js Turbopack for fast dev compilation.
 
 ## No Local Supabase
 
-There is no local Supabase setup (`supabase/config.toml` does not exist). Development connects directly to the hosted Supabase project. All developers share the same database.
+There is no local Supabase setup (`supabase/config.toml` does not exist). The normal code path connects to the hosted Supabase project named in `.env.local`. The repository does not prove whether developers share one project or whether that project contains production data, so verify the project ref before testing mutations.
 
 ## Database Setup
 
 The database schema is managed directly in the Supabase dashboard. SQL migrations in `supabase/migrations/` were created for reference but are run manually via the Supabase SQL Editor, not via the Supabase CLI.
 
-For a fresh Supabase project, you would need to:
+The checked-in migrations are not sufficient to create a fresh environment. You would need to:
 1. Create all tables (profiles, teams, submissions, activity_rules, game_settings, streak_settings) — `Needs maintainer confirmation` for exact DDL
 2. Run all migration files in order
 3. Create database functions (`finalize_week()`, `is_admin()`, `get_all_user_emails()`, triggers)
@@ -88,6 +89,8 @@ No seed files exist. The `data.json` file appears to be a data dump for debuggin
 
 To seed activity rules, run the migration `20260223203604_add_streak_bonus_activity.sql` for the streak bonus rule. Other activity rules are created via the admin UI.
 
+That migration inserts only the synthetic streak rule and assumes the missing base `activity_rules` table already exists; it is not a complete seed.
+
 ## How to Confirm the Environment Works
 
 1. Run `npm run dev`
@@ -95,6 +98,7 @@ To seed activity rules, run the migration `20260223203604_add_streak_bonus_activ
 3. Log in with an existing account or create one
 4. Navigate to `/leaderboard` → should show team standings
 5. If you have admin access, navigate to `/admin/scoring` → should show activity rules
+6. Run the checks in [TESTING.md](./TESTING.md). Do not run reset/finalization or announcement tests against an unconfirmed database target
 
 ## Common Setup Failures
 

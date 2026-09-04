@@ -3,7 +3,7 @@
 > **Purpose:** Document all backend entry points, server actions, and API routes.
 > **Audience:** Developers, AI agents implementing backend changes.
 > **Source of truth:** All `actions.ts` files, `app/api/` routes, `lib/` modules.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Backend Architecture
 
@@ -50,7 +50,7 @@ Uses `useActionState` pattern. Returns `{ ok: boolean, error?: string }`.
 
 | Action | Auth | Description |
 |--------|:----:|-------------|
-| `requestSubmissionEdit(submissionId, teamId, suggestedChanges, reason)` | User | Creates a submission edit request |
+| `requestSubmissionEdit(submissionId, teamId, suggestedChanges, reason)` | User | Creates a submission edit request; does not verify supplied object ownership |
 
 Inserts into `submission_edit_requests` with status `"pending"`.
 
@@ -85,7 +85,7 @@ Inserts into `submission_edit_requests` with status `"pending"`.
 
 | Action | Auth | Description |
 |--------|:----:|-------------|
-| `deleteSubmission(formData)` | Admin | Deletes a submission (trigger handles team point update) |
+| `deleteSubmission(formData)` | Admin | Deletes a submission; code assumes an unversioned DB trigger updates team points |
 | `updateSubmission(formData)` | Admin | Edits a submission, recomputes points from current rules |
 | `resolveEditRequest(formData)` | Admin | Approves or rejects a submission edit request |
 
@@ -109,13 +109,13 @@ Inserts into `submission_edit_requests` with status `"pending"`.
 | `toggleSubmissions(formData)` | Admin | Toggle submissions independently | — |
 | `toggleRegistration(formData)` | Admin | Toggle registration independently | — |
 | `finalizeWeek()` | Admin | Trigger weekly finalization | Sets `finalize_requested = true` |
-| `resetSpartanGames(formData)` | Admin | Delete all data | Requires "RESET" confirmation, deletes proof images, submissions, and teams |
+| `resetSpartanGames(formData)` | Admin | Reset competition data | Requires "RESET"; deletes submissions and teams, but nested proof cleanup is incomplete/non-fatal |
 
 ### Admin Settings — `app/admin/settings/finalize-week-actions.ts`
 
 | Action | Auth | Description |
 |--------|:----:|-------------|
-| `finalizeWeekWithHistory()` | Admin | Alternative finalize that reads back result |
+| `finalizeWeekWithHistory()` | Admin | Alternative finalize that reads back result; currently not referenced by UI |
 
 ### Admin Settings — `app/admin/settings/tier-goals-actions.ts`
 
@@ -156,6 +156,8 @@ Inserts into `submission_edit_requests` with status `"pending"`.
 
 **Calls:** `finalizeWeekService()` from `lib/finalize-week.ts`
 
+**Middleware caveat:** This route is not in the middleware public-route list. Requests without a Supabase session are redirected before reaching the bearer-token check, which conflicts with normal Vercel cron delivery.
+
 ---
 
 ### `POST /api/slack/command` — `app/api/slack/command/route.ts`
@@ -180,9 +182,11 @@ Inserts into `submission_edit_requests` with status `"pending"`.
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/admin/settings/export/spartan-games.xlsx` | GET | Excel export with submissions + teams sheets |
+| `/admin/settings/export/spartan-games.xlsx` | GET | Excel workbook with Overview, Teams, Submissions, Activity Summary, Activity Rules, Weekly History, and Settings sheets |
 | `/admin/settings/export/submissions.csv` | GET | CSV export of submissions |
 | `/admin/settings/export/teams.csv` | GET | CSV export of teams |
+
+Each export route implements its own authenticated `profiles.is_admin` check and returns 401 or 403 before querying export data.
 
 ---
 
@@ -233,6 +237,10 @@ Both functions support `EMAIL_TEST_MODE` for diverting emails to a test recipien
 ### `lib/activity-units.ts`
 
 Activity unit normalization and conversion utilities (miles, games, laps, time, true/false).
+
+## Unwired Backend Entry Points
+
+`finalizeWeek()` in `app/admin/settings/actions.ts` and `finalizeWeekWithHistory()` in `app/admin/settings/finalize-week-actions.ts` are exported but not imported or rendered by the current Settings page. They are dormant code, not a user-accessible manual-finalization feature.
 
 ## Change this document when…
 

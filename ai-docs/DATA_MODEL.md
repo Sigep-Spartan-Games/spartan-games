@@ -3,11 +3,14 @@
 > **Purpose:** Document the complete database schema, relationships, and data policies.
 > **Audience:** Developers, AI agents, database administrators.
 > **Source of truth:** `supabase/migrations/`, application code queries, `lib/types.ts`.
-> **Last reviewed:** 2026-09-03
+> **Last reviewed:** 2026-09-04
 
 ## Schema Overview
 
 The database is PostgreSQL hosted on Supabase. The schema is managed through SQL migration files run manually in the Supabase SQL Editor. There is **no Supabase CLI configuration file** (`supabase/config.toml`) in the repository — migrations are applied manually.
+
+> [!IMPORTANT]
+> This repository does not contain a baseline migration for the live database. Definitions for the six original tables, most RLS policies, point-maintenance triggers, `finalize_week()`, `is_admin()`, and `get_all_user_emails()` are missing. For those objects, column types/defaults/constraints below are inferred from application reads and writes and are not authoritative DDL. Do not generate a fresh database or destructive migration from this document alone.
 
 ## Entity-Relationship Diagram
 
@@ -21,17 +24,19 @@ erDiagram
     AUTH_USERS ||--o{ SUBMISSIONS : "submitted_by"
     AUTH_USERS ||--o{ SUBMISSION_EDIT_REQUESTS : "user_id"
     SUBMISSIONS ||--o{ SUBMISSION_EDIT_REQUESTS : "submission_id"
-    ACTIVITY_RULES ||--o{ SUBMISSIONS : "activity_key"
+    ACTIVITY_RULES ||--o{ SUBMISSIONS : "logical activity_key"
     GAME_SETTINGS ||--|| GAME_SETTINGS : "singleton id=true"
     STREAK_SETTINGS ||--|| STREAK_SETTINGS : "singleton id=true"
-    TIER_SETTINGS ||--o{ TEAMS : "tier"
+    TIER_SETTINGS ||--o{ TEAMS : "logical tier value"
 ```
+
+Only relationships explicitly present in checked-in migrations are confirmed foreign keys. Other lines show application-level relationships and may not be backed by a database constraint.
 
 ## Tables
 
 ### `profiles`
 
-User profiles, synced from `auth.users`. Contains display information and admin flag.
+User profiles associated by ID with `auth.users`. The synchronization mechanism is not versioned. Contains display information and the admin flag.
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -77,7 +82,7 @@ Two-person teams with competition tier.
 - `member1_id != member2_id` (inferred from code comments)
 - `tier CHECK IN ('gold', 'purple', 'red')`
 
-**Cascade:** `ON DELETE CASCADE` from teams to submissions and weekly_history.
+**Cascade:** `weekly_history.team_id` is confirmed `ON DELETE CASCADE`; submission cascade behavior is expected by the reset code but its DDL is not checked in.
 
 ---
 
@@ -91,7 +96,7 @@ Individual activity submissions by team members.
 | `team_id` | UUID | NOT NULL | — | FK to `teams.id` |
 | `submitted_by` | UUID | NOT NULL | — | FK to `auth.users.id` |
 | `activity` | TEXT | NOT NULL | — | Display string (e.g., "running:5.2") |
-| `activity_key` | TEXT | NOT NULL | — | References `activity_rules.activity_key` |
+| `activity_key` | TEXT | NOT NULL | — | Logical activity-rule key; an FK is not confirmed |
 | `activity_date` | DATE | NOT NULL | — | Date of the activity (YYYY-MM-DD) |
 | `base_points` | INTEGER | NOT NULL | — | Points before multipliers |
 | `did_with_teammate` | BOOLEAN | NOT NULL | `false` | Whether done with teammate |
@@ -105,11 +110,11 @@ Individual activity submissions by team members.
 | `activity_value_bool` | BOOLEAN | YES | — | Raw boolean input |
 | `streak_bonus` | INTEGER | YES | `0` | Streak bonus (0 for normal, >0 for streak rows) |
 | `proof_image_path` | TEXT | YES | — | Path in `submission-proofs` storage bucket |
-| `inserted_at` | TIMESTAMPTZ | YES | `NOW()` | When submitted |
+| `created_at` | TIMESTAMPTZ | YES | `NOW()` (inferred) | When submitted; this is the timestamp queried by current pages and exports |
 
 **Used by:** Submit actions, admin submissions, profile, leaderboard calculations.
 
-**Database triggers:** `Needs maintainer confirmation` — The code references `trg_submission_points_delete` for team point updates on deletion.
+**Database triggers:** `Needs maintainer confirmation` — inserts do not update `teams.weekly_points` in application code, so live-database point-maintenance logic is required. A code comment names `trg_submission_points_delete` for deletes; insert/update trigger names and all definitions are absent.
 
 ---
 
@@ -194,7 +199,7 @@ Historical record of team performance at end of each week.
 |--------|------|----------|---------|-------------|
 | `id` | UUID | NOT NULL | `gen_random_uuid()` | PK |
 | `team_id` | UUID | NOT NULL | — | FK to `teams.id` ON DELETE CASCADE |
-| `week_identifier` | TEXT | NOT NULL | — | Format: "2026-W06" (ISO week) |
+| `week_identifier` | TEXT | NOT NULL | — | Opaque display identifier. The migration comment suggests ISO weeks, while a committed diagnostic snapshot contains labels such as `Feb 17 - 22, 2026`; do not parse without the missing finalization function |
 | `weekly_points` | INTEGER | NOT NULL | `0` | Points earned that week |
 | `tier` | TEXT | YES | — | Team's tier at that time |
 | `weekly_goal` | INTEGER | NOT NULL | — | Goal at that time |
@@ -223,7 +228,7 @@ User-submitted requests to edit or delete past submissions.
 | `reason` | TEXT | NOT NULL | — | User's explanation for the edit |
 | `status` | TEXT | NOT NULL | `'pending'` | `CHECK (status IN ('pending', 'approved', 'rejected'))` |
 | `created_at` | TIMESTAMPTZ | YES | `NOW()` | Request creation time |
-| `updated_at` | TIMESTAMPTZ | YES | `NOW()` | Last update time |
+| `updated_at` | TIMESTAMPTZ | YES | `NOW()` | Creation/default timestamp; no checked-in trigger/action updates it when status changes |
 
 **RLS:** Users can INSERT and SELECT their own requests. Admin access through service role key.
 
@@ -237,10 +242,10 @@ User-submitted requests to edit or delete past submissions.
 |-----------------|-------|------|-------------|
 | `finalize_week()` | — | Function | `Needs maintainer confirmation` — SQL function that handles per-tier winners, weekly history recording, points roll-up, weekly points reset |
 | `trg_finalize_previous_week` | `game_settings` | AFTER UPDATE trigger | Calls `finalize_week()` when `finalize_requested` changes to `true` |
-| `trg_submission_points_delete` | `submissions` | `Needs maintainer confirmation` — Referenced in code comments, handles team point updates on submission deletion |
+| Submission point trigger(s) | `submissions` | `Needs maintainer confirmation` — inserts/updates/deletes must maintain team points; only the name `trg_submission_points_delete` appears in a comment |
 | `update_tier_settings_updated_at()` | `tier_settings` | BEFORE UPDATE trigger | Auto-updates `updated_at` |
 | `is_admin(user_id)` | — | Function | `Needs maintainer confirmation` — Used in RLS policies |
-| `get_all_user_emails()` | — | RPC Function | Returns list of confirmed user emails |
+| `get_all_user_emails()` | — | RPC function | Application expects rows shaped as `{ email: string }`; implementation and confirmation filter are unversioned |
 
 > [!WARNING]
 > The `finalize_week()` function, `trg_submission_points_delete`, and `is_admin()` function are **not defined in the migration files**. They exist in the Supabase database but were likely created directly via the SQL Editor. Their definitions should be exported and documented.
@@ -249,11 +254,11 @@ User-submitted requests to edit or delete past submissions.
 
 | Bucket | Access | Purpose |
 |--------|--------|---------|
-| `submission-proofs` | Public read | Activity proof images uploaded by users |
+| `submission-proofs` | Application assumes public read | Activity proof images; public URLs are constructed directly, but bucket policy is not versioned |
 
 ## Migration History
 
-Migrations are in `supabase/migrations/` and were run manually:
+Migrations are in `supabase/migrations/`. Comments instruct maintainers to run them manually, but the repository cannot prove which files were applied to any environment. Dependency order is:
 
 1. `add_team_tier.sql` — Added `tier` column to teams
 2. `add_tier_weekly_goals.sql` — Created `tier_settings` table with defaults
@@ -265,7 +270,7 @@ Migrations are in `supabase/migrations/` and were run manually:
 8. `20260223204946_fix_teammate_bonus_type.sql` — Changed `submissions.teammate_bonus` to NUMERIC
 
 > [!IMPORTANT]
-> The initial schema (profiles, teams, submissions, activity_rules, game_settings, streak_settings) is NOT in the migrations. It was created directly in Supabase and is only discoverable from application code queries.
+> The initial schema (profiles, teams, submissions, activity_rules, game_settings, streak_settings) is NOT in the migrations. Its origin cannot be established from the repository; only its expected shape can be inferred from application queries.
 
 ## Change this document when…
 

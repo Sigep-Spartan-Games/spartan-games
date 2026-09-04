@@ -1,7 +1,7 @@
 # Spartan Games
 
 <div align="center">
-  <h3>Inter-Fraternity Competition Tracking & Gamification</h3>
+  <h3>SigEp Competition Tracking & Gamification</h3>
   <p>Track activities, compete on leaderboards, and manage your chapter's fitness journey.</p>
 </div>
 
@@ -9,15 +9,15 @@
 
 ## 📖 Project Overview
 
-**Spartan Games** is a web application designed to gamify fraternity activities. Members can log activities (running, lifting, sports, etc.) to earn points for themselves and their teams. The application features real-time leaderboards, weekly competition cycles, and comprehensive administrative tools for managing the season.
+**Spartan Games** is a web application designed to gamify fraternity activities. Members can log activities (running, lifting, sports, etc.) to earn points for their teams. The application features request-time leaderboards, weekly competition cycles, and administrative tools for managing the season.
 
 ### Key Features
 
 - **Activity Tracking**: Users can submit proof of activities to earn points based on predefined scoring rules.
-- **Real-time Leaderboards**: View individual and team rankings that update instantly.
+- **Leaderboards**: View request-time team rankings, weekly progress, and season totals.
 - **Team Management**: Organize members into teams for group competition.
 - **Admin Dashboard**:
-  - Review and approve/reject submissions.
+  - Review/edit/delete submissions and approve/reject member edit requests.
   - Manage scoring rules and activity types.
   - Finalize weekly scores and reset cycles.
   - View historical data and export reports.
@@ -25,11 +25,11 @@
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router; current lockfile resolves 16.1.4)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
-- **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL, Auth, Storage, Realtime)
+- **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL, Auth, Storage, RLS, functions, triggers)
 - **Deployment**: [Vercel](https://vercel.com/)
 - **Email**: [Nodemailer](https://nodemailer.com/) (for notifications)
 
@@ -39,28 +39,26 @@
 
 Ensure you have the following installed:
 
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- [npm](https://www.npmjs.com/) or [pnpm](https://pnpm.io/)
+- [Node.js](https://nodejs.org/) v20.9.0 or higher
+- [npm](https://www.npmjs.com/) (`package-lock.json` is authoritative)
 
 ### Installation
 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/your-username/spartan-games.git
+   git clone https://github.com/Sigep-Spartan-Games/spartan-games.git
    cd spartan-games
    ```
 
 2. **Install dependencies:**
 
    ```bash
-   npm install
-   # or
-   pnpm install
+   npm ci
    ```
 
 3. **Set up Environment Variables:**
-   Create a `.env.local` file in the root directory and add the following variables.
+   Create a `.env.local` file in the root directory. The complete, feature-specific catalog is in [`ai-docs/ENVIRONMENT_VARIABLES.md`](./ai-docs/ENVIRONMENT_VARIABLES.md).
 
    ```env
    # Supabase Configuration
@@ -97,7 +95,11 @@ Ensure you have the following installed:
   - `api/`: API routes and cron jobs.
 - `components/`: Reusable UI components (buttons, cards, inputs).
 - `lib/`: Utility functions, Supabase client setup, and types.
-- `supabase/`: Database migrations and types.
+- `supabase/`: Partial database migrations; the baseline schema and critical function/trigger definitions are currently missing.
+
+## 🤖 Developer and AI Documentation
+
+Start with [`ai-docs/README.md`](./ai-docs/README.md). It provides a task-based reading map, identifies which database behavior is not versioned in this repository, and links the feature-change and verification checklists.
 
 ## 🚢 Deployment
 
@@ -110,7 +112,7 @@ The easiest way to deploy allows for seamless integration with Vercel.
 
 ## 🔐 Admin Access
 
-To access the admin dashboard (`/admin`), a user must have the appropriate role or permissions set in the `users` table in Supabase. Ensure your Row Level Security (RLS) policies are correctly configured to protect these routes.
+To access the admin dashboard (`/admin`), a user must have `is_admin = true` in the `profiles` table. Keep page/action guards and Row Level Security (RLS) policies aligned; see the authorization documentation for the current exceptions.
 
 ## 📜 License
 
