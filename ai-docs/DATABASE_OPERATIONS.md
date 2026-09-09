@@ -4,6 +4,35 @@
 > **Source of truth:** `supabase/config.toml`, `supabase/migrations/`, `supabase/tests/`, and `package.json`.
 > **Last reviewed:** 2026-09-09
 
+## Production Release Record — 2026-09-09
+
+The first managed production rollout completed against Supabase project
+`fkudsbomcwahlwmyqndb` and application release commit `567f9b8`:
+
+- the reconstructed `20260122000000` baseline was marked applied, not executed;
+- migrations `20260909010000`, `20260909020000`, and `20260909030000` applied successfully;
+- local and remote migration ledgers match;
+- production invariants passed and database lint returned no findings;
+- GitHub/Vercel reported the matching application deployment successful;
+- anonymous browser checks confirmed the login redirect and no browser-console errors;
+- live database types were regenerated into `lib/database.types.ts`.
+
+Supabase reported no downloadable physical backups and PITR disabled before this
+release. A protected logical snapshot was therefore created in the non-API schema
+`release_backup_20260909_pre_normalization` using
+`supabase/scripts/create_pre_normalization_snapshot.sql`. It contains all pre-release
+`public` rows, the submission-proof bucket/object metadata, migration history, and
+relevant catalog definitions. Keep it until the release has been stable and an
+independent backup policy is enabled. This same-database snapshot protects against
+logical migration mistakes; it is not a substitute for an independent physical
+backup or PITR during an infrastructure failure.
+
+One operational item remains: the 2026-09-09 production smoke test found that
+`CRON_SECRET` is absent from Vercel. Both cron endpoints correctly return HTTP 503
+and will not perform work until the variable is configured and the app is redeployed.
+After configuration, an unauthenticated request must return HTTP 401 and a Vercel
+cron request with the bearer secret must succeed.
+
 ## Ownership Model
 
 PostgreSQL is the authority for identities, season state, team membership, scoring, point totals, and weekly finalization. Next.js actions validate form shape and uploads, then call transactional RPCs. Do not recreate scoring, cap, streak, or membership logic in TypeScript.

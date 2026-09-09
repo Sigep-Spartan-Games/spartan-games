@@ -4,6 +4,19 @@
 > **Source of truth:** `vercel.json`, `package.json`, and [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md).
 > **Last reviewed:** 2026-09-09
 
+## Current Production Status
+
+The normalized database migrations and matching Vercel application commit
+`567f9b8` were released successfully on 2026-09-09. Production database invariants,
+database lint, the application build, the anonymous login redirect, and the browser
+console check passed.
+
+`CRON_SECRET` was not present in the production Vercel environment at verification
+time. The two cron routes are safely returning HTTP 503, but scheduled finalization
+and proof cleanup are paused until the secret is configured and Vercel redeploys.
+Authenticated team, submission, proof, and admin workflow smoke tests still require
+a maintainer test account.
+
 ## Targets
 
 - Application: Vercel, Next.js App Router.
