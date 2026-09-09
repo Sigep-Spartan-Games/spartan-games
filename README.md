@@ -64,6 +64,7 @@ Ensure you have the following installed:
    # Supabase Configuration
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_server_only_service_role_key
 
    # App Configuration
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -95,11 +96,11 @@ Ensure you have the following installed:
   - `api/`: API routes and cron jobs.
 - `components/`: Reusable UI components (buttons, cards, inputs).
 - `lib/`: Utility functions, Supabase client setup, and types.
-- `supabase/`: Partial database migrations; the baseline schema and critical function/trigger definitions are currently missing.
+- `supabase/`: CLI config, complete migration history, seed entry point, and database invariant tests.
 
 ## 🤖 Developer and AI Documentation
 
-Start with [`ai-docs/README.md`](./ai-docs/README.md). It provides a task-based reading map, identifies which database behavior is not versioned in this repository, and links the feature-change and verification checklists.
+Start with [`ai-docs/README.md`](./ai-docs/README.md). For any schema or production operation, read [`ai-docs/DATABASE_OPERATIONS.md`](./ai-docs/DATABASE_OPERATIONS.md) before running linked Supabase commands.
 
 ## 🚢 Deployment
 

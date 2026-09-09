@@ -14,18 +14,7 @@ import { TierBadge } from "@/components/competition-badges";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { EmptyState } from "@/components/ui/empty-state";
-
-type TeamRow = {
-  id: string;
-  name: string;
-  weekly_points: number;
-  member1_name?: string | null;
-  member2_name?: string | null;
-  member1_id?: string | null;
-  member2_id?: string | null;
-  invite_code?: string | null;
-  tier?: "gold" | "purple" | "red" | null;
-};
+import { getMyTeam, getTeamDirectory } from "@/lib/team-data";
 
 const tierOptions = [
   { value: "gold", label: "Gold", description: "Competitive" },
@@ -64,47 +53,23 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
   const me = auth.user;
 
   const { data: settings, error: settingsError } = await supabase
-    .from("game_settings")
+    .from("current_season_settings")
     .select("registration_open")
-    .eq("id", true)
-    .single();
-  const registrationOpen = settingsError ? true : Boolean(settings?.registration_open);
+    .maybeSingle();
+  const registrationOpen = !settingsError && Boolean(settings?.registration_open);
 
-  const { data, error } = await supabase
-    .from("teams")
-    .select(`
-      id,
-      name,
-      weekly_points,
-      member1_id,
-      member2_id,
-      invite_code,
-      tier,
-      member1:profiles!member1_id(first_name, last_name, email),
-      member2:profiles!member2_id(first_name, last_name, email)
-    `)
-    .order("name", { ascending: true });
-
-  const teams = (data ?? []).map((team: any) => {
-    const member1 = team.member1;
-    const member2 = team.member2;
-    const member1Name = member1
-      ? member1.first_name || member1.last_name
-        ? `${member1.first_name || ""} ${member1.last_name || ""}`.trim()
-        : member1.email
-      : null;
-    const member2Name = member2
-      ? member2.first_name || member2.last_name
-        ? `${member2.first_name || ""} ${member2.last_name || ""}`.trim()
-        : member2.email
-      : null;
-    return { ...team, member1_name: member1Name, member2_name: member2Name };
-  }) as TeamRow[];
+  const [{ teams, error }, myTeamResult] = await Promise.all([
+    getTeamDirectory(supabase),
+    getMyTeam(supabase),
+  ]);
 
   const success = feedback?.success ? decodeURIComponent(feedback.success) : null;
   const errorMessage = feedback?.error ? decodeURIComponent(feedback.error) : null;
-  const myTeam = me
-    ? teams.find((team) => team.member1_id === me.id || team.member2_id === me.id) ?? null
+  const myDirectoryTeam = myTeamResult.team
+    ? teams.find((team) => team.id === myTeamResult.team?.id) ?? null
+    : null;
+  const myTeam = myDirectoryTeam && myTeamResult.team
+    ? { ...myDirectoryTeam, invite_code: myTeamResult.team.invite_code, role: myTeamResult.team.role }
     : null;
   const canRegister = Boolean(me) && !myTeam && registrationOpen;
   const fieldClass =
@@ -194,7 +159,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                 <p className="text-sm font-semibold text-primary">Your team</p>
                 <h2 id="my-team-heading" className="mt-1 truncate text-2xl font-semibold tracking-tight">{myTeam.name}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {myTeam.member1_name ?? "Open spot"} / {myTeam.member2_name ?? "Open spot"}
+                    {myTeam.captain_name ?? "Open spot"} / {myTeam.member_name ?? "Open spot"}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {myTeam.tier ? <TierBadge tier={myTeam.tier} /> : null}
@@ -205,7 +170,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                     </span>
                   ) : null}
                 </div>
-                {myTeam.member1_id === me.id && registrationOpen ? (
+                {myTeam.role === "captain" && registrationOpen ? (
                   <form action={changeTierAction} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <input type="hidden" name="teamId" value={myTeam.id} />
                     <label className="flex-1 space-y-2">
@@ -219,7 +184,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                 ) : null}
               </div>
               <div className="w-full space-y-3 border-t pt-5 lg:w-auto lg:min-w-72 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                {myTeam.member1_id === me.id ? (
+                {myTeam.role === "captain" ? (
                   <form action={renameTeamAction} className="space-y-2">
                     <input type="hidden" name="teamId" value={myTeam.id} />
                     <label htmlFor="newName" className="app-label">Rename team</label>
@@ -262,10 +227,10 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                     {team.tier ? <TierBadge tier={team.tier} /> : null}
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {team.member1_name ?? "Open spot"} / {team.member2_name ?? "Open spot"}
+                    {team.captain_name ?? "Open spot"} / {team.member_name ?? "Open spot"}
                   </p>
                   <p className="mt-2 text-xs font-medium text-muted-foreground">
-                    {team.member2_id ? "Team full" : "Open spot (invite-only)"}
+                    {team.member_id ? "Team full" : "Open spot (invite-only)"}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

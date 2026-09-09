@@ -18,6 +18,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { createClient } from "@/lib/supabase/server";
+import { getMyTeam } from "@/lib/team-data";
+
+type SubmissionScoreEvent = { event_type: string; points: number | null };
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -26,14 +29,10 @@ export default async function ProfilePage() {
 
   if (authError || !user) redirect("/auth/login");
 
-  const { data: team, error: teamError } = await supabase
-    .from("teams")
-    .select("*")
-    .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
-    .maybeSingle();
+  const { team, error: teamError } = await getMyTeam(supabase);
 
   const { data: activityRules } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("*");
 
   const { data: profile } = await supabase
@@ -49,7 +48,8 @@ export default async function ProfilePage() {
 
   let query = supabase
     .from("submissions")
-    .select("*, submission_edit_requests(id, status)");
+    .select("*, submission_edit_requests(id, status), score_events(event_type, points)")
+    .is("voided_at", null);
 
   if (team) {
     query = query.or(
@@ -59,13 +59,30 @@ export default async function ProfilePage() {
     query = query.eq("submitted_by", user.id);
   }
 
-  const { data: submissions, error: subError } = await query.order(
+  const { data: rawSubmissions, error: subError } = await query.order(
     "created_at",
     { ascending: false },
   );
 
+  const submissions = await Promise.all(
+    (rawSubmissions ?? []).map(async (submission) => {
+      if (!submission.proof_image_path) return { ...submission, proof_url: null };
+      const { data } = await supabase.storage
+        .from("submission-proofs")
+        .createSignedUrl(submission.proof_image_path, 60 * 15);
+      return { ...submission, proof_url: data?.signedUrl ?? null };
+    }),
+  );
+
   const totalUserPoints = (submissions || []).reduce(
-    (total, submission) => total + (submission.points_awarded || 0),
+    (total, submission) => {
+      const streakBonus = submission.activity_key === "daily_streak_bonus"
+        ? 0
+        : ((submission.score_events ?? []) as SubmissionScoreEvent[])
+            .filter((event) => event.event_type === "streak_bonus")
+            .reduce((sum, event) => sum + Number(event.points ?? 0), 0);
+      return total + Number(submission.points_awarded || 0) + streakBonus;
+    },
     0,
   );
 
@@ -197,12 +214,17 @@ export default async function ProfilePage() {
             <div className="divide-y">
               {submissions?.map((submission) => {
                 const pendingRequest = submission.submission_edit_requests?.find(
-                  (request: any) => request.status === "pending",
+                  (request: { status: string }) => request.status === "pending",
                 );
                 const rule = activityRules?.find(
                   (candidate) => candidate.activity_key === submission.activity_key,
                 );
                 const isStreakBonus = submission.activity_key === "daily_streak_bonus";
+                const streakBonus = isStreakBonus
+                  ? 0
+                  : ((submission.score_events ?? []) as SubmissionScoreEvent[])
+                      .filter((event) => event.event_type === "streak_bonus")
+                      .reduce((sum, event) => sum + Number(event.points ?? 0), 0);
 
                 return (
                   <article
@@ -225,7 +247,7 @@ export default async function ProfilePage() {
                         </p>
                       </div>
                       <div className="app-number shrink-0 text-lg font-bold text-achievement">
-                        +{submission.points_awarded}
+                        +{Number(submission.points_awarded) + streakBonus}
                       </div>
                     </div>
 
@@ -235,7 +257,14 @@ export default async function ProfilePage() {
                           <Medal aria-hidden="true" className="h-3.5 w-3.5" />
                           Team reward
                         </Badge>
-                      ) : pendingRequest ? (
+                      ) : null}
+                      {!isStreakBonus && streakBonus > 0 ? (
+                        <Badge variant="achievement">
+                          <Flame aria-hidden="true" className="h-3.5 w-3.5" />
+                          Streak +{streakBonus}
+                        </Badge>
+                      ) : null}
+                      {!isStreakBonus && (pendingRequest ? (
                         <Badge variant="warning">Pending edit</Badge>
                       ) : team && rule ? (
                         <RequestEditDialog
@@ -246,12 +275,12 @@ export default async function ProfilePage() {
                           originalSubmission={submission}
                           allRules={activityRules || []}
                         />
-                      ) : null}
+                      ) : null)}
 
-                      {submission.proof_image_path ? (
+                      {submission.proof_url ? (
                         <Button variant="ghost" size="sm" asChild>
                           <a
-                            href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${submission.proof_image_path}`}
+                            href={submission.proof_url}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

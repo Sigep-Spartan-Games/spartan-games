@@ -2,7 +2,6 @@
 
 import { createClient } from "../../../lib/supabase/server";
 import { redirect } from "next/navigation";
-import { ActivityRule } from "@/lib/types";
 import {
   getInputTypeForActivityUnit,
   getStepValueForActivityUnit,
@@ -59,27 +58,40 @@ export async function upsertActivityRulesBulk(formData: FormData) {
     redirect("/admin?error=bulk_mismatch");
   }
 
+  const { data: existingRules, error: existingError } = await supabase
+    .from("current_activity_rules")
+    .select("*");
+  if (existingError) redirect(`/admin?error=${encodeURIComponent(existingError.message)}`);
+
   const payload = keys.map((k, i) => {
     const pointsPerUnit = Number(ppuList[i]);
     const teammateBonus = Number(bonusList[i]);
+    const existing = existingRules?.find((rule) => rule.activity_key === k);
 
     if (!k) throw new Error("missing key");
-    if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
+    if (!Number.isFinite(pointsPerUnit) || pointsPerUnit <= 0)
       throw new Error("invalid ppu");
-    if (!Number.isFinite(teammateBonus) || teammateBonus < 0)
+    if (!Number.isFinite(teammateBonus) || teammateBonus <= 0)
       throw new Error("invalid bonus");
+    if (!existing) throw new Error(`missing existing rule: ${k}`);
 
     return {
       activity_key: k,
       points_per_unit: pointsPerUnit,
       teammate_bonus: teammateBonus,
-      updated_at: new Date().toISOString(),
+      label: existing.label,
+      input_type: existing.input_type,
+      unit_label: existing.unit_label,
+      description: existing.description,
+      min_value: existing.min_value,
+      step_value: existing.step_value,
+      weekly_cap: existing.weekly_cap,
     };
   });
 
-  const { error } = await supabase
-    .from("activity_rules")
-    .upsert(payload, { onConflict: "activity_key" });
+  const { error } = await supabase.rpc("save_activity_rules_bulk_v2", {
+    p_rules: payload,
+  });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
 
@@ -105,29 +117,26 @@ export async function updateActivityRule(formData: FormData) {
   const weeklyCap = toNumberOrNull(formData.get("weekly_cap"));
 
   if (!activityKey) redirect("/admin?error=missing_activity_key");
-  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
+  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit <= 0)
     redirect("/admin?error=invalid_points_per_unit");
-  if (!Number.isFinite(teammateBonus) || teammateBonus < 0)
+  if (!Number.isFinite(teammateBonus) || teammateBonus <= 0)
     redirect("/admin?error=invalid_teammate_bonus");
 
-  const payload: Partial<ActivityRule> = {
-    points_per_unit: pointsPerUnit,
-    teammate_bonus: teammateBonus,
-    label: label,
-    input_type: normalizedInputType,
-    unit_label: unitLabel,
-    step_value: getStepValueForActivityUnit(unitLabel),
-    weekly_cap: weeklyCap != null ? Math.trunc(weeklyCap) : null,
-    description: toStringOrNull(formData.get("description")),
-    updated_at: new Date().toISOString(),
-  };
-
   const targetKey = originalKey || activityKey;
+  if (targetKey !== activityKey) redirect("/admin?error=activity_keys_cannot_be_renamed");
 
-  const { error } = await supabase
-    .from("activity_rules")
-    .update(payload)
-    .eq("activity_key", targetKey);
+  const { error } = await supabase.rpc("save_activity_rule_v2", {
+    p_activity_key: targetKey,
+    p_label: label ?? targetKey,
+    p_measurement_type: normalizedInputType,
+    p_unit_label: unitLabel,
+    p_description: toStringOrNull(formData.get("description")),
+    p_min_value: 0,
+    p_step_value: getStepValueForActivityUnit(unitLabel),
+    p_points_per_unit: pointsPerUnit,
+    p_teammate_multiplier: teammateBonus,
+    p_weekly_cap_points: weeklyCap != null ? Math.trunc(weeklyCap) : null,
+  });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
 
@@ -163,14 +172,14 @@ export async function addActivityRule(formData: FormData) {
   }
 
   if (!activityKey) redirect("/admin?error=missing_activity_key");
-  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit < 0)
+  if (!Number.isFinite(pointsPerUnit) || pointsPerUnit <= 0)
     redirect("/admin?error=invalid_points_per_unit");
-  if (!Number.isFinite(teammateBonus) || teammateBonus < 0)
+  if (!Number.isFinite(teammateBonus) || teammateBonus <= 0)
     redirect("/admin?error=invalid_teammate_bonus");
 
   // Check if it already exists
   const { data: existing } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("activity_key")
     .eq("activity_key", activityKey)
     .single();
@@ -179,19 +188,17 @@ export async function addActivityRule(formData: FormData) {
     redirect("/admin?error=activity_already_exists");
   }
 
-  const { error } = await supabase.from("activity_rules").insert({
-    activity_key: activityKey,
-    points_per_unit: pointsPerUnit,
-    teammate_bonus: teammateBonus,
-    label: label ?? activityKey,
-    input_type: normalizedInputType,
-    unit_label: unitLabel,
-    weekly_cap: weeklyCap != null ? Math.trunc(weeklyCap) : null,
-    description: toStringOrNull(formData.get("description")),
-    active: true, // Default to active
-    updated_at: new Date().toISOString(),
-    min_value: 0,
-    step_value: getStepValueForActivityUnit(unitLabel),
+  const { error } = await supabase.rpc("save_activity_rule_v2", {
+    p_activity_key: activityKey,
+    p_label: label ?? activityKey,
+    p_measurement_type: normalizedInputType,
+    p_unit_label: unitLabel,
+    p_description: toStringOrNull(formData.get("description")),
+    p_min_value: 0,
+    p_step_value: getStepValueForActivityUnit(unitLabel),
+    p_points_per_unit: pointsPerUnit,
+    p_teammate_multiplier: teammateBonus,
+    p_weekly_cap_points: weeklyCap != null ? Math.trunc(weeklyCap) : null,
   });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
@@ -205,10 +212,9 @@ export async function deleteActivityRule(formData: FormData) {
   const activityKey = String(formData.get("activity_key") ?? "").trim();
   if (!activityKey) redirect("/admin?error=missing_activity_key");
 
-  const { error } = await supabase
-    .from("activity_rules")
-    .delete()
-    .eq("activity_key", activityKey);
+  const { error } = await supabase.rpc("archive_activity_v2", {
+    p_activity_key: activityKey,
+  });
 
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
 

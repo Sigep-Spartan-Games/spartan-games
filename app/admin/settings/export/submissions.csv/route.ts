@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/admin/settings/export/submissions.csv/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -34,7 +35,7 @@ export async function GET() {
 
   // Fetch activity_rules for dynamic labels
   const { data: activityRules } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("activity_key, label, unit_label, unit");
 
   // Build label map from dynamic activity_rules

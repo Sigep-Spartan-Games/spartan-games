@@ -1,207 +1,98 @@
 # Business Rules
 
-> **Purpose:** Centralize all domain rules found throughout the code.
-> **Audience:** Developers, AI agents, future maintainers.
-> **Source of truth:** Server action files, especially `app/submit/actions.ts`.
-> **Last reviewed:** 2026-09-04
+> **Purpose:** Domain behavior enforced by the database workflows.
+> **Source of truth:** `20260909020000_transactional_workflows.sql` and its constraints.
+> **Last reviewed:** 2026-09-09
 
-## Points Calculation
+## Season Lifecycle
 
-**File:** `app/submit/actions.ts` (lines 180-182), `app/admin/submissions/actions.ts` (lines 188-198)
+- `registration`: registration may be open; submissions normally remain closed.
+- `active`: registration is closed and submissions may be open.
+- `completed`: both are closed and an end date is recorded.
+- Starting a new season archives the previous season and its teams, preserves all history, and copies tier goals and current scoring rules.
 
+Admins may independently toggle registration/submissions for controlled testing. All controls are changed through `set_season_controls_v2`; legacy `game_settings` is updated only for compatibility.
+
+## Teams
+
+- Team names are 2–40 characters and unique, case-insensitively, among active teams in one season.
+- A user may belong to one active team per season.
+- A team has at most two active members and one captain.
+- The creator is captain. Joining uses an eight-character invite code generated in PostgreSQL.
+- Only the captain or an admin may rename a team or change its tier. A non-admin may change tier only while registration is open.
+- When a captain leaves, the remaining member becomes captain. An empty team is archived.
+- Admin removal archives the team and closes active memberships; history is retained.
+
+These checks run under row locks in the `*_v2` team RPCs to prevent concurrent joins or duplicate memberships.
+
+## Activity Submission
+
+`create_activity_submission_v2` is the sole user submission write path. It verifies:
+
+1. authenticated caller and active team membership;
+2. open submissions for that team’s season;
+3. activity date in the current Monday–Sunday week in the season timezone;
+4. active activity and current season-specific scoring rule;
+5. exactly the correct typed value for the activity measurement type;
+6. caller-owned proof path, supported image MIME, and a 10 MiB limit;
+7. weekly activity cap after acquiring a team/activity/week advisory lock.
+
+Numeric values must be positive and meet the configured minimum. Text must be non-empty. Boolean activities must be confirmed.
+
+## Scoring
+
+For an activity:
+
+```text
+base_points = max(1, floor(points_per_unit × units))
+activity_points = teammate
+  ? max(1, floor(base_points × teammate_multiplier))
+  : base_points
 ```
-base_points = max(1, floor(points_per_unit × activity_units))
-points_awarded = floor(points_per_unit × activity_units)
-if (did_with_teammate): points_awarded = floor(points_awarded × teammate_bonus)
-```
 
-Points are always floored to integers. Minimum base_points is 1.
+The rule version and calculation inputs are stored on the submission. The awarded activity points are stored as an `activity` ledger event. Weekly caps compare the new event plus existing team/activity/week ledger points, so concurrent submissions cannot both pass the cap.
 
-> [!WARNING]
-> The submit action rejects a final value of zero. The admin edit action applies the stored `multiplier` and then clamps the final value to at least 1. These paths are not identical and must be changed together.
+Changing an activity rule creates a new version. Historical submissions and results keep their previous snapshots.
 
-## Streak Bonus
+## Streaks
 
-**File:** `app/submit/actions.ts` (lines 184-242)
+- First activity day: streak becomes 1.
+- Next calendar day: streak increments.
+- Later date with a gap: streak resets to 1.
+- Same-day or backdated submission: no streak change and no bonus.
+- Bonus is `min(streak_count × daily_bonus_increment, max_streak_bonus)`.
 
-| Condition | Streak Count | Bonus |
-|-----------|-------------|-------|
-| First activity ever | 1 | `daily_bonus_increment` |
-| Consecutive day (diff = 1) | Previous + 1 | `min(count × increment, max_bonus)` |
-| Missed day(s) (diff > 1) | 1 (reset) | `daily_bonus_increment` |
-| Same day (diff = 0) | Unchanged | 0 |
-| Backdated (diff < 0) | Unchanged | 0 |
+The streak update and activity submission share one transaction and team row lock. A bonus is a separate `streak_bonus` ledger event linked to the activity submission; it is not a synthetic activity.
 
-**Defaults** (from `streak_settings` table): `daily_bonus_increment = 1`, `max_bonus = 10`.
+## Point Projections
 
-Streak bonus is inserted as a **separate submission** with `activity_key = "daily_streak_bonus"`, not added to the original submission's points.
+`score_events` is authoritative.
 
-## Date Validation (Current Week)
+- `teams.weekly_points` is the sum of ledger events in the current season-local week.
+- `teams.total_points` is the sum in finalized weeks.
+- `team_standings.season_points` is the complete season ledger sum, including the open week.
 
-**File:** `app/submit/actions.ts` (lines 56-85)
-
-- Dates must fall within the current Monday-to-Monday week
-- Week boundaries computed using **US Eastern timezone** (`America/New_York`)
-- Monday at 00:00:00 to next Monday at 00:00:00
-- Submissions for dates outside this range are rejected
-
-## Weekly Cap
-
-**File:** `app/submit/actions.ts` (lines 102-129)
-
-- Each activity rule can have an optional `weekly_cap` (max points per team per activity per week)
-- If `weekly_cap` is set and > 0, the system sums `points_awarded` for all existing submissions by the same team for the same activity in the current week
-- If the sum >= cap, new submissions for that activity are blocked
-- Cap is checked BEFORE the new submission is created (doesn't prevent partial over-cap)
-- Query errors are ignored, so the cap check fails open if existing submissions cannot be loaded
-
-## Activity Input Types
-
-**File:** `app/submit/actions.ts` (lines 141-173), `lib/activity-units.ts`
-
-| Input Type | Units Calculation | Validation |
-|-----------|------------------|-----------|
-| `number` | Raw numeric value | Must be finite and >= 0 |
-| `text` | Always 1 | Must not be empty |
-| `boolean` | 1 if checked, 0 if not | Unchecked = 0 units → rejected |
-
-### Activity Unit Normalization
-
-**File:** `lib/activity-units.ts`
-
-| Unit Label | Normalized | Step Value |
-|-----------|-----------|-----------|
-| mile/miles | miles | 0.01 |
-| game/games | games | 1 |
-| lap/laps | laps | 1 |
-| time/duration/hour/hours/hr/hrs | time | 1/60 |
-| minute/minutes/min/mins | time (minute-based) | 1/60 |
-| true/false/boolean | true/false | null |
-| anything else | miles (default) | 0.01 |
-
-Time-based activities use a duration picker (hours:minutes). Values are converted to hours or minutes depending on the unit definition.
-
-## Team Rules
-
-**File:** `app/teams/actions.ts`
-
-| Rule | Implementation |
-|------|---------------|
-| Team name must be 2-40 characters | Validated in `createTeamAction`, `renameTeamAction` |
-| Teams have exactly 2 member slots | `member1_id` and `member2_id` columns |
-| Member1 is the captain | Creator always becomes `member1_id` |
-| Only captain can change tier | `changeTierAction` checks `member1_id === user.id` |
-| Tier must be gold, purple, or red | Validated in server actions + DB CHECK constraint |
-| Invite code is 6 characters uppercase alphanumeric | Generated with `Math.random().toString(36)` |
-| Last member leaving deletes the team | `leaveTeamAction` checks if other member exists |
-| Create, join, and tier change require registration to be open | `requireRegistrationOpen()` helper; rename and leave do not use it |
-
-The code assumes a user belongs to at most one team (`maybeSingle()` is used in several places), but the checked-in migrations do not define that constraint and the create/join actions do not explicitly check existing membership. This invariant must be enforced by the live database/RLS or added to the application.
-
-## Registration and Submission Gates
-
-**File:** `app/admin/settings/actions.ts`, `app/teams/actions.ts`, `app/submit/actions.ts`
-
-| Setting | Controls |
-|---------|---------|
-| `registration_open` | Team create, join, change tier |
-| `submissions_open` | Activity submission |
-
-### Start Games
-- Sets `registration_open = false`
-- Sets `submissions_open = true`
-- Records `games_started_at`
-- Clears `games_ended_at`
-
-### End Games
-- Sets `registration_open = true`
-- Sets `submissions_open = false`
-- Records `games_ended_at`
-
-Both have idempotency checks to prevent double-execution.
-
-## Leaderboard Ranking
-
-**File:** `app/leaderboard/page.tsx` (lines 61-78)
-
-Teams are sorted by:
-1. `weekly_points` descending
-2. `total_points` descending (tiebreaker)
-3. `name` ascending (second tiebreaker)
-
-Season total displayed = `total_points + weekly_points` (weekly is live, total is accumulated from finalized weeks).
-
-Leaderboard can be filtered by tier. Default view matches the user's team tier.
+Ledger insert/update/delete triggers rebuild affected team caches. Do not increment/decrement cached totals directly.
 
 ## Weekly Finalization
 
-**File:** `lib/finalize-week.ts`, `app/admin/settings/finalize-week-actions.ts`
+`finalize_competition_week`:
 
-**Trigger:** Setting `finalize_requested = true` on `game_settings`
+- accepts an explicit week or selects the previous season-local week;
+- rejects an unfinished week;
+- uses an advisory lock and `job_runs` deduplication key;
+- sums ledger points for every active season team;
+- snapshots tier goal and streak;
+- ranks within tier by week points, prior points, team creation time, then team ID;
+- awards one winner per tier only when first place scored more than zero;
+- upserts `team_week_results` and the compatibility `weekly_history` row;
+- marks the week finalized and rebuilds projections;
+- returns `already_finalized` on a safe repeat.
 
-**Database function `finalize_week()` performs (atomically):**
-1. Records each team's weekly performance in `weekly_history`
-2. Determines per-tier winners (highest weekly points)
-3. Appends winning week to winners' `weeks_won` array
-4. Rolls `weekly_points` into `total_points`
-5. Resets `weekly_points` to 0
-6. Resets `finalize_requested` to `false`
-7. Records `last_week_finalized`
+Finalization never deletes submissions or resets authoritative data.
 
-**Guards:**
-- Skipped if games haven't started
-- Skipped if games have ended
-- Skipped if finalization already in progress
+## Edits and Voids
 
-The behavior above is an application assumption: the SQL function and trigger definitions are not in the repository. The cron route is also currently behind Supabase-session middleware, and neither exported manual-finalization action is wired into the Settings UI. See `AUTHENTICATION_AND_AUTHORIZATION.md` and `BACKEND_AND_APIS.md` before relying on either trigger path.
+Users may request edits only for their own non-voided activity submissions. Suggested JSON keys are allow-listed. The database derives ownership and team; it does not trust browser-supplied IDs.
 
-## Reset
-
-**File:** `app/admin/settings/actions.ts` (lines 244-297)
-
-1. Requires typing "RESET" as confirmation
-2. Attempts to delete files returned by a root-level listing of `submission-proofs`
-3. Deletes all submissions
-4. Deletes all teams (cascades to weekly_history)
-5. Does NOT delete: user accounts, activity rules, game settings, tier settings, streak settings
-
-Proofs are uploaded under `{userId}/...`; the current cleanup is not recursive, so nested proof objects may remain. Storage cleanup errors are logged and do not stop the database reset.
-
-## Edit Request Workflow
-
-**File:** `app/profile/actions.ts`, `app/admin/submissions/actions.ts`
-
-1. User submits edit request with suggested changes and reason
-2. Admin sees pending requests on submissions page
-3. Admin can:
-   - Navigate to edit the submission directly (approves request automatically)
-   - Reject the request
-4. Status transitions: `pending` → `approved` | `rejected`
-
-The profile UI offers requests only for the current user's rows, but the server action does not independently verify that its caller-supplied submission and team IDs belong to that user. The checked-in RLS insert policy validates only `user_id`.
-
-## Permission Rules Summary
-
-| Action | Who | When |
-|--------|-----|------|
-| Create team | Any authenticated user | Registration open |
-| Join team | Any authenticated user | Registration open, team not full |
-| Change tier | Team captain (member1) | Registration open |
-| Submit activity | Team member | Submissions open, on a team |
-| Request edit | Authenticated user | UI limits to own rows; server-side object ownership is not verified |
-| Admin actions | User with `is_admin = true` | Always |
-
-## Duplicated Business Logic
-
-The points calculation is implemented in two places:
-1. `app/submit/actions.ts` — User submission
-2. `app/admin/submissions/actions.ts` — Admin edit
-
-These should be kept in sync. The admin version also applies the `multiplier` field.
-
-## Change this document when…
-
-- Point calculation formulas change
-- New eligibility rules are added
-- Streak logic changes
-- Competition lifecycle changes
+Admin edits recalculate against the current rule and update canonical references and ledger points in one transaction. Admin “delete” voids the submission, removes its ledger events, preserves the row, and queues its proof for cleanup.

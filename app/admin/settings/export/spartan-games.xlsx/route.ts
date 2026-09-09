@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/admin/settings/export/spartan-games.xlsx/route.ts
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 async function requireAdminForRoute() {
   const supabase = await createClient();
@@ -84,11 +86,11 @@ export async function GET() {
   if (!guard.ok)
     return new NextResponse("Unauthorized", { status: guard.status });
 
-  const { supabase } = guard;
+  const supabase = createAdminClient();
 
   // Fetch activity_rules for dynamic labels
   const { data: activityRules } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("activity_key, label, unit, unit_label, points_per_unit, teammate_bonus, weekly_cap, active, input_type, min_value, step_value")
     .order("activity_key");
 
@@ -150,15 +152,15 @@ export async function GET() {
 
   // Tier Settings
   const { data: tierSettings } = await supabase
-    .from("tier_settings")
+    .from("current_tier_settings")
     .select("tier, weekly_goal, created_at, updated_at")
     .order("tier");
 
   // Streak Settings
   const { data: streakSettings } = await supabase
-    .from("streak_settings")
-    .select("daily_bonus_increment, max_bonus")
-    .single();
+    .from("current_season_settings")
+    .select("daily_bonus_increment, max_streak_bonus")
+    .maybeSingle();
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Spartan Games";
@@ -487,7 +489,7 @@ export async function GET() {
   if (streakSettings) {
     wsSettings.addRow([
       streakSettings.daily_bonus_increment ?? "",
-      streakSettings.max_bonus ?? "",
+      streakSettings.max_streak_bonus ?? "",
     ]);
   }
 

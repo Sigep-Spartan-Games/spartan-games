@@ -3,7 +3,7 @@
 > **Purpose:** Complete catalog of every environment variable used in the application.
 > **Audience:** Developers setting up the project, deployment engineers, AI agents.
 > **Source of truth:** All `process.env` references in source code, `.gitignore`, `README.md`.
-> **Last reviewed:** 2026-09-04
+> **Last reviewed:** 2026-09-09
 
 > [!CAUTION]
 > Never commit actual secret values to this file or any file tracked by Git. Store all secrets in a password manager or the Vercel/Supabase dashboard.
@@ -16,7 +16,7 @@
 |----------|----------|--------|---------|--------|--------------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Yes (client) | Supabase project URL | `https://<project-ref>.supabase.co` | Supabase Dashboard → Settings → API | `lib/supabase/client.ts`, `lib/supabase/server.ts`, `lib/supabase/proxy.ts`, `lib/supabase/admin.ts`, `app/profile/page.tsx`, `app/admin/submissions/page.tsx` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Yes (client) | Supabase anon/publishable key | `sb_publishable_...` or `eyJ...` JWT | Supabase Dashboard → Settings → API | `lib/supabase/client.ts`, `lib/supabase/server.ts`, `lib/supabase/proxy.ts` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Feature-dependent | No | Service role key (bypasses RLS) | Secret key/JWT supplied by Supabase | Supabase Dashboard → Settings → API | `lib/supabase/admin.ts`, cron finalization, Slack routes, admin edit requests |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes (production) | No | Service role key (bypasses RLS) | Secret key/JWT supplied by Supabase | Supabase Dashboard → Settings → API | `lib/supabase/admin.ts`, cron jobs, Slack routes, guarded admin exports |
 
 ### Email (SMTP)
 
@@ -42,7 +42,7 @@
 
 | Variable | Required | Public | Purpose | Format | Where to Get | Used In |
 |----------|----------|--------|---------|--------|--------------|---------|
-| `CRON_SECRET` | Yes (production) | No | Authenticates cron job requests | Random string | Generate manually | `app/api/cron/finalize-week/route.ts` |
+| `CRON_SECRET` | Yes (production) | No | Authenticates cron job requests | Random string | Generate manually | `app/api/cron/finalize-week/route.ts`, `app/api/cron/cleanup-proofs/route.ts` |
 
 ### Slack
 
@@ -60,7 +60,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | Admin-client features fail, including cron finalization and Slack-command broadcasts; normal user flows may still work |
 | `SMTP_HOST` | Email sending silently fails or throws |
 | `SMTP_USER` / `SMTP_PASS` | Email authentication fails |
-| `CRON_SECRET` | Cron endpoint allows unauthenticated requests (security risk) |
+| `CRON_SECRET` | Cron endpoints fail closed with HTTP 503; scheduled maintenance does not run |
 | `SLACK_WEBHOOK_URL` | Slack notifications logged as warning and skipped |
 | `SLACK_SIGNING_SECRET` | Signature helper returns false; unsigned calls are tolerated only outside production when no secret is configured |
 | `NEXT_PUBLIC_SITE_URL` | Email links fall back to `https://spartan-games.vercel.app` |

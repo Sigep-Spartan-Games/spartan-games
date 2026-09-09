@@ -58,6 +58,7 @@ async function AdminSubmissionsInner({
     .select(
       "id, team_id, submitted_by, created_at, activity_key, activity_date, points_awarded, did_with_teammate, proof_image_path",
     )
+    .is("voided_at", null)
     .order("created_at", { ascending: false })
     .limit(250);
 
@@ -79,17 +80,16 @@ async function AdminSubmissionsInner({
 
   const teams = teamsResult.data;
   const teamsError = teamsResult.error;
-  const subs = subsResult.data;
-  const error = subsResult.error;
+  const rawSubs = subsResult.data;
+  const error = subsResult.error ?? pendingRequestsResult.error;
   const pendingRequests = pendingRequestsResult.data;
-  const reqError = pendingRequestsResult.error;
 
   // Create a lookup map for team names
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t.name]));
 
   // Fetch user names for the submissions
   const userIds = [
-    ...new Set((subs ?? []).map((s) => s.submitted_by).filter(Boolean)),
+    ...new Set((rawSubs ?? []).map((s) => s.submitted_by).filter(Boolean)),
   ];
   let userMap = new Map<string, string>();
 
@@ -108,6 +108,16 @@ async function AdminSubmissionsInner({
       ]),
     );
   }
+
+  const subs = await Promise.all(
+    (rawSubs ?? []).map(async (submission) => {
+      if (!submission.proof_image_path) return { ...submission, proof_url: null };
+      const { data } = await adminClient.storage
+        .from("submission-proofs")
+        .createSignedUrl(submission.proof_image_path, 60 * 15);
+      return { ...submission, proof_url: data?.signedUrl ?? null };
+    }),
+  );
 
   // Add extra user IDs to userMap if necessary
   const reqUserIds = [
@@ -337,10 +347,10 @@ async function AdminSubmissionsInner({
                       <div className="text-xs text-muted-foreground">
                         {s.did_with_teammate ? "With teammate" : "Solo"}
                       </div>
-                      {s.proof_image_path && (
+                      {s.proof_url && (
                         <div className="mt-1 md:hidden">
                           <a
-                            href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
+                            href={s.proof_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -369,9 +379,9 @@ async function AdminSubmissionsInner({
 
                   {/* Actions */}
                   <div className="flex justify-end gap-2 md:col-span-2">
-                    {s.proof_image_path && (
+                    {s.proof_url && (
                       <a
-                        href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submission-proofs/${s.proof_image_path}`}
+                        href={s.proof_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex h-11 w-11 items-center justify-center rounded-control border text-primary hover:bg-muted/50"

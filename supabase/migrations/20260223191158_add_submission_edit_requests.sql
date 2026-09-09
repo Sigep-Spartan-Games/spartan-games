@@ -28,11 +28,6 @@ FOR SELECT
 TO authenticated
 USING (auth.uid() = user_id);
 
--- Update the existing Admin policy if there is an admin role or handle it through the application.
--- Often in this app, admins bypass RLS using the service role key, but let's add a general policy if they use RLS for admins.
--- Based on the user's setup, they use `requireAdmin` which likely uses the service role key giving full access.
--- So the above policies are sufficient for authenticated users.
-
 -- Add an index for fetching pending requests efficiently
 CREATE INDEX idx_submission_edit_requests_status ON submission_edit_requests(status);
-CREATE INDEX idx_submission_edit_requests_submission_id ON submission_edit_requests(submission_id);
+CREATE INDEX idx_submission_edit_requests_submission_id ON submission_edit_requests(submission_id);;

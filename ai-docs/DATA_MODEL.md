@@ -1,280 +1,132 @@
 # Data Model
 
-> **Purpose:** Document the complete database schema, relationships, and data policies.
-> **Audience:** Developers, AI agents, database administrators.
-> **Source of truth:** `supabase/migrations/`, application code queries, `lib/types.ts`.
-> **Last reviewed:** 2026-09-04
+> **Purpose:** Canonical database entities, relationships, compatibility fields, and lifecycle rules.
+> **Source of truth:** `supabase/migrations/`.
+> **Last reviewed:** 2026-09-09
 
-## Schema Overview
+## Design Rules
 
-The database is PostgreSQL hosted on Supabase. The schema is managed through SQL migration files run manually in the Supabase SQL Editor. There is **no Supabase CLI configuration file** (`supabase/config.toml`) in the repository — migrations are applied manually.
+- Season-specific state always carries `season_id`.
+- Calendar weeks are real rows, not presentation strings.
+- Team membership is relational and historical.
+- Scoring configuration is versioned; a submission snapshots its exact rule.
+- `score_events` is the point authority. Team point columns are rebuildable caches.
+- Historical competition data is retained. UI “delete” operations archive or void.
+- Legacy tables and columns remain temporarily as compatibility projections and are not the write API.
 
-> [!IMPORTANT]
-> This repository does not contain a baseline migration for the live database. Definitions for the six original tables, most RLS policies, point-maintenance triggers, `finalize_week()`, `is_admin()`, and `get_all_user_emails()` are missing. For those objects, column types/defaults/constraints below are inferred from application reads and writes and are not authoritative DDL. Do not generate a fresh database or destructive migration from this document alone.
+## Core Relationships
 
-## Entity-Relationship Diagram
+```text
+seasons
+  ├─ season_tiers ─ tiers
+  ├─ teams
+  │    ├─ team_memberships ─ profiles/auth.users
+  │    └─ team_streaks
+  ├─ competition_weeks
+  ├─ scoring_rule_versions ─ activities
+  ├─ submissions
+  │    ├─ score_events
+  │    ├─ submission_attachments
+  │    └─ submission_edit_requests
+  └─ team_week_results
 
-```mermaid
-erDiagram
-    AUTH_USERS ||--o| PROFILES : "id = id"
-    PROFILES ||--o{ TEAMS : "member1_id or member2_id"
-    TEAMS ||--o{ SUBMISSIONS : "team_id"
-    TEAMS ||--o{ WEEKLY_HISTORY : "team_id"
-    TEAMS ||--o{ SUBMISSION_EDIT_REQUESTS : "team_id"
-    AUTH_USERS ||--o{ SUBMISSIONS : "submitted_by"
-    AUTH_USERS ||--o{ SUBMISSION_EDIT_REQUESTS : "user_id"
-    SUBMISSIONS ||--o{ SUBMISSION_EDIT_REQUESTS : "submission_id"
-    ACTIVITY_RULES ||--o{ SUBMISSIONS : "logical activity_key"
-    GAME_SETTINGS ||--|| GAME_SETTINGS : "singleton id=true"
-    STREAK_SETTINGS ||--|| STREAK_SETTINGS : "singleton id=true"
-    TIER_SETTINGS ||--o{ TEAMS : "logical tier value"
+job_runs records cron/idempotent workflow executions.
 ```
 
-Only relationships explicitly present in checked-in migrations are confirmed foreign keys. Other lines show application-level relationships and may not be backed by a database constraint.
+## Canonical Tables
 
-## Tables
+### `seasons`
 
-### `profiles`
+Owns the competition lifecycle: name/slug, timezone, dates, `draft|registration|active|completed`, registration/submission switches, and streak settings. At most one unarchived registration/active season exists.
 
-User profiles associated by ID with `auth.users`. The synchronization mechanism is not versioned. Contains display information and the admin flag.
+`current_season_id()` selects the unarchived season used by application views and RPCs.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | — | PK, FK to `auth.users.id` |
-| `first_name` | TEXT | YES | — | User's first name |
-| `last_name` | TEXT | YES | — | User's last name |
-| `email` | TEXT | YES | — | User's email |
-| `is_admin` | BOOLEAN | YES | `false` | Admin flag |
-| `created_at` | TIMESTAMPTZ | YES | `NOW()` | Account creation time |
+### `tiers` and `season_tiers`
 
-**Used by:** `lib/admin.ts`, `lib/is-admin.ts`, `lib/cached-data.ts`, `app/teams/actions.ts`, `app/leaderboard/page.tsx`
+`tiers` defines stable tier keys and display order. `season_tiers` stores the weekly goal for each season/tier pair. A goal change affects the current season without rewriting finalized results; `team_week_results.goal_points` is the historical snapshot.
 
-**RLS:** `Inferred` — Not defined in migration files. Likely configured directly in Supabase dashboard. The `is_admin()` SQL function is referenced in RLS policies, suggesting a database function exists for this purpose.
+### `teams`, `team_memberships`, and `team_streaks`
 
-**PII:** Contains `first_name`, `last_name`, `email`.
+`teams` owns team identity, season, tier, invite code, and archive state. Canonical roster rows live in `team_memberships` with a role, display-name snapshot, join time, and leave time.
 
----
+Database constraints enforce:
 
-### `teams`
+- one active team per user per season;
+- one active membership row per team/user;
+- one active captain per team;
+- application RPCs enforce the two-person roster limit;
+- active team names are unique case-insensitively within a season.
 
-Two-person teams with competition tier.
+`team_streaks` is one-to-one with a team. The old streak fields on `teams` are synchronized projections.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | PK |
-| `name` | TEXT | NOT NULL | — | Team display name |
-| `member1_id` | UUID | YES | — | FK to `auth.users.id` (team captain) |
-| `member2_id` | UUID | YES | — | FK to `auth.users.id` (partner) |
-| `member1_name` | TEXT | YES | — | Denormalized display name |
-| `member2_name` | TEXT | YES | — | Denormalized display name |
-| `invite_code` | TEXT | YES | — | 6-char uppercase code for joining |
-| `weekly_points` | INTEGER | YES | `0` | Points earned this week |
-| `total_points` | INTEGER | YES | `0` | Accumulated points from all finalized weeks |
-| `weeks_won` | TEXT[] | YES | `'{}'` | Array of week identifiers won |
-| `tier` | TEXT | YES | — | `CHECK (tier IN ('gold', 'purple', 'red'))` |
-| `streak_count` | INTEGER | YES | `0` | Current consecutive days of activity |
-| `last_activity_date` | DATE | YES | — | Date of last activity submission |
-| `created_at` | TIMESTAMPTZ | YES | `NOW()` | Team creation time |
+### `activities` and `scoring_rule_versions`
 
-**Used by:** Leaderboard, submit, teams, admin pages.
+`activities` contains stable activity identity and input metadata (`number`, `text`, or `boolean`). Archiving an activity prevents new use without breaking history.
 
-**Constraints:**
-- `member1_id != member2_id` (inferred from code comments)
-- `tier CHECK IN ('gold', 'purple', 'red')`
+`scoring_rule_versions` contains season-scoped points per unit, teammate multiplier, weekly cap, effective interval, and creator. Only one version can be current for an activity/season. Changing a rule closes the current version and inserts a new one.
 
-**Cascade:** `weekly_history.team_id` is confirmed `ON DELETE CASCADE`; submission cascade behavior is expected by the reset code but its DDL is not checked in.
+### `competition_weeks`
 
----
+A week has a season, inclusive `starts_on`/`ends_on`, display label, status, and optional finalization time. `(season_id, starts_on)` is unique. The authoritative week starts Monday in the season timezone.
 
 ### `submissions`
 
-Individual activity submissions by team members.
+A submission references its season, week, team, activity, and scoring-rule version. It stores typed input, submitter-name snapshot, calculated point snapshots, proof path, kind, and optional `voided_at`.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | PK |
-| `team_id` | UUID | NOT NULL | — | FK to `teams.id` |
-| `submitted_by` | UUID | NOT NULL | — | FK to `auth.users.id` |
-| `activity` | TEXT | NOT NULL | — | Display string (e.g., "running:5.2") |
-| `activity_key` | TEXT | NOT NULL | — | Logical activity-rule key; an FK is not confirmed |
-| `activity_date` | DATE | NOT NULL | — | Date of the activity (YYYY-MM-DD) |
-| `base_points` | INTEGER | NOT NULL | — | Points before multipliers |
-| `did_with_teammate` | BOOLEAN | NOT NULL | `false` | Whether done with teammate |
-| `multiplier` | NUMERIC | NOT NULL | `1.0` | Admin multiplier (usually 1.0) |
-| `points_awarded` | INTEGER | NOT NULL | — | Final computed points |
-| `points_per_unit` | NUMERIC | YES | — | Snapshot of rule at time of submission |
-| `teammate_bonus` | NUMERIC | YES | — | Snapshot of rule at time of submission |
-| `activity_units` | NUMERIC | YES | — | Number of units (miles, games, etc.) |
-| `activity_value_number` | NUMERIC | YES | — | Raw numeric input |
-| `activity_value_text` | TEXT | YES | — | Raw text input |
-| `activity_value_bool` | BOOLEAN | YES | — | Raw boolean input |
-| `streak_bonus` | INTEGER | YES | `0` | Streak bonus (0 for normal, >0 for streak rows) |
-| `proof_image_path` | TEXT | YES | — | Path in `submission-proofs` storage bucket |
-| `created_at` | TIMESTAMPTZ | YES | `NOW()` (inferred) | When submitted; this is the timestamp queried by current pages and exports |
+For `submission_kind = 'activity'`, both `activity_id` and `scoring_rule_version_id` are required. `submitted_by` may become null after account deletion; `submitted_by_name` preserves attribution.
 
-**Used by:** Submit actions, admin submissions, profile, leaderboard calculations.
+### `score_events`
 
-**Database triggers:** `Needs maintainer confirmation` — inserts do not update `teams.weekly_points` in application code, so live-database point-maintenance logic is required. A code comment names `trg_submission_points_delete` for deletes; insert/update trigger names and all definitions are absent.
+The point ledger. Each row records season/week/team, event type, points, actor, source submission, and metadata. Activity and streak events from the same submission are separate rows. A unique partial index prevents duplicate event types for a source submission.
 
----
+Valid event types are `activity`, `streak_bonus`, and `admin_adjustment`. Submission triggers synchronize its activity event. Voiding a submission removes its ledger events. Ledger triggers rebuild the affected team’s point caches.
 
-### `activity_rules`
+### `team_week_results`
 
-Admin-defined scoring rules for each activity type.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `activity_key` | TEXT | NOT NULL | — | PK, unique identifier (e.g., "running") |
-| `points_per_unit` | NUMERIC | NOT NULL | — | Points awarded per unit |
-| `teammate_bonus` | NUMERIC | NOT NULL | — | Multiplier when done with teammate |
-| `unit` | TEXT | YES | — | Unit type (legacy field) |
-| `label` | TEXT | YES | — | Human-readable activity name |
-| `input_type` | TEXT | YES | — | `'number'`, `'text'`, or `'boolean'` |
-| `unit_label` | TEXT | YES | — | Display label for unit (e.g., "miles") |
-| `min_value` | NUMERIC | YES | `0` | Minimum input value |
-| `step_value` | NUMERIC | YES | — | Input step increment |
-| `active` | BOOLEAN | YES | `true` | Whether activity is available for submission |
-| `weekly_cap` | INTEGER | YES | — | Max points per team per week for this activity |
-| `description` | TEXT | YES | — | Help text shown to users |
-| `updated_at` | TIMESTAMPTZ | YES | — | Last update time |
-
-**Used by:** `app/admin/scoring/`, `app/submit/actions.ts`, `app/submit/page.tsx`.
-
----
-
-### `game_settings`
-
-Singleton table controlling the competition state.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BOOLEAN | NOT NULL | — | PK, always `true` (singleton pattern) |
-| `registration_open` | BOOLEAN | NOT NULL | `true` | Whether teams can be created/joined |
-| `submissions_open` | BOOLEAN | NOT NULL | `false` | Whether activities can be submitted |
-| `games_started_at` | TIMESTAMPTZ | YES | — | When games were started |
-| `games_ended_at` | TIMESTAMPTZ | YES | — | When games were ended |
-| `finalize_requested` | BOOLEAN | NOT NULL | `false` | Flag that triggers week finalization |
-| `last_week_finalized` | DATE | YES | — | Date of last finalized week |
-
-**Database trigger:** `trg_finalize_previous_week` — AFTER UPDATE trigger that calls `finalize_week()` when `finalize_requested` changes to `true`.
-
----
-
-### `tier_settings`
-
-Weekly point goals for each competition tier.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `tier` | TEXT | NOT NULL | — | PK, `CHECK (tier IN ('gold', 'purple', 'red'))` |
-| `weekly_goal` | INTEGER | NOT NULL | `100` | Target weekly points |
-| `created_at` | TIMESTAMPTZ | YES | `NOW()` | Creation time |
-| `updated_at` | TIMESTAMPTZ | YES | `NOW()` | Auto-updated via trigger |
-
-**RLS:** Public read, admin-only write (via `is_admin()` function).
-
-**Trigger:** `tier_settings_updated_at` — auto-updates `updated_at` on UPDATE.
-
----
-
-### `streak_settings`
-
-Singleton table for streak bonus configuration.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | BOOLEAN | NOT NULL | — | PK, always `true` (singleton pattern) |
-| `daily_bonus_increment` | INTEGER | NOT NULL | `1` | Points added per streak day |
-| `max_bonus` | INTEGER | NOT NULL | `10` | Maximum streak bonus points |
-
-**Used by:** `app/submit/actions.ts`, `app/admin/settings/streak-settings-actions.ts`.
-
----
-
-### `weekly_history`
-
-Historical record of team performance at end of each week.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `gen_random_uuid()` | PK |
-| `team_id` | UUID | NOT NULL | — | FK to `teams.id` ON DELETE CASCADE |
-| `week_identifier` | TEXT | NOT NULL | — | Opaque display identifier. The migration comment suggests ISO weeks, while a committed diagnostic snapshot contains labels such as `Feb 17 - 22, 2026`; do not parse without the missing finalization function |
-| `weekly_points` | INTEGER | NOT NULL | `0` | Points earned that week |
-| `tier` | TEXT | YES | — | Team's tier at that time |
-| `weekly_goal` | INTEGER | NOT NULL | — | Goal at that time |
-| `met_goal` | BOOLEAN | NOT NULL | `false` | Whether team met their goal |
-| `weeks_won_count` | INTEGER | NOT NULL | `0` | Snapshot of total wins |
-| `streak_count` | INTEGER | YES | `0` | Team's streak at time of finalization |
-| `created_at` | TIMESTAMPTZ | YES | `NOW()` | When record was created |
-
-**Unique constraint:** `(team_id, week_identifier)`
-
-**RLS:** Public read, admin-only write (via `is_admin()` function).
-
----
+The immutable-by-convention final result for a team/week: tier snapshot, points, goal, rank, win flag, streak, and finalization timestamp. `(team_id, week_id)` is unique.
 
 ### `submission_edit_requests`
 
-User-submitted requests to edit or delete past submissions.
+Stores user-owned edit/delete requests, structured suggested changes, status, request type, resolver, resolution time, and note. A user can have only one pending request per submission. The database derives `team_id` from the owned submission.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | `uuid_generate_v4()` | PK |
-| `submission_id` | UUID | NOT NULL | — | FK to `submissions.id` ON DELETE CASCADE |
-| `user_id` | UUID | NOT NULL | — | FK to `auth.users.id` ON DELETE CASCADE |
-| `team_id` | UUID | NOT NULL | — | FK to `teams.id` ON DELETE CASCADE |
-| `suggested_changes` | JSONB | YES | — | Structured change data |
-| `reason` | TEXT | NOT NULL | — | User's explanation for the edit |
-| `status` | TEXT | NOT NULL | `'pending'` | `CHECK (status IN ('pending', 'approved', 'rejected'))` |
-| `created_at` | TIMESTAMPTZ | YES | `NOW()` | Request creation time |
-| `updated_at` | TIMESTAMPTZ | YES | `NOW()` | Creation/default timestamp; no checked-in trigger/action updates it when status changes |
+### `submission_attachments`
 
-**RLS:** Users can INSERT and SELECT their own requests. Admin access through service role key.
+Tracks private storage objects, uploader, MIME type, size, deletion request, purge completion, and cleanup error. A voided submission queues its attachment by setting `deleted_at`; the daily cleanup job sets `purged_at` after storage deletion.
 
-**Indexes:** `idx_submission_edit_requests_status`, `idx_submission_edit_requests_submission_id`
+### `job_runs`
 
----
+Tracks job type, deduplication key, status, attempts, times, error, and metadata. `(job_type, deduplication_key)` is unique.
 
-## Database Functions and Triggers
+## Read Views
 
-| Function/Trigger | Table | Type | Description |
-|-----------------|-------|------|-------------|
-| `finalize_week()` | — | Function | `Needs maintainer confirmation` — SQL function that handles per-tier winners, weekly history recording, points roll-up, weekly points reset |
-| `trg_finalize_previous_week` | `game_settings` | AFTER UPDATE trigger | Calls `finalize_week()` when `finalize_requested` changes to `true` |
-| Submission point trigger(s) | `submissions` | `Needs maintainer confirmation` — inserts/updates/deletes must maintain team points; only the name `trg_submission_points_delete` appears in a comment |
-| `update_tier_settings_updated_at()` | `tier_settings` | BEFORE UPDATE trigger | Auto-updates `updated_at` |
-| `is_admin(user_id)` | — | Function | `Needs maintainer confirmation` — Used in RLS policies |
-| `get_all_user_emails()` | — | RPC function | Application expects rows shaped as `{ email: string }`; implementation and confirmation filter are unversioned |
+- `current_season_settings` — safe current season configuration.
+- `current_activity_rules` — current versioned activity rules in the legacy UI shape.
+- `current_tier_settings` — current season tier goals.
+- `active_team_rosters` — active membership snapshots without profile email.
+- `active_teams` — active current-season teams without invite codes.
+- `team_standings` — ledger-derived weekly/season totals and win counts.
 
-> [!WARNING]
-> The `finalize_week()` function, `trg_submission_points_delete`, and `is_admin()` function are **not defined in the migration files**. They exist in the Supabase database but were likely created directly via the SQL Editor. Their definitions should be exported and documented.
+Application reads should prefer these views. `get_my_team_v2()` returns the caller’s own invite code and role without exposing every team’s invite code.
 
-## Storage Buckets
+## Compatibility Layer
 
-| Bucket | Access | Purpose |
-|--------|--------|---------|
-| `submission-proofs` | Application assumes public read | Activity proof images; public URLs are constructed directly, but bucket policy is not versioned |
+These objects remain for a staged transition:
 
-## Migration History
+- `activity_rules` mirrors the current versioned rule.
+- `tier_settings`, `streak_settings`, and `game_settings` mirror current season controls.
+- `weekly_history` mirrors finalized results for existing exports.
+- `teams.member1_*`, `member2_*`, `weekly_points`, `total_points`, `weeks_won`, and streak fields are synchronized projections.
+- legacy descriptive/scoring columns on `submissions` remain snapshots.
 
-Migrations are in `supabase/migrations/`. Comments instruct maintainers to run them manually, but the repository cannot prove which files were applied to any environment. Dependency order is:
+Do not add new features against compatibility fields. Remove them only in a later release after queries, exports, and production telemetry confirm no remaining readers.
 
-1. `add_team_tier.sql` — Added `tier` column to teams
-2. `add_tier_weekly_goals.sql` — Created `tier_settings` table with defaults
-3. `add_weekly_history.sql` — Created `weekly_history` table
-4. `add_submission_edit_requests.sql` — Created `submission_edit_requests` table
-5. `add_rls_policies.sql` — RLS for `tier_settings` and `weekly_history`
-6. `20260223143500_add_structured_edit_requests.sql` — Changed `expected_values` TEXT to `suggested_changes` JSONB
-7. `20260223203604_add_streak_bonus_activity.sql` — Added `daily_streak_bonus` activity rule
-8. `20260223204946_fix_teammate_bonus_type.sql` — Changed `submissions.teammate_bonus` to NUMERIC
+## Deletion and Retention
 
-> [!IMPORTANT]
-> The initial schema (profiles, teams, submissions, activity_rules, game_settings, streak_settings) is NOT in the migrations. Its origin cannot be established from the repository; only its expected shape can be inferred from application queries.
+- Teams are archived, not deleted.
+- Seasons are completed/archived and retained.
+- Submissions are voided; their point events are removed and their row remains auditable.
+- Activity definitions are archived; scoring versions remain.
+- User deletion nulls historical user references and retains name snapshots.
+- Foreign keys use `RESTRICT` for competition history and `SET NULL` for user identity where appropriate.
 
-## Change this document when…
-
-- Tables, columns, or constraints are added or modified
-- RLS policies change
-- Database functions or triggers change
-- New storage buckets are created
+See [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md) for deployment and invariant checks.

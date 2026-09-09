@@ -9,8 +9,7 @@ export async function deleteTeam(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) redirect("/admin/teams?error=missing_id");
 
-  // NOTE: if you have FK constraints (submissions -> teams), this may fail unless you cascade or delete submissions first.
-  const { error } = await supabase.from("teams").delete().eq("id", id);
+  const { error } = await supabase.rpc("archive_team_v2", { p_team_id: id });
   if (error)
     redirect(`/admin/teams?error=${encodeURIComponent(error.message)}`);
 
@@ -25,7 +24,10 @@ export async function updateTeamTier(formData: FormData) {
   if (!id) throw new Error("Missing team ID");
   if (!["gold", "purple", "red"].includes(tier)) throw new Error("Invalid tier");
 
-  const { error } = await supabase.from("teams").update({ tier }).eq("id", id);
+  const { error } = await supabase.rpc("change_team_tier_v2", {
+    p_team_id: id,
+    p_tier_key: tier,
+  });
 
   if (error) throw new Error(error.message);
 

@@ -25,4 +25,4 @@ DROP POLICY IF EXISTS "Admin all access" ON weekly_history;
 CREATE POLICY "Admin all access" ON weekly_history
   FOR ALL USING (
     (SELECT is_admin(auth.uid()))
-  );
+  );;

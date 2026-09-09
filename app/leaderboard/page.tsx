@@ -10,20 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-
-type TeamRow = {
-  id: string;
-  name: string;
-  weekly_points: number | null;
-  total_points: number | null;
-  weeks_won: string[] | null;
-  tier: "gold" | "purple" | "red" | null;
-  member1_id: string | null;
-  member2_id: string | null;
-  member1_name: string | null;
-  member2_name: string | null;
-  streak_count: number | null;
-};
+import { getTeamDirectory } from "@/lib/team-data";
 
 const tierTabStyles = {
   all: "border-primary bg-primary text-primary-foreground",
@@ -58,44 +45,10 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
   const user = await getCachedUser();
   const sp = await searchParams;
 
-  const { data, error } = await supabase
-    .from("teams")
-    .select(`
-      id,
-      name,
-      weekly_points,
-      total_points,
-      weeks_won,
-      tier,
-      member1_id,
-      member2_id,
-      streak_count,
-      member1:profiles!member1_id(first_name, last_name, email),
-      member2:profiles!member2_id(first_name, last_name, email)
-    `)
-    .order("weekly_points", { ascending: false })
-    .order("total_points", { ascending: false })
-    .order("name", { ascending: true });
-
-  const teams = (data ?? []).map((team: any) => {
-    const member1 = team.member1;
-    const member2 = team.member2;
-    const member1Name = member1
-      ? member1.first_name || member1.last_name
-        ? `${member1.first_name || ""} ${member1.last_name || ""}`.trim()
-        : member1.email
-      : null;
-    const member2Name = member2
-      ? member2.first_name || member2.last_name
-        ? `${member2.first_name || ""} ${member2.last_name || ""}`.trim()
-        : member2.email
-      : null;
-
-    return { ...team, member1_name: member1Name, member2_name: member2Name };
-  }) as TeamRow[];
+  const { teams, error } = await getTeamDirectory(supabase);
 
   const myTeam = user
-    ? teams.find((team) => team.member1_id === user.id || team.member2_id === user.id) ?? null
+    ? teams.find((team) => team.captain_id === user.id || team.member_id === user.id) ?? null
     : null;
   const tierParam = sp?.tier?.toLowerCase();
   const isValidTier = tierParam && ["gold", "purple", "red", "all"].includes(tierParam);
@@ -151,7 +104,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <p id="your-team-heading" className="text-sm font-semibold text-primary">Your team</p>
                   <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight">{myTeam.name}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {myTeam.member1_name || "Open spot"} / {myTeam.member2_name || "Open spot"}
+                    {myTeam.captain_name || "Open spot"} / {myTeam.member_name || "Open spot"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {myTeam.tier ? <TierBadge tier={myTeam.tier} /> : null}
@@ -170,7 +123,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Season</p>
                     <p className="app-number mt-1 text-2xl font-semibold text-achievement">
-                      {(myTeam.total_points ?? 0) + (myTeam.weekly_points ?? 0)}
+                      {myTeam.season_points ?? 0}
                     </p>
                   </div>
                 </div>
@@ -202,7 +155,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
               {filteredTeams.map((team, index) => {
                 const rank = index + 1;
                 const isMine = myTeam?.id === team.id;
-                const seasonTotal = (team.total_points ?? 0) + (team.weekly_points ?? 0);
+                const seasonTotal = team.season_points ?? 0;
 
                 return (
                   <div
@@ -232,11 +185,11 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                         <StreakBadge count={team.streak_count ?? 0} />
                       </div>
                       <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
-                        {team.member1_name || "Open spot"} / {team.member2_name || "Open spot"}
+                        {team.captain_name || "Open spot"} / {team.member_name || "Open spot"}
                       </p>
                       <div className="mt-2 flex gap-4 text-xs text-muted-foreground lg:hidden">
                         <span>Season <strong className="app-number text-foreground">{seasonTotal}</strong></span>
-                        <span>Wins <strong className="app-number text-foreground">{team.weeks_won?.length ?? 0}</strong></span>
+                        <span>Wins <strong className="app-number text-foreground">{team.weeks_won_count ?? 0}</strong></span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -247,7 +200,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                       <span className="app-number font-semibold text-achievement">{seasonTotal}</span>
                     </div>
                     <div className="hidden text-right lg:block">
-                      <span className="app-number text-muted-foreground">{team.weeks_won?.length ?? 0}</span>
+                      <span className="app-number text-muted-foreground">{team.weeks_won_count ?? 0}</span>
                     </div>
                   </div>
                 );

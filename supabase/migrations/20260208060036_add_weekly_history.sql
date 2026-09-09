@@ -26,4 +26,4 @@ CREATE INDEX IF NOT EXISTS idx_weekly_history_met_goal ON weekly_history(met_goa
 CREATE INDEX IF NOT EXISTS idx_weekly_history_created_at ON weekly_history(created_at DESC);
 
 -- Add comment for documentation
-COMMENT ON TABLE weekly_history IS 'Historical record of team performance at the end of each week, tracking whether teams met their tier-specific weekly goals';
+COMMENT ON TABLE weekly_history IS 'Historical record of team performance at the end of each week, tracking whether teams met their tier-specific weekly goals';;

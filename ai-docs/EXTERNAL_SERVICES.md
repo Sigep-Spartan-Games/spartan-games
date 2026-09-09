@@ -3,7 +3,7 @@
 > **Purpose:** Inventory of all external services and integration details.
 > **Audience:** New maintainer, handoff recipient.
 > **Source of truth:** Source code, `vercel.json`, `package.json`.
-> **Last reviewed:** 2026-09-04
+> **Last reviewed:** 2026-09-09
 
 ## Service Inventory
 
@@ -103,11 +103,12 @@ The following common services are **not used** in this repository:
 | Source | Target | URL | Purpose |
 |--------|--------|-----|---------|
 | Vercel Cron | App | `GET /api/cron/finalize-week` | Weekly finalization |
+| Vercel Cron | App | `GET /api/cron/cleanup-proofs` | Private proof cleanup |
 | Slack | App | `POST /api/slack/command` | Slash command handler |
 | Slack | App | `POST /api/slack/notify` | Slash command handler (duplicate) |
 | Supabase Auth | App | `GET /auth/confirm` | Email verification callback |
 
-The `manifest.json` request and `/api/cron/finalize-week` are currently subject to session middleware; this should be reviewed when validating PWA installation and Vercel cron behavior.
+`proxy.ts` permits `/api/cron/*` through the session layer; each cron route requires the Vercel bearer secret and fails closed when it is absent.
 
 ## Ownership Transfer Checklist
 

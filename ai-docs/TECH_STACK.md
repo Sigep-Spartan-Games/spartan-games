@@ -3,14 +3,14 @@
 > **Purpose:** Document all technologies used and explain how each is employed in the project.
 > **Audience:** New developers, AI coding agents.
 > **Source of truth:** `package.json`, `tsconfig.json`, `tailwind.config.ts`, `next.config.ts`, `eslint.config.mjs`, `vercel.json`.
-> **Last reviewed:** 2026-09-04
+> **Last reviewed:** 2026-09-09
 
 ## Core Technologies
 
 | Technology | Version | Role |
 |-----------|---------|------|
 | **TypeScript** | ^5; 5.9.3 in current install | Primary language for application code |
-| **Next.js** | `latest` specifier; 16.1.4 in current lock/install | React framework with App Router, server components, server actions, middleware |
+| **Next.js** | `latest` specifier; 16.1.4 in current lock/install | React framework with App Router, server components, server actions, and proxy |
 | **React** | ^19.0.0; 19.2.3 in current install | UI library; uses server components by default, client components where needed |
 | **Node.js** | >=20.9.0 | Minimum required by installed Next.js 16.1.4 |
 | **npm** | Default package manager | Dependency management (`package-lock.json` present) |
@@ -22,7 +22,7 @@
 - Uses App Router (directory-based routing under `app/`)
 - `cacheComponents` is commented out
 - Turbopack enabled for dev (Next.js 16 default)
-- Next.js 16 emits a deprecation warning for the `middleware.ts` file convention and recommends the `proxy` convention
+- Uses the Next.js 16 `proxy.ts` convention for session refresh and route protection
 
 ### TypeScript (`tsconfig.json`)
 - `strict: true`
@@ -74,7 +74,7 @@ The `components.json` file configures shadcn/ui generation paths and styles.
 - **Browser client** (`lib/supabase/client.ts`): `createBrowserClient()` for client components
 - **Server client** (`lib/supabase/server.ts`): `createServerClient()` with cookie handling for server components/actions
 - **Admin client** (`lib/supabase/admin.ts`): `createClient()` with `SUPABASE_SERVICE_ROLE_KEY` for bypassing RLS
-- **Proxy/Middleware client** (`lib/supabase/proxy.ts`): Session management in middleware
+- **Proxy session client** (`lib/supabase/proxy.ts`): Session management behind `proxy.ts`
 
 ## Email
 

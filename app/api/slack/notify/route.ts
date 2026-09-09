@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendToSlack, verifySlackRequest } from "@/lib/slack";
+import { verifySlackRequest } from "@/lib/slack";
 import { internalBroadcastAnnouncement } from "@/app/admin/announcements/actions";
 
 // Slack sends application/x-www-form-urlencoded
@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
       // For simplicity: Subject is "Slack Announcement", Message is content.
       // OR better: try to detect a split.
 
-      let subject = "📢 Spartan Games Announcement";
-      let message = content;
+      const subject = "📢 Spartan Games Announcement";
+      const message = content;
 
       // reuse the action logic?
       // The action takes FormData. Let's constructs it.

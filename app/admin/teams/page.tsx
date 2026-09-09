@@ -9,8 +9,14 @@ import TeamFilters from "./team-filters";
 import { Flame } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
+type ProfileRelation = { first_name: string | null; last_name: string | null; email: string | null };
+
+function oneRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
 
 function TeamsSkeleton() {
   return (
@@ -39,7 +45,8 @@ async function AdminTeamsInner({
 }) {
   noStore();
 
-  const { supabase } = await requireAdmin("/admin/teams");
+  await requireAdmin("/admin/teams");
+  const supabase = createAdminClient();
   const sp = (await searchParams) ?? {};
 
   const searchFilter =
@@ -64,11 +71,12 @@ async function AdminTeamsInner({
       member2:profiles!member2_id(first_name, last_name, email)
     `,
     )
+    .is("archived_at", null)
     .order("name");
 
   // Fetch tier goals
   const { data: tierSettings } = await supabase
-    .from("tier_settings")
+    .from("current_tier_settings")
     .select("tier, weekly_goal");
 
   const tierGoals: Record<string, number> = {};
@@ -85,21 +93,21 @@ async function AdminTeamsInner({
   }
 
   // Calculate goal progress for each team
-  const teamsWithProgress = (teams ?? []).map((t: any) => {
+  const teamsWithProgress = (teams ?? []).map((t) => {
     const goal = t.tier ? (tierGoals[t.tier] ?? 100) : 100;
     const weeklyPoints = t.weekly_points ?? 0;
     const totalPoints = t.total_points ?? 0;
     const percentage = goal > 0 ? Math.round((weeklyPoints / goal) * 100) : 0;
     const metGoal = percentage >= 100;
 
-    const m1 = t.member1;
+    const m1 = oneRelation(t.member1 as ProfileRelation | ProfileRelation[] | null);
     const m1Name = m1
       ? m1.first_name || m1.last_name
         ? `${m1.first_name || ""} ${m1.last_name || ""}`.trim()
         : m1.email
       : null;
 
-    const m2 = t.member2;
+    const m2 = oneRelation(t.member2 as ProfileRelation | ProfileRelation[] | null);
     const m2Name = m2
       ? m2.first_name || m2.last_name
         ? `${m2.first_name || ""} ${m2.last_name || ""}`.trim()
@@ -260,8 +268,8 @@ async function AdminTeamsInner({
                   <ConfirmDeleteButton
                     action={deleteTeam}
                     payload={{ id: t.id }}
-                    title="Delete Team"
-                    description={`Are you sure you want to delete "${t.name}"? This action cannot be undone.`}
+                    title="Archive Team"
+                    description={`Archive "${t.name}"? Its submissions and history will be preserved.`}
                   />
                 </div>
               </div>
@@ -324,8 +332,8 @@ async function AdminTeamsInner({
                   <ConfirmDeleteButton
                     action={deleteTeam}
                     payload={{ id: t.id }}
-                    title="Delete Team"
-                    description={`Are you sure you want to delete "${t.name}"? This action cannot be undone.`}
+                    title="Archive Team"
+                    description={`Archive "${t.name}"? Its submissions and history will be preserved.`}
                     className="h-11 px-3 text-xs border"
                     buttonSize="default"
                   />

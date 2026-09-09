@@ -8,6 +8,7 @@ import { RulesModal } from "@/components/rules-modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getMyTeam } from "@/lib/team-data";
 
 function SubmitSkeleton() {
   return (
@@ -37,10 +38,9 @@ async function SubmitInner({
   }
 
   const { data: settings, error: settingsError } = await supabase
-    .from("game_settings")
+    .from("current_season_settings")
     .select("submissions_open")
-    .eq("id", true)
-    .single();
+    .maybeSingle();
 
   if (settingsError) {
     return (
@@ -54,11 +54,7 @@ async function SubmitInner({
     return <EmptyState title="Submissions are closed" description="Submissions are currently closed." />;
   }
 
-  const { data: team, error: teamError } = await supabase
-    .from("teams")
-    .select("id, name")
-    .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
-    .maybeSingle();
+  const { team, error: teamError } = await getMyTeam(supabase);
 
   if (teamError) {
     return (
@@ -78,7 +74,7 @@ async function SubmitInner({
   }
 
   const { data: rules, error: rulesError } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("*")
     .eq("active", true)
     .order("activity_key");

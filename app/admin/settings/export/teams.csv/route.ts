@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/admin/settings/export/teams.csv/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function csvEscape(v: any) {
   const s = v === null || v === undefined ? "" : String(v);
@@ -35,7 +37,7 @@ export async function GET() {
   if (!guard.ok)
     return new NextResponse("Unauthorized", { status: guard.status });
 
-  const { supabase } = guard;
+  const supabase = createAdminClient();
 
   const { data: teams, error } = await supabase
     .from("teams")

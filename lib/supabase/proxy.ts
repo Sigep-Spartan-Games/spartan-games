@@ -59,6 +59,7 @@ export async function updateSession(request: NextRequest) {
     "/auth/error",
     "/api/slack/command", // Exclude Slack commands from auth
     "/api/slack/notify", // Also exclude this path
+    "/api/cron", // Cron routes authenticate with CRON_SECRET
   ];
 
   const pathname = request.nextUrl.pathname;

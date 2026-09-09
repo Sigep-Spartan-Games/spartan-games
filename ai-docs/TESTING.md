@@ -1,72 +1,79 @@
 # Testing and Verification
 
-> **Purpose:** Define the checks available today and the minimum verification expected for changes.
-> **Last reviewed:** 2026-09-04
+> **Purpose:** Required checks for application and database changes.
+> **Last reviewed:** 2026-09-09
 
-## Current State
+## Standard Checks
 
-There is no `test` script, test framework, CI workflow, or repeatable automated application test suite. `test_history.js`, `test-email-connection.js`, and `check_schema.js` are ad hoc diagnostic scripts; their names do not make them automated tests.
-
-## Static Checks
-
-Run from the repository root:
-
-```bash
-npm run lint
-npx tsc --noEmit
-npm run build
+```powershell
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd run build
 ```
 
-As of the review date, TypeScript and the production build pass. Lint is not a green gate:
+The build needs network access for `next/font` Google font downloads. The ESLint configuration excludes generated `.next`, dependencies, generated database types, and legacy ad hoc diagnostic scripts.
 
-- `npm run lint` scans `.next` because the flat ESLint config does not ignore generated output, producing thousands of generated-code errors.
-- Linting only `app`, `components`, `lib`, and config source still reports 49 errors and one warning (mostly explicit `any`, unused values/imports, and a CommonJS Tailwind plugin import).
+## Database Checks
 
-Treat these as existing project debt. Do not claim a clean lint result until both the ignore configuration and source findings are addressed.
+```powershell
+npm.cmd run db:migrations
+npm.cmd run db:lint
+npm.cmd run db:verify
+```
 
-On Windows PowerShell systems that block `npm.ps1`, use `npm.cmd` and `npx.cmd`.
+- `db:migrations` compares local and linked migration histories.
+- `db:lint` runs Supabase/Postgres lint against the linked database.
+- `db:verify` runs read-only normalized-model invariants and finishes with `ROLLBACK`.
 
-The build needs network access to download Geist and Cinzel through `next/font/google`. It may also need configured environment variables or networked services depending on what pages evaluate. Never solve a build failure by embedding secrets in source.
+`db:verify` requires the normalized migrations to be deployed. Do not expect it to pass against the legacy schema.
 
-## Manual Regression Matrix
+## Migration Validation
 
-Use a dedicated development environment and representative accounts:
+Before production, validate migrations on a fresh local Supabase database:
 
-| Area | Minimum Cases |
-|------|---------------|
-| Authentication | Sign-up/configured confirmation flow, good/bad login, sign-out, reset link, password update |
-| Middleware | Signed-out protected route, signed-in auth route, static assets, manifest, Slack route, cron route |
-| Teams | Create, invalid name/tier, join invalid/full team, existing-member behavior, captain tier change, non-captain attempt, rename authorization, leave as one/two members |
-| Submission | Closed gate, no team, invalid/backdated date, each input type/unit, teammate multiplier, cap reached and cap overshoot, proof valid/invalid/large, upload failure |
-| Streaks | First day, same day, consecutive day, missed day, backdated entry, maximum bonus, concurrent submissions |
-| Profile/edit requests | Own history, synthetic streak rows, create request, forged submission/team IDs, approve/reject, status visibility |
-| Admin | Non-admin access to every page and action, scoring CRUD, submission edit/delete, team changes, filters, settings validation |
-| Leaderboard | Default tier, all tiers, ordering/ties, season total, missing tier, empty state, weekly goals |
-| Exports | 401/403, escaping, empty data, all workbook sheets, dates/booleans, proof paths |
-| Notifications | Test-mode routing, missing config, partial batch failure, HTML content, Slack signature/replay/user authorization |
-| Finalization/reset | Only in disposable data: not-started/ended/already-running guards, history/winners/roll-up, idempotency, nested proof cleanup |
+```powershell
+npx.cmd supabase start
+npx.cmd supabase db reset
+npm.cmd run db:verify
+```
 
-## High-Risk Database Verification
+Local Supabase requires Docker or another supported container runtime. If that is unavailable, validate SQL against a disposable Supabase branch. A forced-rollback query against production can validate syntax/backfills but does not replace a fresh replay test or user-level RLS test.
 
-Submission points and weekly finalization depend on database code that is not checked in. Before approving changes in those areas, capture the live schema/function definitions through an authorized schema-only export and test these invariants in a non-production project:
+## Required Behavioral Cases
 
-- Submission insert/update/delete adjusts exactly one team's weekly total.
-- An edit that moves teams removes/adds the correct points.
-- A failed streak insert cannot leave unintended partial state.
-- Finalization is atomic, idempotent, records all teams once, chooses ties as intended, and resets its request flag.
-- RLS denies cross-user and non-admin reads/writes even when a client bypasses the UI.
+### Teams
 
-## Diagnostic Script Safety
+- Concurrent joins cannot exceed two members.
+- A user cannot join/create a second team in one season.
+- Non-captains cannot rename/change tier.
+- Captain departure promotes the remaining member; empty team archives.
 
-- `test_history.js` reads the configured hosted database and overwrites tracked `data.json`.
-- `test-email-connection.js` sends an actual SMTP message to `EMAIL_TEST_RECIPIENT`.
-- `check_schema.js` calls a hardcoded Supabase project and key instead of `.env.local`.
+### Scoring/submissions
 
-Do not run these casually, in CI, or against an unconfirmed environment. They should eventually be replaced with a test framework, fixtures, and disposable infrastructure.
+- Numeric, text, and boolean inputs validate correctly.
+- Exact rule version is stored.
+- Teammate multiplier rounds down once as documented.
+- Weekly cap includes the attempted submission under concurrent requests.
+- First/consecutive/gap/same-day/backdated streak cases.
+- Failed RPC after upload removes the orphan object when possible.
+- Voiding removes ledger events but retains submission history.
 
-## Recommended Test Investment
+### Finalization
 
-1. Add unit tests for activity-unit conversion, points, caps, week boundaries, and streak transitions after extracting pure functions.
-2. Add integration tests for server authorization and RLS against a disposable Supabase instance/project.
-3. Add browser tests for member and admin critical paths.
-4. Add CI that runs lint, TypeScript, tests, and build with documented safe configuration.
+- Incomplete week is rejected.
+- One winner per tier only when points are positive.
+- Tie breakers are deterministic.
+- Repeated request returns `already_finalized`.
+- Team caches, results, compatibility history, and `job_runs` agree.
+
+### Security
+
+- Non-admin cannot call admin RPCs despite execute grant.
+- User cannot read another team’s invite code or profile email.
+- User cannot edit/request edits for another user’s submission.
+- Public storage URLs fail; authorized signed URLs work and expire.
+- Cron missing/wrong secret returns 503/401.
+
+## Current Limitations
+
+There is no browser E2E or unit-test suite yet. The current automated floor is lint, TypeScript, production build, SQL replay, database lint, and invariant checks. Add Playwright coverage for the behavioral cases above before removing compatibility columns.

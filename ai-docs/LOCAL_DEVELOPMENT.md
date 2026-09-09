@@ -1,124 +1,76 @@
 # Local Development
 
-> **Purpose:** Fresh-machine setup guide.
-> **Audience:** New developers.
-> **Source of truth:** `package.json`, `README.md`, `.gitignore`, `tsconfig.json`.
-> **Last reviewed:** 2026-09-04
+> **Purpose:** Fresh-machine setup and common commands.
+> **Last reviewed:** 2026-09-09
 
 ## Prerequisites
 
-- **Node.js** v20.9.0 or higher (required by the installed Next.js version)
-- **npm** (included with Node.js)
-- **Git**
-- Access to the Supabase project dashboard
-- A code editor (VS Code recommended)
+- Node.js 20.9 or newer and npm
+- Git
+- Docker Desktop or another Supabase-supported container runtime for the local database
+- Access to an appropriate Supabase project for linked commands
 
-## Installation
+## Setup
 
-```bash
-# Clone the repository
-git clone https://github.com/Sigep-Spartan-Games/spartan-games.git
+```powershell
+git clone <repository-url>
 cd spartan-games
-
-# Install dependencies
-npm ci
+npm.cmd ci
+Copy-Item .env.example .env.local  # if an example file is present
+npm.cmd run dev
 ```
 
-## Environment Configuration
+On macOS/Linux, use `npm`/`npx` without `.cmd` and create `.env.local` with the documented variable names.
 
-Create a `.env.local` file in the project root. See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for the complete catalog.
+Never point local mutation testing at production. Confirm `NEXT_PUBLIC_SUPABASE_URL` and `npx supabase projects list` before testing writes.
 
-Minimum required for the authenticated application UI:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_ANON_KEY
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-`SUPABASE_SERVICE_ROLE_KEY` is needed for cron finalization, Slack-command broadcasts, and admin edit-request reads/updates. Keep it server-only. SMTP and Slack variables are needed only for those integrations.
-
-For email testing:
-
-```env
-EMAIL_TEST_MODE=true
-EMAIL_TEST_RECIPIENT=your-email@example.com
-SMTP_HOST=smtp-relay.brevo.com
-SMTP_PORT=587
-SMTP_USER=your-smtp-user
-SMTP_PASS=your-smtp-password
-```
-
-## Starting the Application
-
-```bash
-npm run dev
-```
-
-Opens at [http://localhost:3000](http://localhost:3000).
-
-Uses Next.js Turbopack for fast dev compilation.
-
-## Available Commands
+## Application Commands
 
 | Command | Purpose |
-|---------|---------|
-| `npm run dev` | Start development server (Turbopack) |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run lint` | ESLint source checks |
+| `npm run typecheck` | TypeScript without emit |
 | `npm run build` | Production build |
-| `npm run start` | Start production server (after build) |
-| `npm run lint` | Run ESLint |
+| `npm run start` | Start built app |
 
-## No Local Supabase
+The build needs internet access for configured Google fonts.
 
-There is no local Supabase setup (`supabase/config.toml` does not exist). The normal code path connects to the hosted Supabase project named in `.env.local`. The repository does not prove whether developers share one project or whether that project contains production data, so verify the project ref before testing mutations.
+## Supabase Commands
 
-## Database Setup
+The CLI is a project dev dependency and `supabase/config.toml` targets Postgres 17.
 
-The database schema is managed directly in the Supabase dashboard. SQL migrations in `supabase/migrations/` were created for reference but are run manually via the Supabase SQL Editor, not via the Supabase CLI.
+| Command | Purpose |
+|---|---|
+| `npm run db:migrations` | Compare local/linked migration histories |
+| `npm run db:lint` | Lint linked Postgres objects |
+| `npm run db:verify` | Run read-only post-deploy invariants |
+| `npm run db:types` | Regenerate `lib/database.types.ts` from linked schema |
+| `npx supabase start` | Start local stack (requires Docker) |
+| `npx supabase db reset` | Recreate local DB from all migrations/seed |
+| `npx supabase stop` | Stop local stack |
 
-The checked-in migrations are not sufficient to create a fresh environment. You would need to:
-1. Create all tables (profiles, teams, submissions, activity_rules, game_settings, streak_settings) — `Needs maintainer confirmation` for exact DDL
-2. Run all migration files in order
-3. Create database functions (`finalize_week()`, `is_admin()`, `get_all_user_emails()`, triggers)
-4. Configure RLS policies
-5. Create the `submission-proofs` storage bucket with public read access
+`supabase/seed.sql` intentionally contains no production data. Add only deterministic, non-secret development seed data.
 
-## Seed Data
+The reconstructed initial schema plus fetched canonical migrations can build a fresh database. Existing production requires the one-time baseline repair described in [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md); do not run the baseline SQL there.
 
-No seed files exist. The `data.json` file appears to be a data dump for debugging, not a seed file.
+## Development Workflow
 
-To seed activity rules, run the migration `20260223203604_add_streak_bonus_activity.sql` for the streak bonus rule. Other activity rules are created via the admin UI.
+1. Inspect `git status` and relevant AI docs.
+2. Create an ordered migration for every schema/policy/function change.
+3. Reset a local/disposable Supabase database and test the migration from scratch.
+4. Update TypeScript reads/actions to use views/RPCs.
+5. Run lint, typecheck, build, database lint, and invariants as applicable.
+6. Update affected `ai-docs` in the same change.
 
-That migration inserts only the synthetic streak rule and assumes the missing base `activity_rules` table already exists; it is not a complete seed.
+## Troubleshooting
 
-## How to Confirm the Environment Works
-
-1. Run `npm run dev`
-2. Navigate to `http://localhost:3000` → should redirect to `/auth/login`
-3. Log in with an existing account or create one
-4. Navigate to `/leaderboard` → should show team standings
-5. If you have admin access, navigate to `/admin/scoring` → should show activity rules
-6. Run the checks in [TESTING.md](./TESTING.md). Do not run reset/finalization or announcement tests against an unconfirmed database target
-
-## Common Setup Failures
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| "Missing Supabase environment variables" banner | `.env.local` not configured | Create `.env.local` with Supabase credentials |
-| "Invalid API key" errors | Wrong Supabase key | Verify key from Supabase Dashboard → Settings → API |
-| Redirect loop on login | Session cookie issues | Clear cookies, restart dev server |
-| Email not sending | SMTP credentials wrong or missing | Check SMTP_HOST, SMTP_USER, SMTP_PASS; enable `EMAIL_TEST_MODE` |
-| `Module not found` errors | Dependencies not installed | Run `npm install` |
-| TypeScript errors | Strict mode violations | Run `npx tsc --noEmit` to see all errors |
-
-## Platform Notes
-
-- Development has been done on Windows; the `vercel-ignore-build.sh` uses bash (runs on Vercel's Linux, not locally)
-- No platform-specific issues identified for macOS or Linux
-
-## Change this document when…
-
-- Node.js version requirements change
-- New required environment variables are added
-- Local Supabase setup is introduced
-- Build tooling changes
+| Symptom | Likely cause |
+|---|---|
+| Supabase start reports Docker unavailable | Start/install a supported container runtime |
+| CLI cannot write telemetry/auth state on Windows | Run from a normal user shell with access to the Supabase config directory |
+| New view/RPC returns “not found” | Matching migrations have not been applied to that database |
+| Cron redirects to login | Ensure `proxy.ts` allows `/api/cron` and the deployed commit is current |
+| Cron returns 503 | `CRON_SECRET` is missing |
+| Public proof URL fails | Expected: bucket is private; request a signed URL |
+| Generated types fail after migration | Run `npm run db:types`, then fix query contracts and typecheck |

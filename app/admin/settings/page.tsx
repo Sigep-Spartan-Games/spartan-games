@@ -38,10 +38,9 @@ async function AdminSettingsInner({
 
   // Fetch current game settings
   const { data: settings } = await supabase
-    .from("game_settings")
+    .from("current_season_settings")
     .select("submissions_open, registration_open")
-    .eq("id", true)
-    .single();
+    .maybeSingle();
 
   const submissionsOpen = settings?.submissions_open ?? false;
   const registrationOpen = settings?.registration_open ?? true;
@@ -203,18 +202,30 @@ async function AdminSettingsInner({
         </div>
       </CollapsibleSection>
 
-      {/* Reset - Danger Zone */}
+      {/* Season rollover */}
       <CollapsibleSection
-        title="Reset Spartan Games"
-        description="Permanently delete all teams and submissions"
+        title="Start a New Season"
+        description="Archive the current season and preserve its history"
         variant="danger"
       >
         <form action={resetSpartanGames} className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            This permanently deletes{" "}
-            <span className="font-medium">all teams</span> and{" "}
-            <span className="font-medium">all submissions</span>.
+            This closes the current season and archives its teams. Submissions,
+            results, audit history, and proof metadata are retained. Current
+            scoring rules and tier goals are copied into the new season.
           </p>
+
+          <label className="space-y-1 block">
+            <div className="text-sm font-medium">New season name</div>
+            <Input
+              name="seasonName"
+              placeholder="2027 Spartan Games"
+              className="max-w-xs"
+              minLength={3}
+              maxLength={80}
+              required
+            />
+          </label>
 
           <label className="space-y-1 block">
             <div className="text-sm font-medium">
@@ -229,7 +240,7 @@ async function AdminSettingsInner({
           </label>
 
           <Button type="submit" variant="destructive">
-            Reset Spartan Games
+            Archive and Start New Season
           </Button>
         </form>
       </CollapsibleSection>

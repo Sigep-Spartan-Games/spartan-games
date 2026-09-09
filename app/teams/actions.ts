@@ -2,273 +2,100 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "../../lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
-async function requireRegistrationOpen(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-) {
-  const { data: settings, error } = await supabase
-    .from("game_settings")
-    .select("registration_open")
-    .eq("id", true)
-    .single();
+function teamRedirect(error: string): never {
+  redirect(`/teams?error=${encodeURIComponent(error)}`);
+}
 
-  if (error) {
-    // fail-closed is safer for admin control
-    redirect(
-      `/teams?error=${encodeURIComponent("Could not load game settings")}`,
-    );
-  }
+async function requireUser() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) teamRedirect("Sign in required");
+  return supabase;
+}
 
-  if (!settings?.registration_open) {
-    redirect(
-      `/teams?error=${encodeURIComponent("Team registration is closed")}`,
-    );
-  }
+function refreshTeams() {
+  revalidatePath("/teams");
+  revalidatePath("/leaderboard");
+  revalidatePath("/submit");
 }
 
 export async function createTeamAction(formData: FormData): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await requireUser();
+  const name = String(formData.get("teamName") ?? "").trim();
+  const tier = String(formData.get("tier") ?? "").trim().toLowerCase();
 
-  const teamName = String(formData.get("teamName") ?? "").trim();
-  if (teamName.length < 2 || teamName.length > 40) {
-    redirect("/teams?error=Invalid%20team%20name");
-  }
+  if (name.length < 2 || name.length > 40) teamRedirect("Invalid team name");
+  if (!["gold", "purple", "red"].includes(tier)) teamRedirect("Please select a tier");
 
-  const tier = String(formData.get("tier") ?? "")
-    .trim()
-    .toLowerCase();
-  if (!["gold", "purple", "red"].includes(tier)) {
-    redirect("/teams?error=Please%20select%20a%20tier");
-  }
-
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/teams?error=Sign%20in%20required");
-
-  // ✅ enforce registration open
-  await requireRegistrationOpen(supabase);
-
-  // Get user's display name from profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", auth.user.id)
-    .single();
-
-  const displayName =
-    (profile?.first_name && profile?.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : auth.user.email) || "Unknown";
-
-  // Generate a random 6-char invite code
-  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-  // Create team directly
-  const { error } = await supabase.from("teams").insert({
-    name: teamName,
-    member1_id: auth.user.id,
-    member1_name: displayName,
-    invite_code: inviteCode,
-    tier: tier,
+  const { error } = await supabase.rpc("create_team_v2", {
+    p_name: name,
+    p_tier_key: tier,
   });
+  if (error) teamRedirect(error.message);
 
-  if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
-
-  revalidatePath("/teams");
+  refreshTeams();
   redirect("/teams?success=Team%20created");
 }
 
 export async function joinByCodeAction(formData: FormData): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await requireUser();
+  const code = String(formData.get("inviteCode") ?? "").trim().toUpperCase();
+  if (code.length < 4 || code.length > 16) teamRedirect("Invalid invite code");
 
-  const code = String(formData.get("inviteCode") ?? "")
-    .trim()
-    .toUpperCase();
-  if (code.length < 4) redirect("/teams?error=Invalid%20invite%20code");
+  const { error } = await supabase.rpc("join_team_by_code_v2", { p_code: code });
+  if (error) teamRedirect(error.message);
 
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/teams?error=Sign%20in%20required");
-
-  // ✅ enforce registration open
-  await requireRegistrationOpen(supabase);
-
-  // Get user's display name from profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", auth.user.id)
-    .single();
-
-  const displayName =
-    (profile?.first_name && profile?.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : auth.user.email) || "Unknown";
-
-  // 1. Find the team
-  const { data: team, error: findError } = await supabase
-    .from("teams")
-    .select("id, member1_id, member2_id")
-    .eq("invite_code", code)
-    .single();
-
-  if (findError || !team) {
-    redirect("/teams?error=Invalid%20invite%20code");
-  }
-
-  // 2. Check if full
-  if (team.member1_id && team.member2_id) {
-    redirect("/teams?error=Team%20is%20full");
-  }
-
-  // 3. Determine which slot to take
-  // The constraint implies member1!=member2.
-  // If member1 is empty (rare but possible if creator left), take it. Else take member2.
-  const updateData: {
-    member1_id?: string;
-    member2_id?: string;
-    member1_name?: string;
-    member2_name?: string;
-  } = {};
-  if (!team.member1_id) {
-    updateData.member1_id = auth.user.id;
-    updateData.member1_name = displayName;
-  } else if (!team.member2_id) {
-    updateData.member2_id = auth.user.id;
-    updateData.member2_name = displayName;
-  }
-
-  const { error: updateError } = await supabase
-    .from("teams")
-    .update(updateData)
-    .eq("id", team.id);
-
-  if (updateError)
-    redirect(`/teams?error=${encodeURIComponent(updateError.message)}`);
-
-  revalidatePath("/teams");
+  refreshTeams();
   redirect("/teams?success=Joined%20team");
 }
 
 export async function renameTeamAction(formData: FormData): Promise<void> {
-  const supabase = await createClient();
-
+  const supabase = await requireUser();
   const teamId = String(formData.get("teamId") ?? "");
-  const newName = String(formData.get("newName") ?? "").trim();
+  const name = String(formData.get("newName") ?? "").trim();
+  if (!teamId) teamRedirect("Missing team id");
+  if (name.length < 2 || name.length > 40) teamRedirect("Invalid team name");
 
-  if (!teamId) redirect("/teams?error=Missing%20team%20id");
-  if (newName.length < 2 || newName.length > 40)
-    redirect("/teams?error=Invalid%20team%20name");
+  const { error } = await supabase.rpc("rename_team_v2", {
+    p_team_id: teamId,
+    p_new_name: name,
+  });
+  if (error) teamRedirect(error.message);
 
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/teams?error=Sign%20in%20required");
-
-  const { error } = await supabase
-    .from("teams")
-    .update({ name: newName })
-    .eq("id", teamId);
-
-  if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
-
-  revalidatePath("/teams");
+  refreshTeams();
   redirect("/teams?success=Team%20renamed");
 }
 
 export async function leaveTeamAction(teamId: string): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await requireUser();
+  if (!teamId) teamRedirect("Missing team id");
 
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/teams?error=Sign%20in%20required");
+  const { error } = await supabase.rpc("leave_team_v2", { p_team_id: teamId });
+  if (error) teamRedirect(error.message);
 
-  // Fetch current membership
-  const { data: team, error: fetchError } = await supabase
-    .from("teams")
-    .select("id, member1_id, member2_id")
-    .eq("id", teamId)
-    .single();
-
-  if (fetchError || !team) redirect("/teams?error=Team%20not%20found");
-
-  const userId = auth.user.id;
-  const isMember1 = team.member1_id === userId;
-  const isMember2 = team.member2_id === userId;
-
-  if (!isMember1 && !isMember2) redirect("/teams?error=Not%20a%20member");
-
-  // If this is the last member, delete the team? Or just leave it empty?
-  // Usually if last member leaves, we destroy the team to clean up.
-  // If not last member, we just set our slot to null.
-
-  const otherMemberExists = isMember1 ? !!team.member2_id : !!team.member1_id;
-
-  if (!otherMemberExists) {
-    // We are the last one. Delete the team.
-    const { error: delError } = await supabase
-      .from("teams")
-      .delete()
-      .eq("id", teamId);
-    if (delError)
-      redirect(`/teams?error=${encodeURIComponent(delError.message)}`);
-  } else {
-    // Just vacate our slot
-    const updateData = isMember1 ? { member1_id: null } : { member2_id: null };
-    const { error: upError } = await supabase
-      .from("teams")
-      .update(updateData)
-      .eq("id", teamId);
-    if (upError)
-      redirect(`/teams?error=${encodeURIComponent(upError.message)}`);
-  }
-
-  revalidatePath("/teams");
+  refreshTeams();
   redirect("/teams?success=Left%20team");
 }
 
 export async function changeTierAction(formData: FormData): Promise<void> {
-  const supabase = await createClient();
-
+  const supabase = await requireUser();
   const teamId = String(formData.get("teamId") ?? "");
-  const newTier = String(formData.get("tier") ?? "")
-    .trim()
-    .toLowerCase();
+  const tier = String(formData.get("tier") ?? "").trim().toLowerCase();
+  if (!teamId) teamRedirect("Missing team id");
+  if (!["gold", "purple", "red"].includes(tier)) teamRedirect("Invalid tier");
 
-  if (!teamId) redirect("/teams?error=Missing%20team%20id");
-  if (!["gold", "purple", "red"].includes(newTier)) {
-    redirect("/teams?error=Invalid%20tier");
-  }
+  const { error } = await supabase.rpc("change_team_tier_v2", {
+    p_team_id: teamId,
+    p_tier_key: tier,
+  });
+  if (error) teamRedirect(error.message);
 
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/teams?error=Sign%20in%20required");
-
-  // ✅ enforce registration open (can only change tier before games start)
-  await requireRegistrationOpen(supabase);
-
-  // Verify user is the team captain (member1)
-  const { data: team, error: fetchError } = await supabase
-    .from("teams")
-    .select("id, member1_id")
-    .eq("id", teamId)
-    .single();
-
-  if (fetchError || !team) redirect("/teams?error=Team%20not%20found");
-  if (team.member1_id !== auth.user.id) {
-    redirect("/teams?error=Only%20the%20team%20captain%20can%20change%20tier");
-  }
-
-  const { error } = await supabase
-    .from("teams")
-    .update({ tier: newTier })
-    .eq("id", teamId);
-
-  if (error) redirect(`/teams?error=${encodeURIComponent(error.message)}`);
-
-  revalidatePath("/teams");
+  refreshTeams();
   redirect("/teams?success=Tier%20updated");
 }
 
-// Wrapper for ConfirmDeleteButton
-export async function leaveTeamActionFormData(
-  formData: FormData,
-): Promise<void> {
-  const teamId = String(formData.get("teamId") ?? "");
-  await leaveTeamAction(teamId);
+export async function leaveTeamActionFormData(formData: FormData): Promise<void> {
+  await leaveTeamAction(String(formData.get("teamId") ?? ""));
 }

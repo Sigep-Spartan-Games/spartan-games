@@ -10,8 +10,13 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  // Allow if no secret is configured (for testing) or if it matches
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Fail closed: a missing secret is a deployment error, never an auth bypass.
+  if (!cronSecret) {
+    console.error("[Cron] CRON_SECRET is not configured");
+    return NextResponse.json({ error: "Cron authentication is not configured" }, { status: 503 });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

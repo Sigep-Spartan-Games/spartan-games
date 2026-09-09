@@ -1,70 +1,40 @@
-// lib/finalize-week.ts
-// Thin wrapper that triggers the SQL finalize_week() function via the
-// finalize_requested flag on game_settings.  All heavy lifting (per-tier
-// winners, weekly_history recording, points roll-up) is handled atomically
-// inside the database.
-
 import { createAdminClient } from "@/lib/supabase/admin";
 
-/**
- * Triggers the weekly finalization.
- *
- * Setting `finalize_requested = true` fires the database trigger
- * `trg_finalize_previous_week`, which calls `finalize_week()` for the
- * previous week inside a single transaction.
- */
+type FinalizationResult = {
+  status?: string;
+  week_id?: string;
+  label?: string;
+  result_count?: number;
+};
+
+/** Run the idempotent, advisory-locked finalization transaction. */
 export async function finalizeWeekService() {
   const supabase = createAdminClient();
+  const { data: season, error: seasonError } = await supabase
+    .from("current_season_settings")
+    .select("id, status")
+    .maybeSingle();
 
-  // Check that games are currently running
-  const { data: settings, error: settingsError } = await supabase
-    .from("game_settings")
-    .select("games_started_at, games_ended_at, finalize_requested")
-    .eq("id", true)
-    .single();
-
-  if (settingsError) {
-    throw new Error(`Failed to read game_settings: ${settingsError.message}`);
+  if (seasonError) throw new Error(`Failed to read current season: ${seasonError.message}`);
+  if (!season) return { success: true, message: "No current season configured — skipped." };
+  if (season.status !== "active") {
+    return { success: true, message: `Season is ${season.status} — skipped.` };
   }
 
-  if (!settings?.games_started_at) {
-    return { success: true, message: "Games have not started yet — skipped." };
-  }
+  const { data, error } = await supabase.rpc("finalize_competition_week", {
+    p_week_id: null,
+  });
+  if (error) throw new Error(`Failed to finalize week: ${error.message}`);
 
-  if (
-    settings.games_ended_at &&
-    new Date() >= new Date(settings.games_ended_at)
-  ) {
-    return { success: true, message: "Games have ended — skipped." };
-  }
-
-  if (settings.finalize_requested) {
-    return {
-      success: true,
-      message: "Finalization already in progress — skipped.",
-    };
-  }
-
-  // Flip the flag — the AFTER UPDATE trigger handles everything
-  const { error: updateError } = await supabase
-    .from("game_settings")
-    .update({ finalize_requested: true })
-    .eq("id", true);
-
-  if (updateError) {
-    throw new Error(`Failed to trigger finalization: ${updateError.message}`);
-  }
-
-  // Read back the result to confirm it worked
-  const { data: after } = await supabase
-    .from("game_settings")
-    .select("last_week_finalized, finalize_requested")
-    .eq("id", true)
-    .single();
-
+  const result = (data ?? {}) as FinalizationResult;
+  const label = result.label ?? result.week_id ?? "previous week";
   return {
     success: true,
-    message: `Week finalized successfully. last_week_finalized = ${after?.last_week_finalized}`,
-    lastWeekFinalized: after?.last_week_finalized,
+    status: result.status ?? "completed",
+    message:
+      result.status === "already_finalized"
+        ? `${label} was already finalized.`
+        : `${label} finalized successfully (${result.result_count ?? 0} team results).`,
+    weekId: result.week_id,
   };
 }

@@ -1,7 +1,7 @@
 # Ownership Handoff
 
 > **Purpose:** Transfer the repository and external services without copying credentials into source control.
-> **Last reviewed:** 2026-09-04
+> **Last reviewed:** 2026-09-09
 
 ## Handoff Package
 
@@ -9,7 +9,8 @@ The outgoing maintainer should provide, through approved secure channels:
 
 - Current owners/admins and billing contacts for GitHub, Vercel, Supabase, the SMTP provider/mailbox, and Slack.
 - Confirmed production domain, Vercel project/team, Git production branch, ignored-build setting, runtime version, plan, and cron status.
-- Supabase organization/project, environment purpose, auth redirect URLs/email confirmation settings, storage bucket policies, and a schema-only export containing all tables, RLS, functions, and triggers.
+- Supabase organization/project, environment purpose, CLI link ownership, auth redirect URLs/email confirmation settings, backup/PITR status, and storage settings.
+- Confirmation that migration history matches `supabase/migrations/`, including whether the reconstructed baseline repair has been recorded.
 - Names and scopes of every environment variable in `ENVIRONMENT_VARIABLES.md` (never values in Markdown).
 - Slack app/workspace, command URLs, permitted users, webhook/channel, and signing-secret owner.
 - SMTP provider, verified sender/domain, limits, suppression/bounce handling, and test-mode procedure.

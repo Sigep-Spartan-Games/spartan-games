@@ -3,16 +3,16 @@
 > **Purpose:** Document routes, components, styling, and UI patterns.
 > **Audience:** Developers making UI changes, AI agents.
 > **Source of truth:** `app/` directory, `components/` directory, `app/globals.css`, `tailwind.config.ts`.
-> **Last reviewed:** 2026-09-04
+> **Last reviewed:** 2026-09-09
 
 ## Route Table
 
 | URL | Purpose | Auth | Admin | Primary File | Data Dependencies |
 |-----|---------|:----:|:-----:|-------------|-------------------|
 | `/` | Home — redirects to `/leaderboard` or `/auth/login` | Yes | No | `app/page.tsx` | `auth.getUser()` |
-| `/leaderboard` | Current request-time team standings with tier filtering | Yes | No | `app/leaderboard/page.tsx` | `teams`, `profiles`, `tier_settings` |
-| `/submit` | Activity submission form | Yes | No | `app/submit/page.tsx` | `game_settings`, `teams`, `activity_rules` |
-| `/teams` | Team management (create/join/leave/rename) | Yes | No | `app/teams/page.tsx` | `teams`, `profiles`, `game_settings` |
+| `/leaderboard` | Current request-time team standings with tier filtering | Yes | No | `app/leaderboard/page.tsx` | `team_standings`, `active_team_rosters` |
+| `/submit` | Activity submission form | Yes | No | `app/submit/page.tsx` | current season/rule views, `get_my_team_v2` |
+| `/teams` | Team management (create/join/leave/rename) | Yes | No | `app/teams/page.tsx` | standings/roster views, team RPCs |
 | `/profile` | User's submissions and edit requests | Yes | No | `app/profile/page.tsx` | `submissions`, `submission_edit_requests`, `teams` |
 | `/rules` | Static game-play explanation (not dynamic scoring values) | Yes | No | `app/rules/page.tsx` | None |
 | `/protected` | Legacy authenticated account/session placeholder | Yes | No | `app/protected/page.tsx` | Supabase Auth claims |
@@ -24,13 +24,13 @@
 | `/auth/confirm` | Email verification callback | No | No | `app/auth/confirm/route.ts` | — |
 | `/auth/error` | Auth error display | No | No | `app/auth/error/page.tsx` | — |
 | `/admin` | Redirects to guarded `/admin/scoring` | Yes | Yes | `app/admin/page.tsx` | — |
-| `/admin/scoring` | Activity rules editor | Yes | Yes | `app/admin/scoring/page.tsx` | `activity_rules` |
-| `/admin/submissions` | Submission review/edit/delete | Yes | Yes | `app/admin/submissions/page.tsx` | `submissions`, `teams`, `activity_rules`, `submission_edit_requests` |
-| `/admin/submissions/[id]` | Individual submission editor | Yes | Yes | `app/admin/submissions/[id]/page.tsx` | `submissions`, `teams`, `activity_rules` |
+| `/admin/scoring` | Versioned activity rules editor | Yes | Yes | `app/admin/scoring/page.tsx` | `current_activity_rules`, scoring RPCs |
+| `/admin/submissions` | Submission review/edit/void | Yes | Yes | `app/admin/submissions/page.tsx` | submissions, requests, admin RPCs, signed storage URLs |
+| `/admin/submissions/[id]` | Individual submission editor | Yes | Yes | `app/admin/submissions/[id]/page.tsx` | submissions, current rules, normalized edit RPC |
 | `/admin/teams` | Team management and tier assignment | Yes | Yes | `app/admin/teams/page.tsx` | `teams`, `profiles` |
-| `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `weekly_history`, `teams` |
+| `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `team_week_results`, `competition_weeks`, standings |
 | `/admin/announcements` | Send notices via Slack/Email | Yes | Page: No; action: Yes | `app/admin/announcements/page.tsx` | — |
-| `/admin/settings` | Game controls, goals, export, reset | Yes | Yes | `app/admin/settings/page.tsx` | `game_settings`, `tier_settings`, `streak_settings` |
+| `/admin/settings` | Season controls, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | current season/tier views and admin RPCs |
 | `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | `submissions`, `teams` |
 | `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions` |
 | `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `teams` |

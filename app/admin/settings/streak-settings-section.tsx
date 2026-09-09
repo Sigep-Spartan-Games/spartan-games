@@ -7,13 +7,12 @@ import { Input } from "@/components/ui/input";
 export default async function StreakSettingsSection() {
     const supabase = await createClient();
     const { data: settings } = await supabase
-        .from("streak_settings")
-        .select("*")
-        .eq("id", true)
-        .single();
+        .from("current_season_settings")
+        .select("daily_bonus_increment, max_streak_bonus")
+        .maybeSingle();
 
     const dailyBonusIncrement = settings?.daily_bonus_increment ?? 1;
-    const maxBonus = settings?.max_bonus ?? 10;
+    const maxBonus = settings?.max_streak_bonus ?? 10;
 
     return (
         <form action={updateStreakSettings} className="space-y-4 max-w-md">

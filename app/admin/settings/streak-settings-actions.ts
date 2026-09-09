@@ -4,10 +4,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export async function updateStreakSettings(formData: FormData) {
-    await requireAdmin("/admin/settings");
+    const { supabase } = await requireAdmin("/admin/settings");
 
     const dailyBonusIncrement = Number(formData.get("daily_bonus_increment"));
     const maxBonus = Number(formData.get("max_bonus"));
@@ -20,15 +19,10 @@ export async function updateStreakSettings(formData: FormData) {
         redirect("/admin/settings?error=Invalid max bonus value");
     }
 
-    const supabase = await createClient();
-
-    const { error } = await supabase
-        .from("streak_settings")
-        .upsert({
-            id: true,
-            daily_bonus_increment: dailyBonusIncrement,
-            max_bonus: maxBonus,
-        });
+    const { error } = await supabase.rpc("update_streak_settings_v2", {
+        p_daily_bonus_increment: dailyBonusIncrement,
+        p_max_streak_bonus: maxBonus,
+    });
 
     if (error) {
         redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);

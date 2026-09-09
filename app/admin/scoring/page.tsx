@@ -11,6 +11,7 @@ import {
   addActivityRule,
   deleteActivityRule,
 } from "./actions";
+import type { ActivityRule } from "@/lib/types";
 
 function ScoringSkeleton() {
   return (
@@ -49,7 +50,7 @@ async function AdminScoringInner({
   const { supabase } = await requireAdmin("/admin/scoring");
 
   const { data: rules, error: rulesError } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("*")
     .order("activity_key");
 
@@ -71,7 +72,7 @@ async function AdminScoringInner({
         </StatusBanner>
       ) : (
         <ScoringEditor
-          rules={(rules ?? []) as any}
+          rules={(rules ?? []) as ActivityRule[]}
           saveAllAction={upsertActivityRulesBulk}
           updateAction={updateActivityRule}
           resetDefaultsAction={resetActivityRulesDefaults}

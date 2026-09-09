@@ -1,5 +1,4 @@
 -- Tier Weekly Goals Settings Migration
--- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/skwvrpgpkxwfhxtjwcgz/sql/new
 
 -- Create tier_settings table to store weekly point goals for each tier
 CREATE TABLE IF NOT EXISTS tier_settings (
@@ -30,4 +29,4 @@ DROP TRIGGER IF EXISTS tier_settings_updated_at ON tier_settings;
 CREATE TRIGGER tier_settings_updated_at
     BEFORE UPDATE ON tier_settings
     FOR EACH ROW
-    EXECUTE FUNCTION update_tier_settings_updated_at();
+    EXECUTE FUNCTION update_tier_settings_updated_at();;

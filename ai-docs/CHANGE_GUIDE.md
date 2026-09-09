@@ -1,74 +1,61 @@
 # Feature and Fix Guide
 
-> **Purpose:** Cross-layer workflow for developers and AI agents implementing features or bug fixes.
-> **Last reviewed:** 2026-09-04
+> **Purpose:** Cross-layer workflow for future changes.
+> **Last reviewed:** 2026-09-09
 
 ## Before Editing
 
-1. Read [README.md](./README.md) and the task-specific documents it links.
-2. Inspect the current page, client component, server action/route, shared helper, and every table query involved.
-3. Check `git status` and preserve unrelated changes.
-4. Separate verified repository behavior from assumptions about Supabase, Vercel, Slack, and SMTP dashboards.
-5. Confirm that the configured database is safe before any manual mutation, email, Slack, reset, or finalization test.
+1. Read [README.md](./README.md) and the task-specific docs.
+2. Inspect the page, component, action/route, helper, RPC, policies, and exports involved.
+3. Check `git status`; preserve unrelated work.
+4. Verify the target Supabase project before any linked command.
+5. Separate code facts from provider-dashboard assumptions.
 
 ## Change Map
 
-| Change | Common Code | Also Review |
-|--------|-------------|-------------|
-| New activity/scoring behavior | `app/submit/`, `app/admin/scoring/`, `app/admin/submissions/` | `lib/activity-units.ts`, DB point triggers, exports, rules copy |
-| Team behavior | `app/teams/`, `app/admin/teams/` | leaderboard/profile assumptions, RLS, two-member/single-team invariants |
-| Streak behavior | `app/submit/actions.ts`, streak settings | synthetic streak submissions, admin edits, weekly history |
-| Weekly finalization | `lib/finalize-week.ts`, cron route, admin settings | middleware, missing SQL function/trigger, history/export |
-| Auth/authorization | `lib/supabase/proxy.ts`, `lib/admin.ts`, auth components | page guards, action guards, RLS, public-route prefix matching |
-| New admin page/action | `app/admin/` | page-level `requireAdmin()`, action-level guard, admin tabs |
-| File upload | submit client/action | Storage policies, size/content checks, reset cleanup, public URLs |
-| Notification | announcement/settings actions, `lib/email.ts`, `lib/slack.ts` | test mode, recipient RPC, Slack user authorization, HTML escaping |
-| Database column/table | new ordered migration plus all queries/types | RLS, indexes, backfill, rollback, exports, `DATA_MODEL.md` |
-| New environment variable | consuming module | `.env` template, Vercel environments, security classification |
+| Area | Start with | Also review |
+|---|---|---|
+| Scoring/activity | `current_activity_rules`, scoring RPCs | submission snapshots, caps, exports, rules UI |
+| Teams | team RPCs, `lib/team-data.ts` | memberships, roster views, invite privacy, season archive |
+| Streak | `create_activity_submission_v2` | team lock, bonus ledger event, season settings |
+| Finalization | `finalize_competition_week` | results, projections, history export, cron/job runs |
+| Auth/RLS | `proxy.ts`, RLS migration, `assert_admin` | object ownership, grants, service-role use |
+| Upload | submit action, storage policies | attachment metadata, signed URLs, cleanup cron |
+| Schema | ordered migration | backfill, locks, constraints, RLS, indexes, tests, types, docs |
 
-## Server-Side Checklist
+## Mutation Rules
 
-For every mutation or route:
+- Authenticate and authorize both in server code and the database workflow.
+- Never trust user/team/admin/points values from the browser.
+- Keep business invariants in transactional RPCs, not duplicated TypeScript.
+- Lock the resource when a decision depends on current rows (join capacity, cap, streak, finalization).
+- Use constraints as the final concurrency guard.
+- Fail closed when settings or secrets cannot be read.
+- Return controlled domain errors and check every database/storage result.
+- Use archive/void/adjustment semantics for historical competition data.
 
-- Authenticate the caller using the appropriate mechanism.
-- Authorize the role and the specific object relationship; do not trust IDs supplied by a client.
-- Validate type, range, length, allowlisted values, and state gates on the server.
-- Fail closed when security configuration is missing.
-- Consider concurrency and atomicity. Submission creation currently spans activity insert, streak insert, and team update without an application transaction.
-- Check every database/storage result that affects correctness.
-- Revalidate affected pages or return/redirect consistently.
-- Keep privileged service-role clients in server-only code.
+## Database Workflow
 
-## Database Changes
+1. Add a deterministic timestamped migration.
+2. Include the backfill and validate existing rows before `NOT NULL`/FK enforcement.
+3. Define indexes from known query paths; avoid duplicate low-value indexes.
+4. Enable RLS, add explicit policies/grants, and secure definer search paths.
+5. Update views/RPCs before application call sites.
+6. Replay all migrations on a fresh local/disposable database.
+7. Run database lint and invariants.
+8. Regenerate `lib/database.types.ts` after deployment.
+9. Update exports and AI docs.
 
-Never rely only on editing `DATA_MODEL.md` or live dashboard SQL.
+See [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md) before linked production work.
 
-1. Add a migration with deterministic ordering and idempotency where appropriate.
-2. Include constraints, indexes, RLS enablement/policies, functions, and triggers required by the feature.
-3. Provide a safe backfill for existing rows.
-4. Test the migration on a disposable or dedicated development project.
-5. Update manual TypeScript types and every explicit `.select(...)` list.
-6. Update exports and documentation.
+## Compatibility Fields
 
-The repository currently lacks a baseline schema. Obtain and review a schema-only export before attempting to make the migrations independently reproducible.
-
-## UI Changes
-
-- Keep server components as the default; introduce a client boundary only for hooks, browser APIs, or event handlers.
-- Use existing components and semantic CSS tokens before adding new patterns.
-- Include loading, empty, error, success, responsive, keyboard, and screen-reader states.
-- Treat client validation as convenience; duplicate security and business validation server-side.
-- Update both desktop and mobile navigation deliberately. They currently expose different item sets.
+New work must not add dependencies on legacy team roster slots, legacy settings tables, `weekly_history`, synthetic streak activities, or direct point-cache mutation. Compatibility removal requires a separate audited migration and E2E coverage.
 
 ## Definition of Done
 
-- Relevant static checks and production build pass; see [TESTING.md](./TESTING.md).
-- Happy path, validation failures, unauthenticated, unauthorized, and stale/concurrent cases were considered.
-- No production notification or destructive operation was used as a test.
-- Migrations and RLS are included for data changes.
-- Relevant AI docs and their review dates are updated.
-- Unverified external configuration is labeled rather than guessed.
-
-## Useful AI Prompt Context
-
-When asking an AI agent to change this system, include the desired behavior, affected role, state conditions, and acceptance criteria. Ask it to start with `ai-docs/README.md`, inspect implementation before editing, preserve unrelated changes, and report any dependency on unversioned database behavior.
+- Lint, typecheck, build, migration replay, database lint, and relevant invariants pass.
+- Happy, invalid, unauthenticated, unauthorized, repeated, and concurrent paths were considered.
+- No production notification/destructive operation was used as a test.
+- Data changes include migration, RLS/grants, backfill, indexes, rollback/forward-fix plan, and docs.
+- No secret, production data, public proof URL, or service-role code reaches the client.

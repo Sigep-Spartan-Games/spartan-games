@@ -1,7 +1,7 @@
 # AI Documentation Guide
 
 > **Purpose:** Entry point and trust model for developers and AI agents working on Spartan Games.
-> **Last reviewed:** 2026-09-04
+> **Last reviewed:** 2026-09-09
 
 ## Start Here
 
@@ -17,6 +17,7 @@ Read this file first, then choose the smallest relevant set below. The implement
 | Change an API or integration | [BACKEND_AND_APIS.md](./BACKEND_AND_APIS.md), [EXTERNAL_SERVICES.md](./EXTERNAL_SERVICES.md) | Route/action and service module |
 | Set up locally | [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md), [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) | `package.json` and local environment |
 | Verify a change | [TESTING.md](./TESTING.md) | Changed code paths and a safe database target |
+| Operate/migrate the database | [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md), [DATA_MODEL.md](./DATA_MODEL.md) | CLI config, migrations, tests, linked project |
 | Deploy or transfer ownership | [DEPLOYMENT.md](./DEPLOYMENT.md), [OWNERSHIP_HANDOFF.md](./OWNERSHIP_HANDOFF.md) | Vercel and provider dashboards |
 
 ## Evidence and Confidence
@@ -29,18 +30,14 @@ Use this priority order when claims conflict:
 4. These documents and the root `README.md`.
 5. Comments, committed diagnostic output, and assumptions about provider dashboards.
 
-Important limitation: the repository does not contain the initial database schema, most RLS policies, point-maintenance triggers, or the `finalize_week()`, `is_admin()`, and `get_all_user_emails()` function bodies. `DATA_MODEL.md` is therefore partly inferred. Obtain a schema-only export before making high-risk database or scoring changes.
+The repository now contains a reconstructed initial schema, the canonical remote migration history, normalized model/workflow/security migrations, Supabase CLI config, and database invariants. The linked production database remains the authority for deployment state; compare migration history before every push.
 
-## Known High-Risk Gaps
+## Current Operational Caveats
 
-- The cron endpoint is protected by Supabase-session middleware even though Vercel cron uses bearer authentication.
-- Manual finalization actions exist but are not wired into the Settings UI.
-- Submission point totals and weekly finalization depend on unversioned database triggers/functions.
-- Edit-request object ownership and team rename membership are not explicitly checked by their actions.
-- Proof cleanup during reset is not recursive.
-- There is no configured automated test suite.
-
-These are documented observations, not authorization to change behavior. When a task touches one of them, confirm the intended behavior and test against a non-production environment.
+- The September 2026 normalized migrations and matching app must be released together; follow the maintenance-window runbook.
+- The reconstructed baseline must be marked applied, never executed, on the existing production database.
+- A local full replay requires Docker; forced-rollback validation against production does not replace a disposable-environment replay.
+- Browser E2E coverage is still a future requirement before compatibility columns are removed.
 
 ## Documentation Maintenance
 

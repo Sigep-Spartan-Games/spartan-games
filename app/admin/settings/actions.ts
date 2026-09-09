@@ -28,27 +28,22 @@ export async function startGames(formData: FormData) {
 
   // ── Idempotency: skip if games are already running ──
   const { data: current } = await supabase
-    .from("game_settings")
-    .select("submissions_open, games_started_at, games_ended_at")
-    .eq("id", true)
-    .single();
+    .from("current_season_settings")
+    .select("submissions_open, status")
+    .maybeSingle();
 
-  if (current?.submissions_open && current?.games_started_at && !current?.games_ended_at) {
+  if (current?.submissions_open && current?.status === "active") {
     redirect(
       "/admin/settings?error=" +
         encodeURIComponent("Games are already running. No action taken."),
     );
   }
 
-  const { error } = await supabase
-    .from("game_settings")
-    .update({
-      registration_open: false,
-      submissions_open: true,
-      games_started_at: new Date().toISOString(),
-      games_ended_at: null,
-    })
-    .eq("id", true);
+  const { error } = await supabase.rpc("set_season_controls_v2", {
+    p_registration_open: false,
+    p_submissions_open: true,
+    p_status: "active",
+  });
 
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
@@ -106,26 +101,22 @@ export async function endGames(formData: FormData) {
 
   // ── Idempotency: skip if games have already ended ──
   const { data: current } = await supabase
-    .from("game_settings")
-    .select("submissions_open, games_ended_at")
-    .eq("id", true)
-    .single();
+    .from("current_season_settings")
+    .select("submissions_open, status")
+    .maybeSingle();
 
-  if (!current?.submissions_open && current?.games_ended_at) {
+  if (!current?.submissions_open && current?.status === "completed") {
     redirect(
       "/admin/settings?error=" +
         encodeURIComponent("Games have already ended. No action taken."),
     );
   }
 
-  const { error } = await supabase
-    .from("game_settings")
-    .update({
-      registration_open: true,
-      submissions_open: false,
-      games_ended_at: new Date().toISOString(),
-    })
-    .eq("id", true);
+  const { error } = await supabase.rpc("set_season_controls_v2", {
+    p_registration_open: false,
+    p_submissions_open: false,
+    p_status: "completed",
+  });
 
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
@@ -145,7 +136,7 @@ export async function endGames(formData: FormData) {
                 <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">This round of Spartan Games is now over.</p>
                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 0 0 24px 0;">
                   <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">🔒 Submissions are now closed</p>
-                  <p style="color: #cbd5e1; font-size: 14px; margin: 0;">✅ <strong style="color: #4ade80;">Team registration is now OPEN</strong></p>
+                  <p style="color: #cbd5e1; font-size: 14px; margin: 0;">The season is preserved for final standings and exports.</p>
                 </div>
                 <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Check the leaderboard to see the final standings!</p>
                 <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/leaderboard"
@@ -170,8 +161,8 @@ export async function endGames(formData: FormData) {
     "/admin/settings?ok=" +
       encodeURIComponent(
         shouldSendEmail
-          ? "Games ended: registration opened, submissions closed. Notification emails sent!"
-          : "Games ended: registration opened, submissions closed. (No emails sent)",
+          ? "Games ended and submissions closed. Notification emails sent!"
+          : "Games ended and submissions closed. (No emails sent)",
       ),
   );
 }
@@ -181,10 +172,11 @@ export async function toggleSubmissions(formData: FormData) {
 
   const newValue = formData.get("value") === "true";
 
-  const { error } = await supabase
-    .from("game_settings")
-    .update({ submissions_open: newValue })
-    .eq("id", true);
+  const { error } = await supabase.rpc("set_season_controls_v2", {
+    p_registration_open: null,
+    p_submissions_open: newValue,
+    p_status: null,
+  });
 
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
@@ -202,10 +194,11 @@ export async function toggleRegistration(formData: FormData) {
 
   const newValue = formData.get("value") === "true";
 
-  const { error } = await supabase
-    .from("game_settings")
-    .update({ registration_open: newValue })
-    .eq("id", true);
+  const { error } = await supabase.rpc("set_season_controls_v2", {
+    p_registration_open: newValue,
+    p_submissions_open: null,
+    p_status: null,
+  });
 
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
@@ -223,12 +216,9 @@ export async function toggleRegistration(formData: FormData) {
 export async function finalizeWeek() {
   const { supabase } = await requireAdmin("/admin/settings");
 
-  const { error } = await supabase
-    .from("game_settings")
-    .update({
-      finalize_requested: true,
-    })
-    .eq("id", true);
+  const { error } = await supabase.rpc("finalize_competition_week", {
+    p_week_id: null,
+  });
 
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));
@@ -236,7 +226,7 @@ export async function finalizeWeek() {
   redirect(
     "/admin/settings?ok=" +
       encodeURIComponent(
-        "Weekly finalization requested. The background job will process it shortly.",
+        "Previous week finalized successfully.",
       ),
   );
 }
@@ -252,46 +242,19 @@ export async function resetSpartanGames(formData: FormData) {
     );
   }
 
-  // First, delete all proof images from storage
-  try {
-    const { data: files, error: listError } = await supabase.storage
-      .from("submission-proofs")
-      .list("", { limit: 1000 });
-
-    if (!listError && files && files.length > 0) {
-      const filePaths = files.map((f) => f.name);
-      const { error: deleteStorageError } = await supabase.storage
-        .from("submission-proofs")
-        .remove(filePaths);
-
-      if (deleteStorageError) {
-        console.error("Error deleting proof images:", deleteStorageError);
-        // Continue with reset even if storage cleanup fails
-      }
-    }
-  } catch (e) {
-    console.error("Error cleaning up storage:", e);
-    // Continue with reset even if storage cleanup fails
+  const seasonName = String(formData.get("seasonName") ?? "").trim();
+  if (seasonName.length < 3 || seasonName.length > 80) {
+    redirect("/admin/settings?error=" + encodeURIComponent("Enter a season name between 3 and 80 characters."));
   }
 
-  // Delete submissions first (even though teams has ON DELETE CASCADE, this is explicit)
-  const { error: subErr } = await supabase
-    .from("submissions")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (subErr)
-    redirect("/admin/settings?error=" + encodeURIComponent(subErr.message));
-
-  // Delete teams (this also cascades to weekly_history)
-  const { error: teamErr } = await supabase
-    .from("teams")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (teamErr)
-    redirect("/admin/settings?error=" + encodeURIComponent(teamErr.message));
+  const { error } = await supabase.rpc("start_new_season_v2", {
+    p_name: seasonName,
+    p_starts_on: new Date().toISOString().slice(0, 10),
+  });
+  if (error) redirect("/admin/settings?error=" + encodeURIComponent(error.message));
 
   redirect(
     "/admin/settings?ok=" +
-      encodeURIComponent("All teams, submissions, and proof images deleted."),
+      encodeURIComponent("Previous season archived and a new season created."),
   );
 }

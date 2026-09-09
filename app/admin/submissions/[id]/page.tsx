@@ -63,7 +63,7 @@ async function AdminSubmissionEditInner({
   }
 
   const { data: activityRules, error: rulesErr } = await supabase
-    .from("activity_rules")
+    .from("current_activity_rules")
     .select("*")
     .order("activity_key");
 
@@ -104,7 +104,14 @@ async function AdminSubmissionEditInner({
   const preloadedUnits =
     sub.activity_units ?? sub.activity_value_number ?? null;
 
-  let suggested: any = {};
+  let suggested: {
+    activity_key?: string;
+    activity_date?: string;
+    did_with_teammate?: boolean;
+    activity_units?: number;
+    activity_value_text?: string;
+    activity_value_bool?: boolean;
+  } = {};
   if (requestId) {
     const adminClient = createAdminClient();
     const { data: req } = await adminClient

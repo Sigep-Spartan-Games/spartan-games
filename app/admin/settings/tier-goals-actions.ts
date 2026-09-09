@@ -24,21 +24,14 @@ export async function updateTierGoals(formData: FormData) {
         redirect("/admin/settings?error=Invalid red goal value");
     }
 
-    // Update all three tiers
-    const updates = [
-        { tier: "gold", weekly_goal: goldGoal },
-        { tier: "purple", weekly_goal: purpleGoal },
-        { tier: "red", weekly_goal: redGoal },
-    ];
+    const { error } = await supabase.rpc("update_tier_goals_v2", {
+        p_gold: goldGoal,
+        p_purple: purpleGoal,
+        p_red: redGoal,
+    });
 
-    for (const update of updates) {
-        const { error } = await supabase
-            .from("tier_settings")
-            .upsert(update, { onConflict: "tier" });
-
-        if (error) {
-            redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);
-        }
+    if (error) {
+        redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);
     }
 
     revalidatePath("/admin/settings");
@@ -49,7 +42,7 @@ export async function getTierGoals() {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-        .from("tier_settings")
+        .from("current_tier_settings")
         .select("tier, weekly_goal")
         .order("tier");
 

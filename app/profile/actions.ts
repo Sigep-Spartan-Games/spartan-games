@@ -15,7 +15,7 @@ export type SuggestedChanges = {
 
 export async function requestSubmissionEdit(
   submissionId: string,
-  teamId: string,
+  _teamId: string,
   suggestedChanges: SuggestedChanges,
   reason: string,
 ) {
@@ -28,22 +28,19 @@ export async function requestSubmissionEdit(
     return { error: "Not authenticated" };
   }
 
-  if (!submissionId || !teamId || !suggestedChanges || !reason.trim()) {
+  if (!submissionId || !suggestedChanges || !reason.trim()) {
     return { error: "Missing required fields" };
   }
 
-  const { error } = await supabase.from("submission_edit_requests").insert({
-    submission_id: submissionId,
-    user_id: user.id,
-    team_id: teamId,
-    suggested_changes: suggestedChanges,
-    reason: reason.trim(),
-    status: "pending",
+  const { error } = await supabase.rpc("request_submission_edit_v2", {
+    p_submission_id: submissionId,
+    p_suggested_changes: suggestedChanges,
+    p_reason: reason.trim(),
   });
 
   if (error) {
     console.error("Error creating edit request:", error);
-    return { error: "Failed to create edit request." };
+    return { error: error.message };
   }
 
   revalidatePath("/profile");

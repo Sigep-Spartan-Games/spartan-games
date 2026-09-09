@@ -1,0 +1,2 @@
+-- Intentionally empty. Production data is backfilled by versioned migrations;
+-- local test fixtures should be added here only when they contain no real data.
