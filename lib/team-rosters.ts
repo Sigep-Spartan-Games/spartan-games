@@ -7,10 +7,10 @@ export type CanonicalRosterRow = {
 };
 
 export type TeamRosterSummary = {
-  member1_id: string | null;
-  member1_name: string | null;
-  member2_id: string | null;
-  member2_name: string | null;
+  captain_id: string | null;
+  captain_name: string | null;
+  teammate_id: string | null;
+  teammate_name: string | null;
 };
 
 export function buildTeamRosterMap(rows: CanonicalRosterRow[]) {
@@ -30,10 +30,10 @@ export function buildTeamRosterMap(rows: CanonicalRosterRow[]) {
     });
 
     result.set(teamId, {
-      member1_id: members[0]?.user_id ?? null,
-      member1_name: members[0]?.display_name ?? null,
-      member2_id: members[1]?.user_id ?? null,
-      member2_name: members[1]?.display_name ?? null,
+      captain_id: members[0]?.user_id ?? null,
+      captain_name: members[0]?.display_name ?? null,
+      teammate_id: members[1]?.user_id ?? null,
+      teammate_name: members[1]?.display_name ?? null,
     });
   }
 
@@ -41,8 +41,8 @@ export function buildTeamRosterMap(rows: CanonicalRosterRow[]) {
 }
 
 export const EMPTY_TEAM_ROSTER: TeamRosterSummary = {
-  member1_id: null,
-  member1_name: null,
-  member2_id: null,
-  member2_name: null,
+  captain_id: null,
+  captain_name: null,
+  teammate_id: null,
+  teammate_name: null,
 };

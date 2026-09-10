@@ -27,12 +27,11 @@ import {
 
 interface RequestEditDialogProps {
   submissionId: string;
-  teamId: string;
   activityKey: string;
   rule: ActivityRule;
   originalSubmission: {
     activity_date: string | null;
-    activity_units: number | null;
+    activity_value_number: number | null;
     activity_value_text: string | null;
     activity_value_bool: boolean | null;
     did_with_teammate: boolean | null;
@@ -42,7 +41,6 @@ interface RequestEditDialogProps {
 
 export function RequestEditDialog({
   submissionId,
-  teamId,
   activityKey,
   rule,
   originalSubmission,
@@ -56,7 +54,7 @@ export function RequestEditDialog({
   );
   const [date, setDate] = useState(originalSubmission.activity_date || "");
   const [units, setUnits] = useState<number | string>(
-    originalSubmission.activity_units ?? "",
+    originalSubmission.activity_value_number ?? "",
   );
   const [textValue, setTextValue] = useState(
     originalSubmission.activity_value_text || "",
@@ -91,7 +89,7 @@ export function RequestEditDialog({
 
       if (!isDeletion) {
         if (activeRule.input_type === "number") {
-          suggestedChanges.activity_units = Number(units);
+          suggestedChanges.activity_value_number = Number(units);
         } else if (activeRule.input_type === "text") {
           suggestedChanges.activity_value_text = textValue;
         } else if (activeRule.input_type === "boolean") {
@@ -101,7 +99,6 @@ export function RequestEditDialog({
 
       const result = await requestSubmissionEdit(
         submissionId,
-        teamId,
         suggestedChanges,
         reason,
       );

@@ -56,54 +56,6 @@ export type Database = {
         }
         Relationships: []
       }
-      activity_rules: {
-        Row: {
-          active: boolean
-          activity_key: string
-          description: string | null
-          input_type: string | null
-          label: string | null
-          min_value: number | null
-          points_per_unit: number
-          step_value: number | null
-          teammate_bonus: number
-          unit: string | null
-          unit_label: string | null
-          updated_at: string
-          weekly_cap: number | null
-        }
-        Insert: {
-          active?: boolean
-          activity_key: string
-          description?: string | null
-          input_type?: string | null
-          label?: string | null
-          min_value?: number | null
-          points_per_unit?: number
-          step_value?: number | null
-          teammate_bonus?: number
-          unit?: string | null
-          unit_label?: string | null
-          updated_at?: string
-          weekly_cap?: number | null
-        }
-        Update: {
-          active?: boolean
-          activity_key?: string
-          description?: string | null
-          input_type?: string | null
-          label?: string | null
-          min_value?: number | null
-          points_per_unit?: number
-          step_value?: number | null
-          teammate_bonus?: number
-          unit?: string | null
-          unit_label?: string | null
-          updated_at?: string
-          weekly_cap?: number | null
-        }
-        Relationships: []
-      }
       competition_weeks: {
         Row: {
           created_at: string
@@ -154,39 +106,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      game_settings: {
-        Row: {
-          finalize_requested: boolean
-          games_ended_at: string | null
-          games_started_at: string | null
-          id: boolean
-          last_week_finalized: string | null
-          registration_open: boolean
-          submissions_open: boolean
-          updated_at: string
-        }
-        Insert: {
-          finalize_requested?: boolean
-          games_ended_at?: string | null
-          games_started_at?: string | null
-          id?: boolean
-          last_week_finalized?: string | null
-          registration_open?: boolean
-          submissions_open?: boolean
-          updated_at?: string
-        }
-        Update: {
-          finalize_requested?: boolean
-          games_ended_at?: string | null
-          games_started_at?: string | null
-          id?: boolean
-          last_week_finalized?: string | null
-          registration_open?: boolean
-          submissions_open?: boolean
-          updated_at?: string
-        }
-        Relationships: []
       }
       job_runs: {
         Row: {
@@ -531,24 +450,6 @@ export type Database = {
         }
         Relationships: []
       }
-      streak_settings: {
-        Row: {
-          daily_bonus_increment: number | null
-          id: boolean
-          max_bonus: number | null
-        }
-        Insert: {
-          daily_bonus_increment?: number | null
-          id?: boolean
-          max_bonus?: number | null
-        }
-        Update: {
-          daily_bonus_increment?: number | null
-          id?: boolean
-          max_bonus?: number | null
-        }
-        Relationships: []
-      }
       submission_attachments: {
         Row: {
           bucket_id: string
@@ -611,7 +512,6 @@ export type Database = {
           status: string
           submission_id: string
           suggested_changes: Json | null
-          team_id: string
           updated_at: string | null
           user_id: string
         }
@@ -626,7 +526,6 @@ export type Database = {
           status?: string
           submission_id: string
           suggested_changes?: Json | null
-          team_id: string
           updated_at?: string | null
           user_id: string
         }
@@ -641,7 +540,6 @@ export type Database = {
           status?: string
           submission_id?: string
           suggested_changes?: Json | null
-          team_id?: string
           updated_at?: string | null
           user_id?: string
         }
@@ -653,36 +551,13 @@ export type Database = {
             referencedRelation: "submissions"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "submission_edit_requests_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "active_teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "submission_edit_requests_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "team_standings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "submission_edit_requests_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
         ]
       }
       submissions: {
         Row: {
-          activity: string
           activity_date: string
           activity_id: string | null
           activity_key: string
-          activity_units: number | null
           activity_value_bool: boolean | null
           activity_value_number: number | null
           activity_value_text: string | null
@@ -707,11 +582,9 @@ export type Database = {
           week_id: string
         }
         Insert: {
-          activity: string
           activity_date?: string
           activity_id?: string | null
           activity_key: string
-          activity_units?: number | null
           activity_value_bool?: boolean | null
           activity_value_number?: number | null
           activity_value_text?: string | null
@@ -736,11 +609,9 @@ export type Database = {
           week_id: string
         }
         Update: {
-          activity?: string
           activity_date?: string
           activity_id?: string | null
           activity_key?: string
-          activity_units?: number | null
           activity_value_bool?: boolean | null
           activity_value_number?: number | null
           activity_value_text?: string | null
@@ -1063,70 +934,29 @@ export type Database = {
           created_at: string
           id: string
           invite_code: string | null
-          last_activity_date: string | null
-          member1_id: string | null
-          member1_name: string | null
-          member2_id: string | null
-          member2_name: string | null
           name: string
           season_id: string
-          streak_count: number | null
           tier: string
-          total_points: number
-          weekly_points: number
-          weeks_won: string[] | null
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
           id?: string
           invite_code?: string | null
-          last_activity_date?: string | null
-          member1_id?: string | null
-          member1_name?: string | null
-          member2_id?: string | null
-          member2_name?: string | null
           name: string
           season_id: string
-          streak_count?: number | null
           tier?: string
-          total_points?: number
-          weekly_points?: number
-          weeks_won?: string[] | null
         }
         Update: {
           archived_at?: string | null
           created_at?: string
           id?: string
           invite_code?: string | null
-          last_activity_date?: string | null
-          member1_id?: string | null
-          member1_name?: string | null
-          member2_id?: string | null
-          member2_name?: string | null
           name?: string
           season_id?: string
-          streak_count?: number | null
           tier?: string
-          total_points?: number
-          weekly_points?: number
-          weeks_won?: string[] | null
         }
         Relationships: [
-          {
-            foreignKeyName: "teams_member1_id_fkey"
-            columns: ["member1_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "teams_member2_id_fkey"
-            columns: ["member2_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "teams_season_id_fkey"
             columns: ["season_id"]
@@ -1149,27 +979,6 @@ export type Database = {
             referencedColumns: ["key"]
           },
         ]
-      }
-      tier_settings: {
-        Row: {
-          created_at: string | null
-          tier: string
-          updated_at: string | null
-          weekly_goal: number
-        }
-        Insert: {
-          created_at?: string | null
-          tier: string
-          updated_at?: string | null
-          weekly_goal?: number
-        }
-        Update: {
-          created_at?: string | null
-          tier?: string
-          updated_at?: string | null
-          weekly_goal?: number
-        }
-        Relationships: []
       }
       tiers: {
         Row: {
@@ -1194,77 +1003,6 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
-      }
-      weekly_history: {
-        Row: {
-          created_at: string | null
-          id: string
-          met_goal: boolean
-          streak_count: number | null
-          team_id: string
-          tier: string | null
-          week_id: string
-          week_identifier: string
-          weekly_goal: number
-          weekly_points: number
-          weeks_won_count: number
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          met_goal?: boolean
-          streak_count?: number | null
-          team_id: string
-          tier?: string | null
-          week_id: string
-          week_identifier: string
-          weekly_goal: number
-          weekly_points?: number
-          weeks_won_count?: number
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          met_goal?: boolean
-          streak_count?: number | null
-          team_id?: string
-          tier?: string | null
-          week_id?: string
-          week_identifier?: string
-          weekly_goal?: number
-          weekly_points?: number
-          weeks_won_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "weekly_history_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "active_teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "weekly_history_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "team_standings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "weekly_history_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "weekly_history_week_id_fkey"
-            columns: ["week_id"]
-            isOneToOne: false
-            referencedRelation: "competition_weeks"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
@@ -1334,28 +1072,6 @@ export type Database = {
           tier: string | null
           total_points: number | null
           weekly_points: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          last_activity_date?: string | null
-          name?: string | null
-          season_id?: string | null
-          streak_count?: number | null
-          tier?: string | null
-          total_points?: number | null
-          weekly_points?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          last_activity_date?: string | null
-          name?: string | null
-          season_id?: string | null
-          streak_count?: number | null
-          tier?: string | null
-          total_points?: number | null
-          weekly_points?: number | null
         }
         Relationships: [
           {
@@ -1598,7 +1314,6 @@ export type Database = {
       }
       current_season_id: { Args: never; Returns: string }
       current_week_start_date: { Args: never; Returns: string }
-      date_array_is_unique: { Args: { arr: string[] }; Returns: boolean }
       ensure_competition_week: {
         Args: { p_activity_date: string; p_season_id: string }
         Returns: string
@@ -1618,10 +1333,6 @@ export type Database = {
       leave_team_v2: { Args: { p_team_id: string }; Returns: undefined }
       parse_week_end: { Args: { p_label: string }; Returns: string }
       parse_week_start: { Args: { p_label: string }; Returns: string }
-      rebuild_team_point_projection: {
-        Args: { p_team_id: string }
-        Returns: undefined
-      }
       rename_team_v2: {
         Args: { p_new_name: string; p_team_id: string }
         Returns: undefined
@@ -1672,10 +1383,6 @@ export type Database = {
       start_new_season_v2: {
         Args: { p_name: string; p_starts_on?: string }
         Returns: string
-      }
-      sync_legacy_team_members: {
-        Args: { p_team_id: string }
-        Returns: undefined
       }
       update_streak_settings_v2: {
         Args: { p_daily_bonus_increment: number; p_max_streak_bonus: number }

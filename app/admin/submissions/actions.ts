@@ -65,7 +65,7 @@ export async function updateSubmission(formData: FormData) {
     redirect(editUrl(id, { ...backParams, error: "missing_or_invalid_fields" }));
   }
 
-  const valueNumber = numberOrNull(formData.get("activity_units"));
+  const valueNumber = numberOrNull(formData.get("activity_value_number"));
   const valueText = stringOrNull(formData.get("activity_value_text"));
   const valueBool = formData.get("activity_value_bool") !== null;
   const didWithTeammate = formData.get("did_with_teammate") !== null;

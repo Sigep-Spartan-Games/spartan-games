@@ -36,7 +36,7 @@ async function AdminHistoryInner() {
     .select("id")
     .maybeSingle();
 
-  // Canonical finalized results; weekly_history remains a compatibility projection.
+  // Canonical finalized results joined to their competition-week labels.
   const { data: rawHistory, error } = await supabase
     .from("team_week_results")
     .select(

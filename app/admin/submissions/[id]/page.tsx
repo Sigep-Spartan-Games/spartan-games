@@ -105,7 +105,7 @@ async function AdminSubmissionEditInner({
     activity_key?: string;
     activity_date?: string;
     did_with_teammate?: boolean;
-    activity_units?: number;
+    activity_value_number?: number;
     activity_value_text?: string;
     activity_value_bool?: boolean;
   } = {};
@@ -154,7 +154,8 @@ async function AdminSubmissionEditInner({
           activity_date: suggested.activity_date ?? sub.activity_date,
           did_with_teammate:
             suggested.did_with_teammate ?? sub.did_with_teammate,
-          activity_units: suggested.activity_units ?? preloadedUnits,
+          activity_value_number:
+            suggested.activity_value_number ?? preloadedUnits,
           activity_value_text:
             suggested.activity_value_text ?? sub.activity_value_text,
           activity_value_bool:

@@ -144,6 +144,25 @@ begin
   ) then
     raise exception 'Invariant failed: deprecated compatibility column still exists';
   end if;
+
+  if exists (
+    select 1
+    from public.submission_edit_requests
+    where suggested_changes ? 'activity_units'
+  ) then
+    raise exception 'Invariant failed: edit request uses the retired numeric-value key';
+  end if;
+
+  if exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'request_submission_edit_v2'
+      and p.prosrc like '%activity_units%'
+  ) then
+    raise exception 'Invariant failed: edit request RPC still accepts the retired numeric-value key';
+  end if;
 end;
 $$;
 

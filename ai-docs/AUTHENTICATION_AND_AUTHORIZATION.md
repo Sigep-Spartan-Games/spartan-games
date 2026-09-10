@@ -1,7 +1,7 @@
 # Authentication and Authorization
 
 > **Purpose:** Authentication, route protection, database authorization, and private-file access.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Authentication
 
@@ -33,7 +33,6 @@ RLS is enabled on every public table.
 - Submissions: active team members can read their team records; admins can read all; mutation is RPC-only.
 - Edit requests and attachment metadata: owner or admin read; mutation is RPC-only.
 - Job runs: admin read; service role writes cron status.
-- Compatibility settings/history tables: authenticated read; writes are RPC-only.
 
 Application browser roles have no direct insert/update/delete grants for competition tables. Security-definer functions use `set search_path = ''`, schema-qualify objects, validate `auth.uid()`, and enforce membership/admin checks.
 
@@ -56,7 +55,7 @@ The `submission-proofs` bucket is private with a 10 MiB maximum and an allow-lis
 
 ## Account Deletion
 
-The auth soft-delete trigger closes active memberships, promotes a remaining member, synchronizes compatibility roster fields, and removes the profile row. Historical submissions/memberships retain name snapshots while user foreign keys can become null.
+The auth soft-delete trigger closes active memberships, promotes a remaining member, archives an empty team, and removes the profile row. Historical submissions/memberships retain name snapshots while user foreign keys can become null.
 
 ## Security Review Checklist
 

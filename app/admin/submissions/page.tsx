@@ -220,11 +220,11 @@ async function AdminSubmissionsInner({
                                     Date: {req.suggested_changes.activity_date}
                                   </div>
                                 )}
-                                {req.suggested_changes?.activity_units !==
+                                {req.suggested_changes?.activity_value_number !==
                                   undefined && (
                                   <div>
                                     Units:{" "}
-                                    {req.suggested_changes.activity_units}
+                                    {req.suggested_changes.activity_value_number}
                                   </div>
                                 )}
                                 {req.suggested_changes?.activity_value_text !==

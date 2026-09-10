@@ -18,7 +18,7 @@ type InitialSubmission = {
   activity_key: string;
   activity_date: string; // yyyy-mm-dd
   did_with_teammate: boolean;
-  activity_units: number | null;
+  activity_value_number: number | null;
   activity_value_text: string | null;
   activity_value_bool: boolean | null;
 };
@@ -56,9 +56,9 @@ export default function EditSubmissionFormClient({
 
   // Preload “amount” values but let the user change them
   const [units, setUnits] = useState<string>(
-    initial.activity_units === null || initial.activity_units === undefined
+    initial.activity_value_number === null || initial.activity_value_number === undefined
       ? ""
-      : String(initial.activity_units),
+      : String(initial.activity_value_number),
   );
   const [textVal, setTextVal] = useState<string>(
     initial.activity_value_text ?? "",
@@ -161,7 +161,7 @@ export default function EditSubmissionFormClient({
             <div className="text-sm font-medium">Duration</div>
             <TimeDurationInput
               key={activityKey}
-              name="activity_units"
+              name="activity_value_number"
               unitLabel={unitLabel}
               initialValue={units}
               onValueChange={(value) => setUnits(String(value))}
@@ -173,7 +173,7 @@ export default function EditSubmissionFormClient({
           <label className="space-y-1 block">
             <div className="text-sm font-medium">Amount</div>
             <input
-              name="activity_units"
+              name="activity_value_number"
               type="number"
               step={step}
               min="0"

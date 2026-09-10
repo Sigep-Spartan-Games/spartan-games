@@ -2,14 +2,14 @@
 
 > **Purpose:** Release order and production infrastructure.
 > **Source of truth:** `vercel.json`, `package.json`, and [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md).
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Current Production Status
 
-The normalized database migrations and matching Vercel application commit
-`567f9b8` were released successfully on 2026-09-09. Production database invariants,
-database lint, the application build, the anonymous login redirect, and the browser
-console check passed.
+The normalized database and compatibility retirement are live. Application commit
+`ad84886` deployed successfully before cleanup migration `20260910010000` on
+2026-09-10. Production invariants, database lint, migration history, retained row
+counts, the anonymous login redirect, and idempotent finalization passed.
 
 `CRON_SECRET` was not present in the production Vercel environment at verification
 time. The two cron routes are safely returning HTTP 503, but scheduled finalization
@@ -48,13 +48,17 @@ The build fetches the configured Google fonts and therefore needs network access
 
 ## Database/Application Order
 
-The September 2026 normalization introduces new views/RPCs and then revokes legacy direct writes. The matching database and app changes must be released together in a short maintenance window:
+For a destructive schema retirement, first deploy an application version that can
+run against both the current and target schemas. Apply the migration only after
+that deployment passes, then regenerate types and deploy the resulting docs/types
+commit. For additive migrations, deploy the database additions before code that
+requires them.
 
-1. Confirm backup/PITR and production variables.
-2. Preview/apply migrations.
-3. Immediately deploy the matching app commit.
-4. Run database invariants and smoke tests.
-5. Regenerate database TypeScript types.
+1. Confirm backup/PITR or explicitly record accepted recovery limitations and production variables.
+2. Validate the migration under rollback and deploy compatibility-free application reads.
+3. Wait for the application deployment to pass, then preview/apply the destructive migration.
+4. Run database invariants, lint, row-count checks, and smoke tests.
+5. Regenerate database TypeScript types and update documentation.
 
 Exact first-deployment, baseline-repair, verification, and rollback commands are in [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md). Do not run `db push` casually from a developer machine.
 
@@ -83,4 +87,7 @@ Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes return 503 if th
 
 ## Rollback
 
-Prefer a forward application fix because normalized schema changes retain legacy data. If integrity is at risk, close submissions first, record the failing release/migration, and use the pre-release Supabase recovery point plus the compatible Vercel deployment. Do not manually delete ledger/results rows.
+Prefer a forward application fix. Do not roll back to an application older than
+`ad84886`, because it reads columns removed by `20260910010000`. If integrity is at
+risk, close submissions first, record the failing release/migration, and use an
+available compatible recovery point. Do not manually delete ledger/results rows.

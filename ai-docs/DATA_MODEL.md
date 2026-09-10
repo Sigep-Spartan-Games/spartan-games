@@ -1,8 +1,8 @@
 # Data Model
 
-> **Purpose:** Canonical database entities, relationships, compatibility fields, and lifecycle rules.
+> **Purpose:** Canonical database entities, relationships, derived views, and lifecycle rules.
 > **Source of truth:** `supabase/migrations/`.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Design Rules
 
@@ -10,9 +10,9 @@
 - Calendar weeks are real rows, not presentation strings.
 - Team membership is relational and historical.
 - Scoring configuration is versioned; a submission snapshots its exact rule.
-- `score_events` is the point authority. Team point columns are rebuildable caches.
+- `score_events` is the point authority. Standings are derived rather than cached on teams.
 - Historical competition data is retained. UI “delete” operations archive or void.
-- Legacy tables and columns remain temporarily as compatibility projections and are not the write API.
+- Each fact has one canonical storage location; compatibility copies were retired in migration `20260910010000`.
 
 ## Core Relationships
 
@@ -57,7 +57,7 @@ Database constraints enforce:
 - application RPCs enforce the two-person roster limit;
 - active team names are unique case-insensitively within a season.
 
-`team_streaks` is one-to-one with a team. The old streak fields on `teams` are synchronized projections.
+`team_streaks` is one-to-one with a team. `teams` stores only identity, season, tier, invite code, creation time, and archive state.
 
 ### `activities` and `scoring_rule_versions`
 
@@ -79,7 +79,7 @@ For `submission_kind = 'activity'`, both `activity_id` and `scoring_rule_version
 
 The point ledger. Each row records season/week/team, event type, points, actor, source submission, and metadata. Activity and streak events from the same submission are separate rows. A unique partial index prevents duplicate event types for a source submission.
 
-Valid event types are `activity`, `streak_bonus`, and `admin_adjustment`. Submission triggers synchronize its activity event. Voiding a submission removes its ledger events. Ledger triggers rebuild the affected team’s point caches.
+Valid event types are `activity`, `streak_bonus`, and `admin_adjustment`. Submission triggers synchronize its activity event. Voiding a submission removes its ledger events. `team_standings` derives current-week and season totals directly from this ledger.
 
 ### `team_week_results`
 
@@ -87,7 +87,7 @@ The immutable-by-convention final result for a team/week: tier snapshot, points,
 
 ### `submission_edit_requests`
 
-Stores user-owned edit/delete requests, structured suggested changes, status, request type, resolver, resolution time, and note. A user can have only one pending request per submission. The database derives `team_id` from the owned submission.
+Stores user-owned edit/delete requests, structured suggested changes, status, request type, resolver, resolution time, and note. Numeric suggested values use the canonical `activity_value_number` JSON key. A user can have only one pending request per submission. The database derives the team through `submission_id`; no duplicate team column is stored.
 
 ### `submission_attachments`
 
@@ -100,7 +100,7 @@ Tracks job type, deduplication key, status, attempts, times, error, and metadata
 ## Read Views
 
 - `current_season_settings` — safe current season configuration.
-- `current_activity_rules` — current versioned activity rules in the legacy UI shape.
+- `current_activity_rules` — current versioned activity rules in the stable application read shape.
 - `current_tier_settings` — current season tier goals.
 - `active_team_rosters` — active membership snapshots without profile email.
 - `active_teams` — active current-season teams without invite codes.
@@ -108,17 +108,28 @@ Tracks job type, deduplication key, status, attempts, times, error, and metadata
 
 Application reads should prefer these views. `get_my_team_v2()` returns the caller’s own invite code and role without exposing every team’s invite code.
 
-## Compatibility Layer
+## Retired Compatibility Layer
 
-These objects remain for a staged transition:
+Migration `20260910010000_retire_legacy_compatibility.sql` removed the duplicate
+`activity_rules`, `tier_settings`, `streak_settings`, `game_settings`, and
+`weekly_history` tables. It also removed roster/point/win/streak columns from
+`teams`, the deprecated `submissions.activity` and `submissions.activity_units`
+columns, and the derived `submission_edit_requests.team_id` column.
 
-- `activity_rules` mirrors the current versioned rule.
-- `tier_settings`, `streak_settings`, and `game_settings` mirror current season controls.
-- `weekly_history` mirrors finalized results for existing exports.
-- `teams.member1_*`, `member2_*`, `weekly_points`, `total_points`, `weeks_won`, and streak fields are synchronized projections.
-- legacy descriptive/scoring columns on `submissions` remain snapshots.
+Use these canonical replacements:
 
-Do not add new features against compatibility fields. Remove them only in a later release after queries, exports, and production telemetry confirm no remaining readers.
+| Need | Canonical source |
+|---|---|
+| Team members and names | `team_memberships` / `active_team_rosters` |
+| Weekly and season points | `score_events` / `team_standings` |
+| Streak | `team_streaks` |
+| Weekly winners/history | `team_week_results` joined to `competition_weeks` |
+| Season controls/streak settings | `seasons` / `current_season_settings` |
+| Tier goals | `season_tiers` / `current_tier_settings` |
+| Activity definitions and scoring | `activities`, `scoring_rule_versions`, `current_activity_rules` |
+
+The `active_teams` view retains its prior read shape for callers, but all computed
+values now come from `team_standings`; it stores no duplicate state.
 
 ## Deletion and Retention
 

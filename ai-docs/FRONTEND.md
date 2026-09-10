@@ -3,7 +3,7 @@
 > **Purpose:** Document routes, components, styling, and UI patterns.
 > **Audience:** Developers making UI changes, AI agents.
 > **Source of truth:** `app/` directory, `components/` directory, `app/globals.css`, `tailwind.config.ts`.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Route Table
 
@@ -27,13 +27,13 @@
 | `/admin/scoring` | Versioned activity rules editor | Yes | Yes | `app/admin/scoring/page.tsx` | `current_activity_rules`, scoring RPCs |
 | `/admin/submissions` | Submission review/edit/void | Yes | Yes | `app/admin/submissions/page.tsx` | submissions, requests, admin RPCs, signed storage URLs |
 | `/admin/submissions/[id]` | Individual submission editor | Yes | Yes | `app/admin/submissions/[id]/page.tsx` | submissions, current rules, normalized edit RPC |
-| `/admin/teams` | Team management and tier assignment | Yes | Yes | `app/admin/teams/page.tsx` | `teams`, `profiles` |
+| `/admin/teams` | Team management and tier assignment | Yes | Yes | `app/admin/teams/page.tsx` | `team_standings`, `active_team_rosters`, current tier settings |
 | `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `team_week_results`, `competition_weeks`, standings |
 | `/admin/announcements` | Send notices via Slack/Email | Yes | Page: No; action: Yes | `app/admin/announcements/page.tsx` | — |
 | `/admin/settings` | Season controls, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | current season/tier views and admin RPCs |
-| `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | `submissions`, `teams` |
-| `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions` |
-| `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `teams` |
+| `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | canonical submissions, memberships, standings, rules, weeks/results |
+| `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions`, `team_memberships` |
+| `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `team_standings`, `team_memberships`, `team_week_results` |
 
 The shared admin layout is unguarded, but all current data-backed admin pages call `requireAdmin()`. The announcements client page is the exception; it renders for authenticated non-admins, while its action remains guarded.
 

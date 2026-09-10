@@ -101,12 +101,12 @@ export async function GET() {
       streak_count: team.streak_count ?? 0,
       last_activity_date: team.last_activity_date ?? "",
       weeks_won: weeksWonStr(winDates.get(team.id) ?? []),
-      member1_name: roster.member1_name ?? "",
-      member2_name: roster.member2_name ?? "",
+      member1_name: roster.captain_name ?? "",
+      member2_name: roster.teammate_name ?? "",
       invite_code: inviteCodes.get(team.id) ?? "",
       team_id: team.id,
-      member1_id: roster.member1_id ?? "",
-      member2_id: roster.member2_id ?? "",
+      member1_id: roster.captain_id ?? "",
+      member2_id: roster.teammate_id ?? "",
       created_at: team.created_at,
     };
   });

@@ -39,12 +39,12 @@ export async function GET() {
 
   const supabase = createAdminClient();
 
-  // Fetch activity_rules for dynamic labels
+  // Fetch current versioned scoring rules for dynamic labels.
   const { data: activityRules } = await supabase
     .from("current_activity_rules")
     .select("activity_key, label, unit_label, unit");
 
-  // Build label map from dynamic activity_rules
+  // Build the activity label map.
   const activityLabels: Record<string, string> = {};
   for (const rule of activityRules ?? []) {
     const label = rule.label || rule.activity_key;
@@ -102,7 +102,7 @@ export async function GET() {
 
     const teamName = s.teams?.name ?? "";
     const roster = rosterMap.get(s.team_id) ?? EMPTY_TEAM_ROSTER;
-    const teamMembers = [roster.member1_name, roster.member2_name]
+    const teamMembers = [roster.captain_name, roster.teammate_name]
       .filter(Boolean)
       .join(" & ");
 

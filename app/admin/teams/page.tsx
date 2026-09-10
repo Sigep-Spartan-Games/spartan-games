@@ -114,8 +114,8 @@ async function AdminTeamsInner({
     return {
       ...t,
       invite_code: inviteCodes.get(t.id) ?? null,
-      member1_name: roster.member1_name,
-      member2_name: roster.member2_name,
+      captain_name: roster.captain_name,
+      teammate_name: roster.teammate_name,
       weekly_points: weeklyPoints,
       total_points: totalPoints,
       weeks_won_count: Number(t.weeks_won_count ?? 0),
@@ -208,7 +208,7 @@ async function AdminTeamsInner({
                 <div className="col-span-3">
                   <div className="text-sm font-medium truncate">{t.name}</div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {t.member1_name || "—"} · {t.member2_name || "—"}
+                    {t.captain_name || "—"} · {t.teammate_name || "—"}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Invite: {t.invite_code ?? "-"}
@@ -279,7 +279,7 @@ async function AdminTeamsInner({
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium truncate">{t.name}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {t.member1_name || "—"} · {t.member2_name || "—"}
+                      {t.captain_name || "—"} · {t.teammate_name || "—"}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

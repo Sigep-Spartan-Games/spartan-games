@@ -1,7 +1,7 @@
 # Feature and Fix Guide
 
 > **Purpose:** Cross-layer workflow for future changes.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Before Editing
 
@@ -18,7 +18,7 @@
 | Scoring/activity | `current_activity_rules`, scoring RPCs | submission snapshots, caps, exports, rules UI |
 | Teams | team RPCs, `lib/team-data.ts` | memberships, roster views, invite privacy, season archive |
 | Streak | `create_activity_submission_v2` | team lock, bonus ledger event, season settings |
-| Finalization | `finalize_competition_week` | results, projections, history export, cron/job runs |
+| Finalization | `finalize_competition_week` | ledger, team results, history export, cron/job runs |
 | Auth/RLS | `proxy.ts`, RLS migration, `assert_admin` | object ownership, grants, service-role use |
 | Upload | submit action, storage policies | attachment metadata, signed URLs, cleanup cron |
 | Schema | ordered migration | backfill, locks, constraints, RLS, indexes, tests, types, docs |
@@ -48,9 +48,13 @@
 
 See [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md) before linked production work.
 
-## Compatibility Fields
+## Canonical Storage
 
-New work must not add dependencies on legacy team roster slots, legacy settings tables, `weekly_history`, synthetic streak activities, or direct point-cache mutation. Compatibility removal requires a separate audited migration and E2E coverage.
+The legacy team roster slots, settings/history tables, submission compatibility
+fields, and point caches were removed in migration `20260910010000`. New work must
+use memberships, season settings, typed submission values, `score_events`, and
+`team_week_results`. Do not recreate denormalized write paths for convenience;
+compose a read view/helper when a UI needs a convenient shape.
 
 ## Definition of Done
 

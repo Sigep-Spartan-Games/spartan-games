@@ -92,13 +92,13 @@ export async function GET() {
 
   const supabase = createAdminClient();
 
-  // Fetch activity_rules for dynamic labels
+  // Fetch current versioned scoring rules for dynamic labels.
   const { data: activityRules } = await supabase
     .from("current_activity_rules")
     .select("activity_key, label, unit, unit_label, points_per_unit, teammate_bonus, weekly_cap, active, input_type, min_value, step_value")
     .order("activity_key");
 
-  // Build label map from dynamic activity_rules
+  // Build the activity label map.
   const activityLabels: Record<string, string> = {};
   for (const rule of activityRules ?? []) {
     const label = rule.label || rule.activity_key;
@@ -275,7 +275,7 @@ export async function GET() {
   styleHeader(wsOverview.getRow(1));
 
   (teams ?? []).forEach((t: any, idx: number) => {
-    const members = [t.member1_name, t.member2_name]
+    const members = [t.captain_name, t.teammate_name]
       .filter(Boolean)
       .join(" & ");
     wsOverview.addRow([
@@ -327,13 +327,13 @@ export async function GET() {
       t.streak_count ?? 0,
       isoDate(t.last_activity_date),
       weeksWonStr(t.weeks_won),
-      t.member1_name ?? "",
-      t.member2_name ?? "",
+      t.captain_name ?? "",
+      t.teammate_name ?? "",
       t.invite_code ?? "",
       safeStr(t.created_at),
       t.id,
-      t.member1_id ?? "",
-      t.member2_id ?? "",
+      t.captain_id ?? "",
+      t.teammate_id ?? "",
     ]);
   });
 
@@ -373,7 +373,7 @@ export async function GET() {
   (subs ?? []).forEach((s: any) => {
     const teamName = s.teams?.name ?? "";
     const roster = rosterMap.get(s.team_id) ?? EMPTY_TEAM_ROSTER;
-    const teamMembers = [roster.member1_name, roster.member2_name]
+    const teamMembers = [roster.captain_name, roster.teammate_name]
       .filter(Boolean)
       .join(" & ");
 

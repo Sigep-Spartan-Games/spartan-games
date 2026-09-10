@@ -1,7 +1,7 @@
 # Testing and Verification
 
 > **Purpose:** Required checks for application and database changes.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Standard Checks
 
@@ -64,7 +64,7 @@ Local Supabase requires Docker or another supported container runtime. If that i
 - One winner per tier only when points are positive.
 - Tie breakers are deterministic.
 - Repeated request returns `already_finalized`.
-- Team caches, results, compatibility history, and `job_runs` agree.
+- Ledger-derived standings, `team_week_results`, and `job_runs` agree.
 
 ### Security
 
@@ -76,4 +76,4 @@ Local Supabase requires Docker or another supported container runtime. If that i
 
 ## Current Limitations
 
-There is no browser E2E or unit-test suite yet. The current automated floor is lint, TypeScript, production build, SQL replay, database lint, and invariant checks. Add Playwright coverage for the behavioral cases above before removing compatibility columns.
+There is no browser E2E or unit-test suite yet. The current automated floor is lint, TypeScript, production build, SQL replay, database lint, and invariant checks. Add Playwright coverage for the behavioral cases above, especially before future cross-layer schema changes.

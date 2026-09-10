@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export type SuggestedChanges = {
   activity_key?: string;
   activity_date?: string;
-  activity_units?: number;
+  activity_value_number?: number;
   activity_value_text?: string;
   activity_value_bool?: boolean;
   did_with_teammate?: boolean;
@@ -15,7 +15,6 @@ export type SuggestedChanges = {
 
 export async function requestSubmissionEdit(
   submissionId: string,
-  _teamId: string,
   suggestedChanges: SuggestedChanges,
   reason: string,
 ) {

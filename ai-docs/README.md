@@ -1,7 +1,7 @@
 # AI Documentation Guide
 
 > **Purpose:** Entry point and trust model for developers and AI agents working on Spartan Games.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Start Here
 
@@ -34,10 +34,10 @@ The repository now contains a reconstructed initial schema, the canonical remote
 
 ## Current Operational Caveats
 
-- The September 2026 normalized migrations and matching app must be released together; follow the maintenance-window runbook.
+- The September 2026 normalization and compatibility-retirement migrations are live; future application versions must use the canonical schema documented here.
 - The reconstructed baseline must be marked applied, never executed, on the existing production database.
 - A local full replay requires Docker; forced-rollback validation against production does not replace a disposable-environment replay.
-- Browser E2E coverage is still a future requirement before compatibility columns are removed.
+- Browser E2E coverage remains a priority for future cross-layer releases.
 
 ## Documentation Maintenance
 

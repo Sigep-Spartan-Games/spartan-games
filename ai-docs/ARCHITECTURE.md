@@ -1,7 +1,7 @@
 # Architecture
 
 > **Purpose:** System boundaries and durable engineering decisions.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## System Shape
 
@@ -48,13 +48,17 @@ The normalized model has four layers:
 3. Events: submissions, attachments, edit requests, point ledger.
 4. Results/operations: competition weeks, team results, job runs.
 
-`score_events` is authoritative for points. `team_standings` derives display totals; point fields on `teams` are compatibility caches rebuilt by ledger triggers. Finalization creates result snapshots and does not destroy event data.
+`score_events` is authoritative for points, and `team_standings` derives current-week and season totals directly from it. `teams` contains identity and lifecycle fields only. Finalization creates result snapshots and does not destroy event data.
 
 See [DATA_MODEL.md](./DATA_MODEL.md) and [BUSINESS_RULES.md](./BUSINESS_RULES.md).
 
-## Compatibility Strategy
+## Canonical Data Strategy
 
-Legacy tables/columns remain synchronized so older exports and a short coordinated rollout continue to work. New features must use normalized tables/views/RPCs. Compatibility removal is a separate future migration requiring search results, production telemetry, exports, and E2E tests.
+Migration `20260910010000` retired the temporary compatibility tables, team
+projection columns, and redundant submission/edit-request fields. UI pages and
+exports now compose canonical views and tables. Stable RPC/view response shapes may
+retain familiar field names, but those values are derived and are not duplicate
+storage. New features must extend the canonical model rather than recreate caches.
 
 ## Storage
 
@@ -65,7 +69,7 @@ Proof images use the private `submission-proofs` bucket. Upload happens before t
 - Supabase CLI configuration and complete migration history are checked in.
 - A reconstructed baseline supports fresh environments and is marked applied—not executed—on the existing production database.
 - `job_runs` plus advisory locks provide cron idempotency/observability.
-- `supabase/tests/normalized_model_invariants.sql` checks cross-table projections after deployment.
+- `supabase/tests/normalized_model_invariants.sql` checks canonical references, ledger consistency, and absence of retired objects after deployment.
 - Generated Supabase types are refreshed with `npm run db:types` after schema deployment.
 
 ## Important Decisions

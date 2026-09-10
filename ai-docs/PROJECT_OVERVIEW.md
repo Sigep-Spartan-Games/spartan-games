@@ -1,7 +1,7 @@
 # Project Overview
 
 > **Purpose:** Product, roles, core workflows, and project maturity.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
 
 ## Product
 
@@ -67,5 +67,4 @@ Gold, Purple, and Red have default weekly goals of 100, 75, and 50. Goals are co
 - Authorize Slack command users, not only the Slack request signature.
 - Escape/sanitize announcement HTML and consolidate duplicate Slack routes.
 - Remove committed legacy diagnostic/data artifacts after confirming they are not needed.
-- Remove compatibility database columns/tables only after telemetry and E2E coverage prove no readers remain.
 - Decide whether the static rules pages should render live scoring values.

@@ -2,7 +2,37 @@
 
 > **Purpose:** Safe migration, verification, rollback, and routine-maintenance runbook.
 > **Source of truth:** `supabase/config.toml`, `supabase/migrations/`, `supabase/tests/`, and `package.json`.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-10
+
+## Production Compatibility Retirement — 2026-09-10
+
+The compatibility-free application commit `ad84886` was deployed successfully
+before migration `20260910010000_retire_legacy_compatibility.sql` was applied to
+Supabase project `fkudsbomcwahlwmyqndb`. This ordering allowed the new application
+to run against both schemas, then removed the old objects only after Vercel passed.
+
+The migration removed five duplicate tables (`activity_rules`, `game_settings`,
+`streak_settings`, `tier_settings`, and `weekly_history`), nine projection columns
+from `teams`, two deprecated submission columns, one derived edit-request column,
+and the associated synchronization routines/trigger. Transactional RPC signatures
+remain stable and now write only canonical tables.
+
+Migrations `20260910020000` and `20260910030000` then normalized the structured
+edit-request numeric key from `activity_units` to `activity_value_number` using a
+zero-downtime bridge. Thirty-five resolved request payloads were rewritten; no
+pending request required conversion. The final RPC accepts only the canonical key.
+
+Post-release verification confirmed 39 teams, 73 memberships, 2,083 submissions,
+2,083 score events, and 1,124 team-week results remained. Retired table/column
+counts were zero, local/remote migration histories matched, invariants passed,
+database lint returned no findings, and a repeated finalization returned
+`already_finalized`. Live TypeScript database types were regenerated.
+
+The protected `release_backup_20260909_pre_normalization` schema remains available
+as a same-database logical snapshot. The maintainer explicitly accepted proceeding
+without Supabase physical backups/PITR. `CRON_SECRET` is still absent from Vercel,
+so both scheduled routes intentionally return HTTP 503 until it is configured and
+the application is redeployed.
 
 ## Production Release Record — 2026-09-09
 
@@ -65,8 +95,11 @@ Never run the baseline SQL against the existing production database. Never mark 
 The normalized rollout migrations are:
 
 1. `20260909010000_normalize_core_model.sql` — additive tables, keys, backfills, views, constraints, and indexes.
-2. `20260909020000_transactional_workflows.sql` — explicit RPC workflows, point projections, idempotent finalization, and compatibility synchronization.
+2. `20260909020000_transactional_workflows.sql` — explicit RPC workflows, temporary point projections, idempotent finalization, and compatibility synchronization later retired by step 4.
 3. `20260909030000_harden_rls_and_storage.sql` — least-privilege RLS, grants, private proof storage, MIME and size limits.
+4. `20260910010000_retire_legacy_compatibility.sql` — canonical-only RPCs/reads and removal of duplicate tables, columns, and sync routines.
+5. `20260910020000_normalize_edit_request_payload.sql` — lossless JSON-key backfill plus dual-key deployment bridge.
+6. `20260910030000_remove_edit_request_payload_bridge.sql` — canonical-only edit-request payload validation.
 
 ## Production Rollout
 
@@ -115,7 +148,10 @@ This rollout changes application contracts and RLS together. Use a short mainten
 
 ## Rollback
 
-Prefer a forward fix. The normalized migrations preserve legacy columns and tables as compatibility projections, so the new schema can remain while application defects are corrected.
+Prefer a forward fix. The compatibility layer has been removed, so rolling the
+application back before `ad84886` would be schema-incompatible. Keep the current
+canonical contract and repair defects with a reviewed application change or
+forward migration.
 
 If access policies cause an incident, do not delete normalized data. Restore the prior grants/policies in a new reviewed migration, then redeploy. If data integrity is affected, stop submissions and restore from the pre-release backup/PITR point with Supabase support procedures. A database restore and Vercel rollback must use compatible release versions.
 
@@ -138,9 +174,10 @@ Both require `Authorization: Bearer <CRON_SECRET>` and fail closed when the secr
 
 - every team has a season;
 - one active team per user per season and no roster over two members;
+- memberships, score events, and finalized results agree with their team/week seasons;
 - canonical submission references are populated;
 - active submission points match the ledger;
 - voided submissions have no ledger events;
-- cached weekly totals match the current-week ledger.
+- retired compatibility tables, columns, and synchronization routines remain absent.
 
 The test is read-only and ends with `ROLLBACK`.

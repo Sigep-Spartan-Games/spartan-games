@@ -1,8 +1,8 @@
 # Business Rules
 
 > **Purpose:** Domain behavior enforced by the database workflows.
-> **Source of truth:** `20260909020000_transactional_workflows.sql` and its constraints.
-> **Last reviewed:** 2026-09-09
+> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, and database constraints.
+> **Last reviewed:** 2026-09-10
 
 ## Season Lifecycle
 
@@ -11,7 +11,7 @@
 - `completed`: both are closed and an end date is recorded.
 - Starting a new season archives the previous season and its teams, preserves all history, and copies tier goals and current scoring rules.
 
-Admins may independently toggle registration/submissions for controlled testing. All controls are changed through `set_season_controls_v2`; legacy `game_settings` is updated only for compatibility.
+Admins may independently toggle registration/submissions for controlled testing. All controls are changed through `set_season_controls_v2` and stored on the current `seasons` row.
 
 ## Teams
 
@@ -64,15 +64,15 @@ Changing an activity rule creates a new version. Historical submissions and resu
 
 The streak update and activity submission share one transaction and team row lock. A bonus is a separate `streak_bonus` ledger event linked to the activity submission; it is not a synthetic activity.
 
-## Point Projections
+## Derived Standings
 
 `score_events` is authoritative.
 
-- `teams.weekly_points` is the sum of ledger events in the current season-local week.
-- `teams.total_points` is the sum in finalized weeks.
+- `team_standings.weekly_points` is the sum of ledger events in the current season-local week.
 - `team_standings.season_points` is the complete season ledger sum, including the open week.
+- Finalized weekly values and wins are snapshots in `team_week_results`.
 
-Ledger insert/update/delete triggers rebuild affected team caches. Do not increment/decrement cached totals directly.
+Do not store or increment duplicate point totals on `teams`; query the ledger-derived standings view.
 
 ## Weekly Finalization
 
@@ -85,8 +85,8 @@ Ledger insert/update/delete triggers rebuild affected team caches. Do not increm
 - snapshots tier goal and streak;
 - ranks within tier by week points, prior points, team creation time, then team ID;
 - awards one winner per tier only when first place scored more than zero;
-- upserts `team_week_results` and the compatibility `weekly_history` row;
-- marks the week finalized and rebuilds projections;
+- upserts `team_week_results` as the sole weekly history/winner record;
+- marks the week finalized;
 - returns `already_finalized` on a safe repeat.
 
 Finalization never deletes submissions or resets authoritative data.
