@@ -272,7 +272,13 @@ export default async function ProfilePage() {
                           teamId={team.id}
                           activityKey={submission.activity_key}
                           rule={rule}
-                          originalSubmission={submission}
+                          originalSubmission={{
+                            activity_date: submission.activity_date,
+                            activity_units: submission.activity_value_number,
+                            activity_value_text: submission.activity_value_text,
+                            activity_value_bool: submission.activity_value_bool,
+                            did_with_teammate: submission.did_with_teammate,
+                          }}
                           allRules={activityRules || []}
                         />
                       ) : null)}

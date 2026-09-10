@@ -30,6 +30,15 @@ begin
 
   if exists (
     select 1
+    from public.team_memberships tm
+    join public.teams t on t.id = tm.team_id
+    where tm.season_id <> t.season_id
+  ) then
+    raise exception 'Invariant failed: membership season differs from team season';
+  end if;
+
+  if exists (
+    select 1
     from public.submissions s
     where s.season_id is null or s.week_id is null
       or (s.submission_kind = 'activity' and (
@@ -62,18 +71,78 @@ begin
 
   if exists (
     select 1
-    from public.teams t
-    join public.seasons season on season.id = t.season_id
-    left join lateral (
-      select coalesce(sum(se.points), 0)::integer as points
-      from public.score_events se
-      join public.competition_weeks cw on cw.id = se.week_id
-      where se.team_id = t.id
-        and cw.starts_on = public.week_start((now() at time zone season.timezone)::date)
-    ) current_week on true
-    where t.weekly_points <> current_week.points
+    from public.score_events se
+    join public.teams t on t.id = se.team_id
+    join public.competition_weeks cw on cw.id = se.week_id
+    where se.season_id <> t.season_id
+       or cw.season_id <> se.season_id
   ) then
-    raise exception 'Invariant failed: weekly point projection is stale';
+    raise exception 'Invariant failed: score event references disagree on season';
+  end if;
+
+  if exists (
+    select 1
+    from public.team_week_results twr
+    join public.teams t on t.id = twr.team_id
+    join public.competition_weeks cw on cw.id = twr.week_id
+    where twr.season_id <> t.season_id
+       or cw.season_id <> twr.season_id
+  ) then
+    raise exception 'Invariant failed: finalized result references disagree on season';
+  end if;
+
+  if exists (
+    select 1
+    from (values
+      ('activity_rules'),
+      ('game_settings'),
+      ('streak_settings'),
+      ('tier_settings'),
+      ('weekly_history')
+    ) legacy(table_name)
+    where to_regclass('public.' || legacy.table_name) is not null
+  ) then
+    raise exception 'Invariant failed: legacy compatibility table still exists';
+  end if;
+
+  if exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prosrc ~ 'public\.(activity_rules|game_settings|streak_settings|tier_settings|weekly_history)'
+  ) then
+    raise exception 'Invariant failed: a public routine still references a legacy table';
+  end if;
+
+  if to_regprocedure('public.sync_legacy_team_members(uuid)') is not null
+     or to_regprocedure('public.rebuild_team_point_projection(uuid)') is not null
+     or to_regprocedure('public.score_event_projection_trigger()') is not null then
+    raise exception 'Invariant failed: a retired compatibility routine still exists';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns c
+    join (values
+      ('teams', 'member1_id'),
+      ('teams', 'member1_name'),
+      ('teams', 'member2_id'),
+      ('teams', 'member2_name'),
+      ('teams', 'weekly_points'),
+      ('teams', 'total_points'),
+      ('teams', 'weeks_won'),
+      ('teams', 'streak_count'),
+      ('teams', 'last_activity_date'),
+      ('submissions', 'activity'),
+      ('submissions', 'activity_units'),
+      ('submission_edit_requests', 'team_id')
+    ) legacy(table_name, column_name)
+      on legacy.table_name = c.table_name
+     and legacy.column_name = c.column_name
+    where c.table_schema = 'public'
+  ) then
+    raise exception 'Invariant failed: deprecated compatibility column still exists';
   end if;
 end;
 $$;

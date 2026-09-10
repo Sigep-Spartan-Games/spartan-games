@@ -10,13 +10,13 @@ import { Flame } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  buildTeamRosterMap,
+  EMPTY_TEAM_ROSTER,
+  type CanonicalRosterRow,
+} from "@/lib/team-rosters";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
-type ProfileRelation = { first_name: string | null; last_name: string | null; email: string | null };
-
-function oneRelation<T>(value: T | T[] | null): T | null {
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
 
 function TeamsSkeleton() {
   return (
@@ -54,30 +54,40 @@ async function AdminTeamsInner({
   const progressFilter = typeof sp.progress === "string" ? sp.progress : "";
   const tierFilter = typeof sp.tier === "string" ? sp.tier : "";
 
-  // Fetch all teams
-  const { data: teams, error } = await supabase
-    .from("teams")
-    .select(
-      `
-      id, 
-      name, 
-      weekly_points, 
-      total_points, 
-      invite_code, 
-      tier, 
-      weeks_won, 
-      streak_count,
-      member1:profiles!member1_id(first_name, last_name, email),
-      member2:profiles!member2_id(first_name, last_name, email)
-    `,
-    )
-    .is("archived_at", null)
-    .order("name");
+  const [standingsResult, identitiesResult, rostersResult, tierSettingsResult] =
+    await Promise.all([
+      supabase
+        .from("team_standings")
+        .select(
+          "id, name, tier, weekly_points, season_points, weeks_won_count, streak_count, last_activity_date, created_at, archived_at",
+        )
+        .is("archived_at", null)
+        .order("name"),
+      supabase
+        .from("teams")
+        .select("id, invite_code")
+        .is("archived_at", null),
+      supabase
+        .from("active_team_rosters")
+        .select("team_id, user_id, role, display_name, joined_at"),
+      supabase
+        .from("current_tier_settings")
+        .select("tier, weekly_goal"),
+    ]);
 
-  // Fetch tier goals
-  const { data: tierSettings } = await supabase
-    .from("current_tier_settings")
-    .select("tier, weekly_goal");
+  const error =
+    standingsResult.error ??
+    identitiesResult.error ??
+    rostersResult.error ??
+    tierSettingsResult.error;
+  const inviteCodes = new Map(
+    (identitiesResult.data ?? []).map((team) => [team.id, team.invite_code]),
+  );
+  const rosterMap = buildTeamRosterMap(
+    (rostersResult.data ?? []) as CanonicalRosterRow[],
+  );
+  const teams = standingsResult.data ?? [];
+  const tierSettings = tierSettingsResult.data;
 
   const tierGoals: Record<string, number> = {};
   (tierSettings || []).forEach((ts) => {
@@ -96,30 +106,19 @@ async function AdminTeamsInner({
   const teamsWithProgress = (teams ?? []).map((t) => {
     const goal = t.tier ? (tierGoals[t.tier] ?? 100) : 100;
     const weeklyPoints = t.weekly_points ?? 0;
-    const totalPoints = t.total_points ?? 0;
+    const totalPoints = t.season_points ?? 0;
     const percentage = goal > 0 ? Math.round((weeklyPoints / goal) * 100) : 0;
     const metGoal = percentage >= 100;
-
-    const m1 = oneRelation(t.member1 as ProfileRelation | ProfileRelation[] | null);
-    const m1Name = m1
-      ? m1.first_name || m1.last_name
-        ? `${m1.first_name || ""} ${m1.last_name || ""}`.trim()
-        : m1.email
-      : null;
-
-    const m2 = oneRelation(t.member2 as ProfileRelation | ProfileRelation[] | null);
-    const m2Name = m2
-      ? m2.first_name || m2.last_name
-        ? `${m2.first_name || ""} ${m2.last_name || ""}`.trim()
-        : m2.email
-      : null;
+    const roster = rosterMap.get(t.id) ?? EMPTY_TEAM_ROSTER;
 
     return {
       ...t,
-      member1_name: m1Name,
-      member2_name: m2Name,
+      invite_code: inviteCodes.get(t.id) ?? null,
+      member1_name: roster.member1_name,
+      member2_name: roster.member2_name,
       weekly_points: weeklyPoints,
       total_points: totalPoints,
+      weeks_won_count: Number(t.weeks_won_count ?? 0),
       weekly_goal: goal,
       percentage,
       metGoal,
@@ -198,8 +197,8 @@ async function AdminTeamsInner({
 
         {filteredTeams.map((t) => {
           const streakCount = t.streak_count ?? 0;
-          const winsCount = (t.weeks_won as string[] | null)?.length ?? 0;
-          const effectiveTotal = t.total_points + t.weekly_points;
+          const winsCount = t.weeks_won_count;
+          const effectiveTotal = t.total_points;
 
           return (
             <div key={t.id} className="border-b last:border-b-0">

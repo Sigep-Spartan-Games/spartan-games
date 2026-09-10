@@ -2,6 +2,12 @@
 // app/admin/settings/export/submissions.csv/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  buildTeamRosterMap,
+  EMPTY_TEAM_ROSTER,
+  type CanonicalRosterRow,
+} from "@/lib/team-rosters";
 
 function csvEscape(v: any) {
   const s = v === null || v === undefined ? "" : String(v);
@@ -31,7 +37,7 @@ export async function GET() {
   if (!guard.ok)
     return new NextResponse("Unauthorized", { status: guard.status });
 
-  const { supabase } = guard;
+  const supabase = createAdminClient();
 
   // Fetch activity_rules for dynamic labels
   const { data: activityRules } = await supabase
@@ -46,45 +52,57 @@ export async function GET() {
     activityLabels[rule.activity_key] = unitLabel ? `${label} (${unitLabel})` : label;
   }
 
-  // Join teams to include team name + member names for auditing
-  const { data: subs, error } = await supabase
-    .from("submissions")
-    .select(
-      `
-      id,
-      created_at,
-      activity_date,
-      team_id,
-      teams ( name, member1_name, member2_name ),
-      submitted_by,
-      activity_key,
-      did_with_teammate,
-      multiplier,
-      activity_units,
-      activity_value_number,
-      activity_value_text,
-      activity_value_bool,
-      points_per_unit,
-      teammate_bonus,
-      base_points,
-      points_awarded,
-      streak_bonus,
-      proof_image_path
-    `,
-    )
-    .order("created_at", { ascending: false });
+  const [submissionsResult, rostersResult] = await Promise.all([
+    supabase
+      .from("submissions")
+      .select(
+        `
+        id,
+        created_at,
+        activity_date,
+        team_id,
+        teams ( name ),
+        submitted_by,
+        activity_key,
+        did_with_teammate,
+        multiplier,
+        activity_value_number,
+        activity_value_text,
+        activity_value_bool,
+        points_per_unit,
+        teammate_bonus,
+        base_points,
+        points_awarded,
+        streak_bonus,
+        proof_image_path
+      `,
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("team_memberships")
+      .select(
+        "team_id,user_id,role,display_name:display_name_snapshot,joined_at",
+      )
+      .is("left_at", null),
+  ]);
+
+  const subs = submissionsResult.data;
+  const error = submissionsResult.error ?? rostersResult.error;
 
   if (error) return new NextResponse(error.message, { status: 500 });
 
+  const rosterMap = buildTeamRosterMap(
+    (rostersResult.data ?? []) as CanonicalRosterRow[],
+  );
+
   const rows = (subs ?? []).map((s: any) => {
-    // Prefer activity_units, but fall back to activity_value_number for older rows
     const amount =
-      s.activity_units ??
       s.activity_value_number ??
       (s.activity_value_bool ? 1 : "");
 
     const teamName = s.teams?.name ?? "";
-    const teamMembers = [s.teams?.member1_name, s.teams?.member2_name]
+    const roster = rosterMap.get(s.team_id) ?? EMPTY_TEAM_ROSTER;
+    const teamMembers = [roster.member1_name, roster.member2_name]
       .filter(Boolean)
       .join(" & ");
 

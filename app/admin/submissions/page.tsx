@@ -72,7 +72,7 @@ async function AdminSubmissionsInner({
     adminClient
       .from("submission_edit_requests")
       .select(
-        "*, submissions(activity_key, activity_date, activity_units, points_awarded)",
+        "*, submissions(team_id, activity_key, activity_date, activity_value_number, points_awarded)",
       )
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
@@ -180,7 +180,7 @@ async function AdminSubmissionsInner({
                   >
                     <div className="space-y-2 flex-1">
                       <div className="text-sm font-semibold text-warning">
-                        {teamMap.get(req.team_id) ?? "Unknown Team"} ·{" "}
+                        {teamMap.get(req.submissions?.team_id ?? "") ?? "Unknown Team"} ·{" "}
                         {userMap.get(req.user_id) ?? "Unknown User"}
                       </div>
                       <div className="text-sm">
@@ -264,7 +264,7 @@ async function AdminSubmissionsInner({
                             Current Values
                           </div>
                           <div className="text-sm font-medium">
-                            {req.submissions?.activity_units ?? "N/A"} units ·{" "}
+                            {req.submissions?.activity_value_number ?? "N/A"} units ·{" "}
                             {req.submissions?.points_awarded ?? "N/A"} pts
                           </div>
                         </div>

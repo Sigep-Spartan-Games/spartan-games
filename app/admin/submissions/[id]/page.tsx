@@ -82,7 +82,6 @@ async function AdminSubmissionEditInner({
       activity_key,
       activity_date,
       did_with_teammate,
-      activity_units,
       activity_value_number,
       activity_value_text,
       activity_value_bool,
@@ -100,9 +99,7 @@ async function AdminSubmissionEditInner({
     );
   }
 
-  // preload numeric amount from activity_units OR activity_value_number
-  const preloadedUnits =
-    sub.activity_units ?? sub.activity_value_number ?? null;
+  const preloadedUnits = sub.activity_value_number ?? null;
 
   let suggested: {
     activity_key?: string;

@@ -3,6 +3,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  buildTeamRosterMap,
+  EMPTY_TEAM_ROSTER,
+  type CanonicalRosterRow,
+} from "@/lib/team-rosters";
 
 function csvEscape(v: any) {
   const s = v === null || v === undefined ? "" : String(v);
@@ -39,32 +44,72 @@ export async function GET() {
 
   const supabase = createAdminClient();
 
-  const { data: teams, error } = await supabase
-    .from("teams")
-    .select(
-      "id,name,total_points,weekly_points,member1_name,member2_name,invite_code,member1_id,member2_id,created_at,tier,streak_count,last_activity_date,weeks_won",
-    )
-    .order("total_points", { ascending: false })
-    .order("name", { ascending: true });
+  const [standingsResult, identitiesResult, rostersResult, winsResult] =
+    await Promise.all([
+      supabase
+        .from("team_standings")
+        .select(
+          "id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date",
+        )
+        .order("season_points", { ascending: false })
+        .order("name", { ascending: true }),
+      supabase.from("teams").select("id,invite_code"),
+      supabase
+        .from("team_memberships")
+        .select(
+          "team_id,user_id,role,display_name:display_name_snapshot,joined_at",
+        )
+        .is("left_at", null),
+      supabase
+        .from("team_week_results")
+        .select("team_id,competition_weeks(starts_on)")
+        .eq("won", true),
+    ]);
+
+  const error =
+    standingsResult.error ??
+    identitiesResult.error ??
+    rostersResult.error ??
+    winsResult.error;
 
   if (error) return new NextResponse(error.message, { status: 500 });
 
-  const rows = (teams ?? []).map((t) => ({
-    team_name: t.name,
-    total_points: t.total_points ?? 0,
-    weekly_points: t.weekly_points ?? 0,
-    tier: t.tier ?? "",
-    streak_count: t.streak_count ?? 0,
-    last_activity_date: t.last_activity_date ?? "",
-    weeks_won: weeksWonStr(t.weeks_won),
-    member1_name: t.member1_name ?? "",
-    member2_name: t.member2_name ?? "",
-    invite_code: t.invite_code ?? "",
-    team_id: t.id,
-    member1_id: t.member1_id ?? "",
-    member2_id: t.member2_id ?? "",
-    created_at: t.created_at,
-  }));
+  const inviteCodes = new Map(
+    (identitiesResult.data ?? []).map((team) => [team.id, team.invite_code]),
+  );
+  const rosterMap = buildTeamRosterMap(
+    (rostersResult.data ?? []) as CanonicalRosterRow[],
+  );
+  const winDates = new Map<string, string[]>();
+  for (const result of winsResult.data ?? []) {
+    const relation = Array.isArray(result.competition_weeks)
+      ? result.competition_weeks[0]
+      : result.competition_weeks;
+    if (!relation?.starts_on) continue;
+    const dates = winDates.get(result.team_id) ?? [];
+    dates.push(relation.starts_on);
+    winDates.set(result.team_id, dates);
+  }
+
+  const rows = (standingsResult.data ?? []).map((team) => {
+    const roster = rosterMap.get(team.id) ?? EMPTY_TEAM_ROSTER;
+    return {
+      team_name: team.name,
+      total_points: team.season_points ?? 0,
+      weekly_points: team.weekly_points ?? 0,
+      tier: team.tier ?? "",
+      streak_count: team.streak_count ?? 0,
+      last_activity_date: team.last_activity_date ?? "",
+      weeks_won: weeksWonStr(winDates.get(team.id) ?? []),
+      member1_name: roster.member1_name ?? "",
+      member2_name: roster.member2_name ?? "",
+      invite_code: inviteCodes.get(team.id) ?? "",
+      team_id: team.id,
+      member1_id: roster.member1_id ?? "",
+      member2_id: roster.member2_id ?? "",
+      created_at: team.created_at,
+    };
+  });
 
   const headers = [
     "team_name",

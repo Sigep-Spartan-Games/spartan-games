@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  buildTeamRosterMap,
+  EMPTY_TEAM_ROSTER,
+  type CanonicalRosterRow,
+} from "@/lib/team-rosters";
 
 async function requireAdminForRoute() {
   const supabase = await createClient();
@@ -39,7 +44,6 @@ function boolStr(v: any) {
 
 function amountFromSubmission(s: any) {
   const amt =
-    s.activity_units ??
     s.activity_value_number ??
     (s.activity_value_bool === true ? 1 : null);
 
@@ -102,18 +106,64 @@ export async function GET() {
     activityLabels[rule.activity_key] = unitLabel ? `${label} (${unitLabel})` : label;
   }
 
-  // Teams - fetch all new fields
-  const { data: teams, error: teamsErr } = await supabase
-    .from("teams")
-    .select(
-      "id,name,total_points,weekly_points,member1_name,member2_name,invite_code,member1_id,member2_id,created_at,tier,streak_count,last_activity_date,weeks_won",
-    )
-    .order("total_points", { ascending: false })
-    .order("name", { ascending: true });
+  const [standingsResult, identitiesResult, rostersResult, winsResult] =
+    await Promise.all([
+      supabase
+        .from("team_standings")
+        .select(
+          "id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date",
+        )
+        .order("season_points", { ascending: false })
+        .order("name", { ascending: true }),
+      supabase.from("teams").select("id,invite_code"),
+      supabase
+        .from("team_memberships")
+        .select(
+          "team_id,user_id,role,display_name:display_name_snapshot,joined_at",
+        )
+        .is("left_at", null),
+      supabase
+        .from("team_week_results")
+        .select("team_id,competition_weeks(starts_on)")
+        .eq("won", true),
+    ]);
 
+  const teamsErr =
+    standingsResult.error ??
+    identitiesResult.error ??
+    rostersResult.error ??
+    winsResult.error;
   if (teamsErr) return new NextResponse(teamsErr.message, { status: 500 });
 
-  // Submissions - fetch all fields including new ones
+  const inviteCodes = new Map(
+    (identitiesResult.data ?? []).map((team) => [team.id, team.invite_code]),
+  );
+  const rosterMap = buildTeamRosterMap(
+    (rostersResult.data ?? []) as CanonicalRosterRow[],
+  );
+  const winDates = new Map<string, string[]>();
+  for (const result of winsResult.data ?? []) {
+    const relation = Array.isArray(result.competition_weeks)
+      ? result.competition_weeks[0]
+      : result.competition_weeks;
+    if (!relation?.starts_on) continue;
+    const dates = winDates.get(result.team_id) ?? [];
+    dates.push(relation.starts_on);
+    winDates.set(result.team_id, dates);
+  }
+
+  const teams = (standingsResult.data ?? []).map((team) => {
+    const roster = rosterMap.get(team.id) ?? EMPTY_TEAM_ROSTER;
+    return {
+      ...team,
+      total_points: team.season_points ?? 0,
+      invite_code: inviteCodes.get(team.id) ?? null,
+      weeks_won: winDates.get(team.id) ?? [],
+      ...roster,
+    };
+  });
+
+  // Submission facts remain snapshots, while team membership comes from the roster.
   const { data: subs, error: subsErr } = await supabase
     .from("submissions")
     .select(
@@ -122,13 +172,11 @@ export async function GET() {
       created_at,
       activity_date,
       team_id,
-      teams ( name, member1_name, member2_name ),
+      teams ( name ),
       submitted_by,
       activity_key,
-      activity,
       did_with_teammate,
       multiplier,
-      activity_units,
       activity_value_number,
       activity_value_text,
       activity_value_bool,
@@ -144,11 +192,51 @@ export async function GET() {
 
   if (subsErr) return new NextResponse(subsErr.message, { status: 500 });
 
-  // Weekly History
-  const { data: weeklyHistory } = await supabase
-    .from("weekly_history")
-    .select("id, team_id, teams ( name ), week_identifier, weekly_points, tier, weekly_goal, met_goal, weeks_won_count, streak_count, created_at")
-    .order("created_at", { ascending: false });
+  const { data: resultHistory, error: historyError } = await supabase
+    .from("team_week_results")
+    .select(
+      "id,team_id,points,tier_key,goal_points,won,streak_count,finalized_at,teams(name),competition_weeks(label,starts_on)",
+    )
+    .order("finalized_at", { ascending: false });
+
+  if (historyError)
+    return new NextResponse(historyError.message, { status: 500 });
+
+  const cumulativeWins = new Map<string, number>();
+  const weeklyHistory = [...(resultHistory ?? [])]
+    .sort((a: any, b: any) => {
+      const aWeek = Array.isArray(a.competition_weeks)
+        ? a.competition_weeks[0]
+        : a.competition_weeks;
+      const bWeek = Array.isArray(b.competition_weeks)
+        ? b.competition_weeks[0]
+        : b.competition_weeks;
+      return String(aWeek?.starts_on ?? "").localeCompare(
+        String(bWeek?.starts_on ?? ""),
+      );
+    })
+    .map((result: any) => {
+      const week = Array.isArray(result.competition_weeks)
+        ? result.competition_weeks[0]
+        : result.competition_weeks;
+      const wins =
+        (cumulativeWins.get(result.team_id) ?? 0) + (result.won ? 1 : 0);
+      cumulativeWins.set(result.team_id, wins);
+      return {
+        id: result.id,
+        team_id: result.team_id,
+        teams: result.teams,
+        week_identifier: week?.label ?? "",
+        weekly_points: result.points,
+        tier: result.tier_key,
+        weekly_goal: result.goal_points,
+        met_goal: result.points >= result.goal_points,
+        weeks_won_count: wins,
+        streak_count: result.streak_count,
+        created_at: result.finalized_at,
+      };
+    })
+    .reverse();
 
   // Tier Settings
   const { data: tierSettings } = await supabase
@@ -284,7 +372,8 @@ export async function GET() {
 
   (subs ?? []).forEach((s: any) => {
     const teamName = s.teams?.name ?? "";
-    const teamMembers = [s.teams?.member1_name, s.teams?.member2_name]
+    const roster = rosterMap.get(s.team_id) ?? EMPTY_TEAM_ROSTER;
+    const teamMembers = [roster.member1_name, roster.member2_name]
       .filter(Boolean)
       .join(" & ");
 

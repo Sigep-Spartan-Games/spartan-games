@@ -27,7 +27,7 @@ export default async function WeeklyProgressBar({
 
   const supabase = await createClient();
   const { data: tierSettings } = await supabase
-    .from("tier_settings")
+    .from("current_tier_settings")
     .select("weekly_goal")
     .eq("tier", tier)
     .maybeSingle();
