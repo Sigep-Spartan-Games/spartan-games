@@ -24,6 +24,11 @@ changes, third members, and completed-season reopening are enforced in PostgreSQ
 Vercel deployment, database invariants/lint/history, production row-count checks,
 rollback-only workflow tests, login redirects, and cron authorization checks passed.
 
+Finalized-history synchronization migration `20260911030000` and commit `d9ae7de`
+are live as of 2026-09-11. The migration repaired eight imported mismatches and
+now refreshes a finalized week's points, ranks, and winners whenever an admin edit
+or void changes its ledger. All 1,124 finalized result rows agree with the ledger.
+
 `CRON_SECRET` is now present in the production Vercel environment: unauthenticated
 requests to both cron routes return HTTP 401 as intended. Confirm an authorized
 scheduled invocation in Vercel logs to verify the complete service-role path.

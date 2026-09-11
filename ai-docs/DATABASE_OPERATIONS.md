@@ -4,6 +4,21 @@
 > **Source of truth:** `supabase/config.toml`, `supabase/migrations/`, `supabase/tests/`, and `package.json`.
 > **Last reviewed:** 2026-09-11
 
+## Finalized History Synchronization — 2026-09-11
+
+Migration `20260911030000_keep_finalized_results_in_sync.sql` and application
+commit `d9ae7de` are live. The migration centralized weekly snapshot calculation,
+routed normal finalization through it, and made administrator edits and voids
+atomically refresh any affected finalized weeks.
+
+The migration repaired eight imported team/week point mismatches across five
+historical weeks from the authoritative `score_events` ledger. After repair, all
+1,124 finalized result rows and all season totals match the ledger; 2,082 active
+submissions remain unchanged. Rollback-only rehearsals covered normal finalization,
+an admin edit, and an admin void. Production invariants, database lint, migration
+history, generated TypeScript types, application checks, and Vercel deployment
+all passed.
+
 ## Season and Roster Lifecycle Enforcement — 2026-09-11
 
 Migration `20260911020000_enforce_season_and_roster_lifecycle.sql` and matching
