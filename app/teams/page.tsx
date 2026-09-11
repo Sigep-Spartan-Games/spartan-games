@@ -54,9 +54,10 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
 
   const { data: settings, error: settingsError } = await supabase
     .from("current_season_settings")
-    .select("registration_open")
+    .select("id, registration_open, status")
     .maybeSingle();
   const registrationOpen = !settingsError && Boolean(settings?.registration_open);
+  const seasonStatus = settings?.status ?? "registration";
 
   const [{ teams, error }, myTeamResult] = await Promise.all([
     getTeamDirectory(supabase),
@@ -71,7 +72,18 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
   const myTeam = myDirectoryTeam && myTeamResult.team
     ? { ...myDirectoryTeam, invite_code: myTeamResult.team.invite_code, role: myTeamResult.team.role }
     : null;
+  const { count: submittedActivityCount } = me && myTeam && settings?.id
+    ? await supabase
+        .from("submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("season_id", settings.id)
+        .eq("submitted_by", me.id)
+        .eq("submission_kind", "activity")
+        .is("voided_at", null)
+    : { count: 0 };
+  const hasSubmittedActivity = (submittedActivityCount ?? 0) > 0;
   const canRegister = Boolean(me) && !myTeam && registrationOpen;
+  const canLeaveTeam = registrationOpen && !hasSubmittedActivity;
   const fieldClass =
     "h-11 w-full rounded-control border border-input bg-card px-3 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:bg-muted disabled:opacity-70 md:h-10 md:text-sm";
 
@@ -86,12 +98,12 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
       ) : null}
       {!registrationOpen ? (
         <StatusBanner variant="warning" title="Team registration is closed">
-          You can still view teams. Registration will reopen when the games end.
+          You can still view teams, but roster changes are unavailable for this season.
         </StatusBanner>
       ) : null}
       {settingsError ? (
         <StatusBanner variant="warning" title="Settings warning">
-          Could not load game settings: {settingsError.message}. Defaulting registration to open.
+          Could not load game settings: {settingsError.message}. Registration controls are hidden for safety.
         </StatusBanner>
       ) : null}
       {error ? (
@@ -170,7 +182,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                     </span>
                   ) : null}
                 </div>
-                {myTeam.role === "captain" && registrationOpen ? (
+                {myTeam.role === "captain" && seasonStatus === "registration" ? (
                   <form action={changeTierAction} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <input type="hidden" name="teamId" value={myTeam.id} />
                     <label className="flex-1 space-y-2">
@@ -198,11 +210,18 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                   action={leaveTeamActionFormData}
                   payload={{ teamId: myTeam.id }}
                   title="Leave Team"
-                  description="Are you sure you want to leave your team? If you are the last member, the team will be deleted."
+                  description="Are you sure you want to leave your team? If you are the last member, the team will be archived. You cannot leave after submitting an activity."
                   buttonText="Leave team"
+                  disabled={!canLeaveTeam}
+                  disabledReason={hasSubmittedActivity ? "You cannot leave after submitting an activity this season." : "Team registration is closed."}
                   className="h-11 w-full rounded-control border px-4 text-sm font-semibold md:h-10"
                   buttonSize="default"
                 />
+                {hasSubmittedActivity ? (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Your roster is locked because you have submitted an activity this season.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>

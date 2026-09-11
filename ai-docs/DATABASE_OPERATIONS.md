@@ -127,6 +127,7 @@ The normalized rollout migrations are:
 5. `20260910020000_normalize_edit_request_payload.sql` — lossless JSON-key backfill plus dual-key deployment bridge.
 6. `20260910030000_remove_edit_request_payload_bridge.sql` — canonical-only edit-request payload validation.
 7. `20260911010000_harden_season_close_and_deletion_requests.sql` — archived-team exclusion, coordinated season completion/rollover, atomic deletion-request approval, and repair of previously approved deletions.
+8. `20260911020000_enforce_season_and_roster_lifecycle.sql` — one-way season controls, active-season late registration, participant activity roster locks, post-start tier freeze, and database-enforced two-person rosters.
 
 ## Production Rollout
 
@@ -200,13 +201,14 @@ Both require `Authorization: Bearer <CRON_SECRET>` and fail closed when the secr
 `supabase/tests/normalized_model_invariants.sql` verifies:
 
 - every team has a season;
-- one active team per user per season and no roster over two members;
+- one active team per user per season, no roster over two members, and the roster-capacity trigger remains installed;
 - memberships, score events, and finalized results agree with their team/week seasons;
 - canonical submission references are populated;
 - active submission points match the ledger;
 - voided submissions have no ledger events;
 - voided-submission proofs are queued for cleanup and approved deletion requests have no active submission;
-- season completion and rollover route through the coordinated close workflow;
+- season completion and rollover route through the coordinated close workflow, and completed seasons cannot reopen;
+- submitted participants remain roster-locked and non-admin tier changes freeze after Start Games;
 - retired compatibility tables, columns, and synchronization routines remain absent.
 
 The test is read-only and ends with `ROLLBACK`.

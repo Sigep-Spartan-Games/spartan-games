@@ -20,6 +20,8 @@ interface ConfirmDeleteButtonProps {
   className?: string;
   buttonSize?: "sm" | "icon" | "default";
   buttonText?: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 export function ConfirmDeleteButton({
@@ -30,6 +32,8 @@ export function ConfirmDeleteButton({
   className,
   buttonSize = "icon",
   buttonText = "Delete",
+  disabled = false,
+  disabledReason,
 }: ConfirmDeleteButtonProps) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,12 +59,13 @@ export function ConfirmDeleteButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        disabled={disabled}
         className={cn(
-          "flex items-center justify-center rounded-control text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex items-center justify-center rounded-control text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
           buttonSize === "icon" ? "h-11 w-11" : "h-11 px-3 text-xs border",
           className,
         )}
-        title={buttonText}
+        title={disabledReason ?? buttonText}
         aria-label={buttonText}
       >
         {buttonSize === "icon" ? <Trash2 className="h-4 w-4" /> : buttonText}

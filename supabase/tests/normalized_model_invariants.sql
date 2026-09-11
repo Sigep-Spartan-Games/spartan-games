@@ -28,6 +28,16 @@ begin
     raise exception 'Invariant failed: a team has more than two active members';
   end if;
 
+  if not exists (
+    select 1
+    from pg_trigger trigger
+    where trigger.tgrelid = 'public.team_memberships'::regclass
+      and trigger.tgname = 'team_memberships_enforce_capacity'
+      and not trigger.tgisinternal
+  ) then
+    raise exception 'Invariant failed: team capacity trigger is missing';
+  end if;
+
   if exists (
     select 1
     from public.team_memberships tm
@@ -209,6 +219,40 @@ begin
       and p.prosrc like '%close_current_season_v2%'
   ) then
     raise exception 'Invariant failed: season completion can bypass coordinated close';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'set_season_controls_v2'
+      and p.prosrc like '%Completed seasons cannot be reopened%'
+      and p.prosrc like '%Invalid season transition%'
+  ) then
+    raise exception 'Invariant failed: season lifecycle is not one-way';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'change_team_tier_v2'
+      and p.prosrc like '%Only admins can change a team tier after the games start%'
+  ) then
+    raise exception 'Invariant failed: participant tier changes are not frozen after start';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'leave_team_v2'
+      and p.prosrc like '%cannot leave or switch teams after submitting an activity%'
+  ) then
+    raise exception 'Invariant failed: submitted participants are not roster-locked';
   end if;
 
   if not exists (

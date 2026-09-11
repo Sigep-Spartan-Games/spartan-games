@@ -18,6 +18,8 @@ interface GameControlButtonProps {
   label: string;
   confirmMessage: string;
   variant?: "primary" | "secondary";
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 function GameControlButton({
@@ -25,6 +27,8 @@ function GameControlButton({
   label,
   confirmMessage,
   variant = "primary",
+  disabled = false,
+  disabledReason,
 }: GameControlButtonProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [sendEmail, setSendEmail] = useState(false);
@@ -69,8 +73,8 @@ function GameControlButton({
           <p className="font-semibold">{label}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {isStarting
-              ? "Close registration and open activity submissions."
-              : "Close submissions and reopen team registration."}
+              ? "Open activity submissions while keeping late registration available."
+              : "Finalize the season and close registration and submissions."}
           </p>
         </div>
       </div>
@@ -79,6 +83,7 @@ function GameControlButton({
         <Checkbox
           checked={sendEmail}
           onCheckedChange={(checked) => setSendEmail(checked === true)}
+          disabled={disabled}
           aria-label={`Send an email when selecting ${label}`}
         />
         <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -90,7 +95,8 @@ function GameControlButton({
       <Button
         type="submit"
         variant={isStarting ? "default" : "competition"}
-        disabled={isPending}
+        disabled={isPending || disabled}
+        title={disabledReason}
         className="mt-3 w-full"
       >
         {isPending ? (
@@ -161,9 +167,11 @@ function GameControlButton({
 export default function GameControls({
   startGamesAction,
   endGamesAction,
+  seasonStatus,
 }: {
   startGamesAction: (formData: FormData) => Promise<void>;
   endGamesAction: (formData: FormData) => Promise<void>;
+  seasonStatus: string;
 }) {
   return (
     <section aria-labelledby="quick-actions-heading" className="space-y-3">
@@ -180,14 +188,18 @@ export default function GameControls({
         <GameControlButton
           action={startGamesAction}
           label="Start Games"
-          confirmMessage="Are you sure you want to START the games? This will close registration and open submissions."
+          confirmMessage="Are you sure you want to START the games? Submissions will open and registration will remain open for unteamed users."
           variant="primary"
+          disabled={seasonStatus !== "registration"}
+          disabledReason={seasonStatus === "completed" ? "Start a new season before starting games again." : "Games can only start from registration."}
         />
         <GameControlButton
           action={endGamesAction}
           label="End Games"
-          confirmMessage="Are you sure you want to END the games? This will close submissions and open registration."
+          confirmMessage="Are you sure you want to END the games? The final week will be finalized, and registration and submissions will close permanently for this season."
           variant="secondary"
+          disabled={seasonStatus !== "active"}
+          disabledReason="Games can only end while the season is active."
         />
       </div>
     </section>

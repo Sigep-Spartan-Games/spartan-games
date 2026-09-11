@@ -63,7 +63,9 @@ Prefer these database read contracts:
 
 Admin RPCs are callable by the authenticated role but assert `profiles.is_admin` inside the security-definer function. Granting execute is not equivalent to granting authority.
 
-`set_season_controls_v2(..., status = 'completed')` delegates to `close_current_season_v2()`. `start_new_season_v2(...)` also closes the outgoing season before archiving it. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
+`set_season_controls_v2` enforces the one-way `registration -> active -> completed` lifecycle. Starting active play opens submissions and keeps late registration open; a completed season cannot be reopened. `set_season_controls_v2(..., status = 'completed')` delegates to `close_current_season_v2()`, which closes both controls. `start_new_season_v2(...)` also closes the outgoing season before archiving it. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
+
+Team creation, joining, and leaving all enforce the participant-level activity lock. Once the caller owns a non-voided activity in the season, that caller cannot switch teams. Joining still permits an unteamed late registrant to fill a one-person team, and a membership trigger guarantees that every write path respects the two-member maximum. Non-admin captains may change tier only in the registration stage; admin corrections remain available later.
 
 ## Server Actions
 

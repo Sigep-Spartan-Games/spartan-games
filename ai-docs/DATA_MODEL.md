@@ -39,7 +39,7 @@ job_runs records cron/idempotent workflow executions.
 
 Owns the competition lifecycle: name/slug, timezone, dates, `draft|registration|active|completed`, registration/submission switches, and streak settings. At most one unarchived registration/active season exists.
 
-`current_season_id()` selects the unarchived season used by application views and RPCs. `close_current_season_v2()` is the canonical completion workflow: it closes submissions and finalizes all eligible weeks, including the current partial week, before setting `status = 'completed'`.
+`current_season_id()` selects the unarchived season used by application views and RPCs. Lifecycle transitions are one-way (`registration -> active -> completed`); completed seasons cannot be reopened. Active play keeps registration open by default for unteamed late entrants. `close_current_season_v2()` is the canonical completion workflow: it closes registration and submissions and finalizes all eligible weeks, including the current partial week, before setting `status = 'completed'`.
 
 ### `tiers` and `season_tiers`
 
@@ -54,8 +54,10 @@ Database constraints enforce:
 - one active team per user per season;
 - one active membership row per team/user;
 - one active captain per team;
-- application RPCs enforce the two-person roster limit;
+- a database trigger and application RPCs enforce the two-person roster limit;
 - active team names are unique case-insensitively within a season.
+
+A participant with a non-voided activity submission is roster-locked for that season: the member cannot leave or use a later create/join path to switch teams. Voided activities do not retain the lock. Tier changes by non-admin captains are limited to the registration stage; admins may correct tiers later.
 
 `team_streaks` is one-to-one with a team. `teams` stores only identity, season, tier, invite code, creation time, and archive state.
 

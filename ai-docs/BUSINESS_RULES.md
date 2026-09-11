@@ -1,19 +1,20 @@
 # Business Rules
 
 > **Purpose:** Domain behavior enforced by the database workflows.
-> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, and database constraints.
+> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, and database constraints.
 > **Last reviewed:** 2026-09-11
 
 ## Season Lifecycle
 
 - `registration`: registration may be open; submissions normally remain closed.
-- `active`: registration is closed and submissions may be open.
+- `active`: submissions are open and registration remains open by default so unteamed users may register late.
 - `completed`: both are closed and an end date is recorded.
+- Lifecycle transitions are one-way: `registration -> active -> completed`. A completed season cannot be restarted; an admin must create a new season.
 - Starting a new season archives the previous season and its teams, preserves all history, and copies tier goals and current scoring rules.
 - Completing an active season first locks its season row, closes submissions, ensures every Monday–Sunday week from the season start through the current partial week exists, and finalizes those weeks before recording the completed status.
 - Starting a new season invokes the same close workflow before archiving the outgoing season, so rollover cannot strand an unfinalized final week.
 
-Admins may independently toggle registration/submissions for controlled testing. All controls are changed through `set_season_controls_v2` and stored on the current `seasons` row.
+Admins may independently pause registration while a season is in registration or active play, and may pause submissions while it is active. Submissions cannot open before Start Games, and completed-season controls are locked. All controls are changed through `set_season_controls_v2` and stored on the current `seasons` row.
 
 ## Teams
 
@@ -21,11 +22,13 @@ Admins may independently toggle registration/submissions for controlled testing.
 - A user may belong to one active team per season.
 - A team has at most two active members and one captain.
 - The creator is captain. Joining uses an eight-character invite code generated in PostgreSQL.
-- Only the captain or an admin may rename a team or change its tier. A non-admin may change tier only while registration is open.
-- When a captain leaves, the remaining member becomes captain. An empty team is archived.
+- Only the captain or an admin may rename a team or change its tier. A non-admin captain may change tier only before Start Games; admins retain the correction override afterward.
+- An unteamed user may create or join a team during active play while registration is open. Existing members do not occupy a second team.
+- After a participant records a non-voided activity in a season, that participant cannot leave, create another team, or join another team for that season. This lock belongs to the submitting participant, so a late registrant may still fill the open spot on a one-member team.
+- Before that lock applies, when a captain leaves the remaining member becomes captain. An empty team is archived. End Games closes registration and therefore all member roster changes.
 - Admin removal archives the team and closes active memberships; history is retained.
 
-These checks run under row locks in the `*_v2` team RPCs to prevent concurrent joins or duplicate memberships.
+These checks run under row locks in the `*_v2` team RPCs to prevent concurrent joins or duplicate memberships. A membership trigger independently rejects a third active member and a membership whose season differs from its team.
 
 ## Activity Submission
 

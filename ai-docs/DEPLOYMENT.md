@@ -84,6 +84,9 @@ Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes return 503 if th
 - Login and session refresh.
 - Current leaderboard/rosters, with no exposed email or other-team invite code.
 - Team create, join, rename, tier change, leave.
+- Registration remains available to unteamed users after Start Games; participant tier editing is hidden after start.
+- A participant with an activity cannot leave/switch, a two-member team rejects a third member, and an unteamed participant can fill a one-member team during active play.
+- End Games closes both controls, finalizes the partial week, and cannot be reversed without creating a new season.
 - Numeric/text/boolean submission and teammate bonus.
 - Weekly-cap rejection and same-day streak behavior.
 - Private proof upload and signed view link.

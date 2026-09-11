@@ -39,11 +39,13 @@ async function AdminSettingsInner({
   // Fetch current game settings
   const { data: settings } = await supabase
     .from("current_season_settings")
-    .select("submissions_open, registration_open")
+    .select("submissions_open, registration_open, status")
     .maybeSingle();
 
   const submissionsOpen = settings?.submissions_open ?? false;
   const registrationOpen = settings?.registration_open ?? true;
+  const seasonStatus = settings?.status ?? "registration";
+  const seasonCompleted = seasonStatus === "completed";
 
   return (
     <div className="space-y-4">
@@ -62,6 +64,7 @@ async function AdminSettingsInner({
           <GameControls
             startGamesAction={startGames}
             endGamesAction={endGames}
+            seasonStatus={seasonStatus}
           />
 
           {/* Divider */}
@@ -88,6 +91,7 @@ async function AdminSettingsInner({
                   aria-checked={submissionsOpen}
                   aria-label={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
                   title={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
+                  disabled={seasonCompleted || seasonStatus !== "active"}
                 >
                   <span
                     aria-hidden="true"
@@ -124,6 +128,7 @@ async function AdminSettingsInner({
                   aria-checked={registrationOpen}
                   aria-label={registrationOpen ? "Turn off registration" : "Turn on registration"}
                   title={registrationOpen ? "Turn off registration" : "Turn on registration"}
+                  disabled={seasonCompleted}
                 >
                   <span
                     aria-hidden="true"
@@ -144,8 +149,9 @@ async function AdminSettingsInner({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Use these toggles to independently control submissions and registration.
-              Useful for beta testing when you want both open at the same time.
+              Registration can remain open during active games for late entrants.
+              Submissions can only be toggled while games are active, and completed
+              seasons are locked.
             </p>
           </div>
         </div>

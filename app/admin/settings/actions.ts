@@ -32,15 +32,19 @@ export async function startGames(formData: FormData) {
     .select("submissions_open, status")
     .maybeSingle();
 
-  if (current?.submissions_open && current?.status === "active") {
+  if (current?.status !== "registration") {
     redirect(
       "/admin/settings?error=" +
-        encodeURIComponent("Games are already running. No action taken."),
+        encodeURIComponent(
+          current?.status === "completed"
+            ? "This season is complete. Start a new season to run the games again."
+            : "Games can only be started from the registration stage.",
+        ),
     );
   }
 
   const { error } = await supabase.rpc("set_season_controls_v2", {
-    p_registration_open: false,
+    p_registration_open: true,
     p_submissions_open: true,
     p_status: "active",
   });
@@ -63,7 +67,7 @@ export async function startGames(formData: FormData) {
                 <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">Spartan Games are now live — time to compete!</p>
                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 0 0 24px 0;">
                   <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">✅ <strong style="color: #4ade80;">Submissions are now OPEN</strong></p>
-                  <p style="color: #cbd5e1; font-size: 14px; margin: 0;">🔒 Team registration is now closed</p>
+                  <p style="color: #cbd5e1; font-size: 14px; margin: 0;">Team registration remains open for unteamed users</p>
                 </div>
                 <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">Start logging your activities and earning points for your team!</p>
                 <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/submit"
@@ -89,8 +93,8 @@ export async function startGames(formData: FormData) {
     "/admin/settings?ok=" +
       encodeURIComponent(
         shouldSendEmail
-          ? "Games started: registration closed, submissions opened. Notification emails sent!"
-          : "Games started: registration closed, submissions opened. (No emails sent)",
+          ? "Games started: registration and submissions are open. Notification emails sent!"
+          : "Games started: registration and submissions are open. (No emails sent)",
       ),
   );
 }
@@ -105,10 +109,14 @@ export async function endGames(formData: FormData) {
     .select("submissions_open, status")
     .maybeSingle();
 
-  if (!current?.submissions_open && current?.status === "completed") {
+  if (current?.status !== "active") {
     redirect(
       "/admin/settings?error=" +
-        encodeURIComponent("Games have already ended. No action taken."),
+        encodeURIComponent(
+          current?.status === "completed"
+            ? "Games have already ended. Start a new season to run them again."
+            : "Games must be started before they can be ended.",
+        ),
     );
   }
 
@@ -157,8 +165,8 @@ export async function endGames(formData: FormData) {
     "/admin/settings?ok=" +
       encodeURIComponent(
         shouldSendEmail
-          ? "Games ended and submissions closed. Notification emails sent!"
-          : "Games ended and submissions closed. (No emails sent)",
+          ? "Games ended; registration and submissions are closed. Notification emails sent!"
+          : "Games ended; registration and submissions are closed. (No emails sent)",
       ),
   );
 }
