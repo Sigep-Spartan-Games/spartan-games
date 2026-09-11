@@ -65,6 +65,12 @@ Admin RPCs are callable by the authenticated role but assert `profiles.is_admin`
 
 `set_season_controls_v2` enforces the one-way `registration -> active -> completed` lifecycle. Starting active play opens submissions and keeps late registration open; a completed season cannot be reopened. `set_season_controls_v2(..., status = 'completed')` delegates to `close_current_season_v2()`, which closes both controls. `start_new_season_v2(...)` also closes the outgoing season before archiving it. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
 
+`recalculate_week_results(week_id, preserve_snapshots)` is an internal, non-client
+RPC shared by normal finalization, administrator edits, and voids. Editing a
+submission that moves between weeks refreshes both the original and destination
+week when finalized. Recalculation covers every team because one point change may
+alter ranks and the weekly winner.
+
 Team creation, joining, and leaving all enforce the participant-level activity lock. Once the caller owns a non-voided activity in the season, that caller cannot switch teams. Joining still permits an unteamed late registrant to fill a one-person team, and a membership trigger guarantees that every write path respects the two-member maximum. Non-admin captains may change tier only in the registration stage; admin corrections remain available later.
 
 ## Server Actions
@@ -97,7 +103,7 @@ Uses the same auth. Claims a daily `job_runs` key, removes up to 250 queued priv
 
 ## Failure and Retry Rules
 
-- Team joins, caps, streaks, ledger writes, and finalization use locks/constraints rather than check-then-write application logic.
+- Team joins, caps, streaks, ledger writes, finalization, and finalized-history corrections use locks/constraints rather than check-then-write application logic.
 - Finalization is safe to retry by week ID.
 - Proof cleanup is safe to retry; storage objects remain private while queued.
 - A failed RPC rolls back all database changes. If an upload preceded the RPC, the action attempts to remove it.

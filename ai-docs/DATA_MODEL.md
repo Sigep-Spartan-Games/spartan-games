@@ -85,7 +85,13 @@ Valid event types are `activity`, `streak_bonus`, and `admin_adjustment`. Submis
 
 ### `team_week_results`
 
-The immutable-by-convention final result for a team/week: tier snapshot, points, goal, rank, win flag, streak, and finalization timestamp. `(team_id, week_id)` is unique.
+The finalized result snapshot for a team/week: tier snapshot, points, goal, rank, win flag, streak, and finalization timestamp. `(team_id, week_id)` is unique. Rows change only through the controlled recalculation workflow after an administrator corrects authoritative scoring data.
+
+`recalculate_week_results` is the single snapshot calculation routine used by
+normal finalization and post-finalization administrator corrections. Corrections
+preserve tier, goal, streak, and original finalization-time snapshots while
+rebuilding points, ranks, and winners for every participant in the affected week.
+Finalized `points` must equal that team/week's current `score_events` sum.
 
 ### `submission_edit_requests`
 

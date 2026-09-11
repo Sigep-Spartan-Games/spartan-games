@@ -1,7 +1,7 @@
 # Business Rules
 
 > **Purpose:** Domain behavior enforced by the database workflows.
-> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, and database constraints.
+> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, `20260911030000_keep_finalized_results_in_sync.sql`, and database constraints.
 > **Last reviewed:** 2026-09-11
 
 ## Season Lifecycle
@@ -95,11 +95,16 @@ Do not store or increment duplicate point totals on `teams`; query the ledger-de
 - returns `already_finalized` on a safe repeat.
 
 Finalization never deletes submissions or resets authoritative data.
+The snapshot calculation is centralized in `recalculate_week_results`. If an
+admin later edits or voids an activity in a finalized week, the entire affected
+week is recalculated in the same transaction so points, ranks, and winners stay
+aligned with the ledger. Historical tier, goal, and streak snapshots are preserved
+during a correction.
 
 ## Edits and Voids
 
 Users may request edits only for their own non-voided activity submissions. Suggested JSON keys are allow-listed. The database derives ownership and team; it does not trust browser-supplied IDs.
 
-Admin edits recalculate against the current rule and update canonical references and ledger points in one transaction. Admin “delete” voids the submission, removes its ledger events, preserves the row, and queues its proof for cleanup.
+Admin edits recalculate against the current rule and update canonical references and ledger points in one transaction. If the original or destination week is finalized, its complete result set is refreshed before the edit commits. Admin “delete” voids the submission, removes its ledger events, preserves the row, queues its proof for cleanup, and refreshes finalized history when applicable.
 
 Approving a member deletion request performs that same void operation before marking the request approved. Both changes share one database transaction, so an approved deletion request cannot leave an active submission or scoring events behind. Rejecting the request changes only the request status.

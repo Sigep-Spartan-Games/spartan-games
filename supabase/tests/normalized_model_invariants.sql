@@ -124,6 +124,19 @@ begin
 
   if exists (
     select 1
+    from public.team_week_results result
+    where result.points <> coalesce((
+      select sum(event.points)
+      from public.score_events event
+      where event.team_id = result.team_id
+        and event.week_id = result.week_id
+    ), 0)
+  ) then
+    raise exception 'Invariant failed: finalized weekly points disagree with the score ledger';
+  end if;
+
+  if exists (
+    select 1
     from (values
       ('activity_rules'),
       ('game_settings'),
@@ -204,8 +217,8 @@ begin
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
-      and p.proname = 'finalize_competition_week'
-      and p.prosrc like '%t.archived_at is null%'
+      and p.proname = 'recalculate_week_results'
+      and p.prosrc like '%team.archived_at is null%'
   ) then
     raise exception 'Invariant failed: week finalization does not exclude archived teams';
   end if;
@@ -275,6 +288,43 @@ begin
       and p.prosrc like '%void_submission_v2%'
   ) then
     raise exception 'Invariant failed: deletion approval does not void its submission';
+  end if;
+
+  if to_regprocedure('public.recalculate_week_results(uuid,boolean)') is null then
+    raise exception 'Invariant failed: canonical weekly-result recalculation routine is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'finalize_competition_week'
+      and p.prosrc like '%recalculate_week_results%'
+  ) then
+    raise exception 'Invariant failed: normal finalization bypasses canonical result calculation';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'admin_update_submission_v2'
+      and p.prosrc like '%recalculate_week_results%'
+  ) then
+    raise exception 'Invariant failed: admin submission edits do not refresh finalized history';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'void_submission_v2'
+      and p.prosrc like '%recalculate_week_results%'
+  ) then
+    raise exception 'Invariant failed: submission voids do not refresh finalized history';
   end if;
 end;
 $$;

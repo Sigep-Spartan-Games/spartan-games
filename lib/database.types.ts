@@ -1334,6 +1334,10 @@ export type Database = {
       leave_team_v2: { Args: { p_team_id: string }; Returns: undefined }
       parse_week_end: { Args: { p_label: string }; Returns: string }
       parse_week_start: { Args: { p_label: string }; Returns: string }
+      recalculate_week_results: {
+        Args: { p_preserve_snapshots?: boolean; p_week_id: string }
+        Returns: number
+      }
       rename_team_v2: {
         Args: { p_new_name: string; p_team_id: string }
         Returns: undefined
