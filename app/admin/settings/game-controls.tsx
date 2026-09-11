@@ -31,7 +31,7 @@ function GameControlButton({
   disabledReason,
 }: GameControlButtonProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const isStarting = variant === "primary";

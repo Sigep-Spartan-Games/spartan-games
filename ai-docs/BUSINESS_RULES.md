@@ -14,7 +14,7 @@
 - Completing an active season first locks its season row, closes submissions, ensures every Monday–Sunday week from the season start through the current partial week exists, and finalizes those weeks before recording the completed status.
 - Starting a new season invokes the same close workflow before archiving the outgoing season, so rollover cannot strand an unfinalized final week.
 
-Admins may independently pause registration while a season is in registration or active play, and may pause submissions while it is active. Submissions cannot open before Start Games, and completed-season controls are locked. All controls are changed through `set_season_controls_v2` and stored on the current `seasons` row.
+The admin UI intentionally exposes lifecycle actions instead of independent registration/submission toggles. Start Games opens submissions and keeps registration open; End Games closes both through the coordinated completion workflow. Notification email is selected by default for both actions, but the admin may opt out before confirmation. Completed-season controls are locked. State changes are stored on the current `seasons` row through the transactional RPCs.
 
 ## Teams
 

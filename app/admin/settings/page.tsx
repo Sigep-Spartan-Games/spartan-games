@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { resetSpartanGames, startGames, endGames, toggleSubmissions, toggleRegistration } from "./actions";
+import { resetSpartanGames, startGames, endGames } from "./actions";
 import TierGoalsSection from "./tier-goals-section";
 import StreakSettingsSection from "./streak-settings-section";
 import CollapsibleSection from "./collapsible-section";
@@ -39,13 +39,10 @@ async function AdminSettingsInner({
   // Fetch current game settings
   const { data: settings } = await supabase
     .from("current_season_settings")
-    .select("submissions_open, registration_open, status")
+    .select("status")
     .maybeSingle();
 
-  const submissionsOpen = settings?.submissions_open ?? false;
-  const registrationOpen = settings?.registration_open ?? true;
   const seasonStatus = settings?.status ?? "registration";
-  const seasonCompleted = seasonStatus === "completed";
 
   return (
     <div className="space-y-4">
@@ -56,7 +53,7 @@ async function AdminSettingsInner({
       {/* Game Controls - Always visible */}
       <CollapsibleSection
         title="Game Controls"
-        description="Start or end the games, and toggle submissions & registration"
+        description="Move the current season through registration, active play, and completion"
         defaultOpen={true}
       >
         <div className="space-y-5">
@@ -67,93 +64,6 @@ async function AdminSettingsInner({
             seasonStatus={seasonStatus}
           />
 
-          {/* Divider */}
-          <div className="border-t" />
-
-          {/* Independent Toggles */}
-          <div className="space-y-3">
-            <div className="text-sm font-medium">Independent Toggles</div>
-
-            {/* Submissions Toggle */}
-            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium">Submissions</div>
-                <div className="text-xs text-muted-foreground">
-                  Allow teams to submit activities
-                </div>
-              </div>
-              <form action={toggleSubmissions} className="shrink-0">
-                <input type="hidden" name="value" value={submissionsOpen ? "false" : "true"} />
-                <button
-                  type="submit"
-                  className="inline-flex h-11 w-14 items-center justify-center rounded-control transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  role="switch"
-                  aria-checked={submissionsOpen}
-                  aria-label={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
-                  title={submissionsOpen ? "Turn off submissions" : "Turn on submissions"}
-                  disabled={seasonCompleted || seasonStatus !== "active"}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={[
-                      "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-                      submissionsOpen ? "bg-success" : "bg-muted-foreground/30",
-                    ].join(" ")}
-                  >
-                    <span
-                      className={[
-                        "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-                        submissionsOpen ? "translate-x-6" : "translate-x-1",
-                      ].join(" ")}
-                    />
-                  </span>
-                </button>
-              </form>
-            </div>
-
-            {/* Registration Toggle */}
-            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium">Team Registration</div>
-                <div className="text-xs text-muted-foreground">
-                  Allow users to create or join teams
-                </div>
-              </div>
-              <form action={toggleRegistration} className="shrink-0">
-                <input type="hidden" name="value" value={registrationOpen ? "false" : "true"} />
-                <button
-                  type="submit"
-                  className="inline-flex h-11 w-14 items-center justify-center rounded-control transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  role="switch"
-                  aria-checked={registrationOpen}
-                  aria-label={registrationOpen ? "Turn off registration" : "Turn on registration"}
-                  title={registrationOpen ? "Turn off registration" : "Turn on registration"}
-                  disabled={seasonCompleted}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={[
-                      "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
-                      registrationOpen ? "bg-success" : "bg-muted-foreground/30",
-                    ].join(" ")}
-                  >
-                    <span
-                      className={[
-                        "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-                        registrationOpen ? "translate-x-6" : "translate-x-1",
-                      ].join(" ")}
-                    />
-                  </span>
-                </button>
-              </form>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Registration can remain open during active games for late entrants.
-              Submissions can only be toggled while games are active, and completed
-              seasons are locked.
-            </p>
-          </div>
         </div>
       </CollapsibleSection>
 

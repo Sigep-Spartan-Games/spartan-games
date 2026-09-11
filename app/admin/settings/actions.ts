@@ -171,52 +171,6 @@ export async function endGames(formData: FormData) {
   );
 }
 
-export async function toggleSubmissions(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/settings");
-
-  const newValue = formData.get("value") === "true";
-
-  const { error } = await supabase.rpc("set_season_controls_v2", {
-    p_registration_open: null,
-    p_submissions_open: newValue,
-    p_status: null,
-  });
-
-  if (error)
-    redirect("/admin/settings?error=" + encodeURIComponent(error.message));
-
-  redirect(
-    "/admin/settings?ok=" +
-      encodeURIComponent(
-        newValue ? "Submissions are now OPEN." : "Submissions are now CLOSED.",
-      ),
-  );
-}
-
-export async function toggleRegistration(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/settings");
-
-  const newValue = formData.get("value") === "true";
-
-  const { error } = await supabase.rpc("set_season_controls_v2", {
-    p_registration_open: newValue,
-    p_submissions_open: null,
-    p_status: null,
-  });
-
-  if (error)
-    redirect("/admin/settings?error=" + encodeURIComponent(error.message));
-
-  redirect(
-    "/admin/settings?ok=" +
-      encodeURIComponent(
-        newValue
-          ? "Team registration is now OPEN."
-          : "Team registration is now CLOSED.",
-      ),
-  );
-}
-
 export async function finalizeWeek() {
   const { supabase } = await requireAdmin("/admin/settings");
 
