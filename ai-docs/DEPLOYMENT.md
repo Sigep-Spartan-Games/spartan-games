@@ -17,6 +17,13 @@ rollback-only production-schema workflow test before application, then passed th
 production invariant suite and database lint. Vercel reported the application
 deployment successful.
 
+Season/roster lifecycle migration `20260911020000` and application commit `0781473`
+are live as of 2026-09-11. The active season now supports late registration while
+submissions remain open; participant team switching, post-start non-admin tier
+changes, third members, and completed-season reopening are enforced in PostgreSQL.
+Vercel deployment, database invariants/lint/history, production row-count checks,
+rollback-only workflow tests, login redirects, and cron authorization checks passed.
+
 `CRON_SECRET` is now present in the production Vercel environment: unauthenticated
 requests to both cron routes return HTTP 401 as intended. Confirm an authorized
 scheduled invocation in Vercel logs to verify the complete service-role path.

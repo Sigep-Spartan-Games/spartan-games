@@ -4,6 +4,25 @@
 > **Source of truth:** `supabase/config.toml`, `supabase/migrations/`, `supabase/tests/`, and `package.json`.
 > **Last reviewed:** 2026-09-11
 
+## Season and Roster Lifecycle Enforcement — 2026-09-11
+
+Migration `20260911020000_enforce_season_and_roster_lifecycle.sql` and matching
+application commit `0781473` are live. The migration makes season progression
+one-way, enables late registration for the active season, freezes non-admin tier
+changes after Start Games, blocks a submitting participant from switching teams,
+and adds a database trigger enforcing two active members per team.
+
+The migration passed a rollback-only production-schema rehearsal before release.
+After application, database invariants, database lint, migration-history parity,
+and rollback-only workflow tests for third-member rejection and forbidden season
+reversals all passed. Production retained 39 active teams, 73 active memberships,
+and 2,082 active submissions, with zero oversized teams. The current season remains
+`active`; registration and submissions are both open.
+
+Vercel completed deployment of commit `0781473`. Anonymous requests to application
+pages still redirect to login, and both cron routes return HTTP 401 without their
+bearer secret as intended.
+
 ## Season-Close and Deletion Hardening — 2026-09-11
 
 Migration `20260911010000_harden_season_close_and_deletion_requests.sql` was
