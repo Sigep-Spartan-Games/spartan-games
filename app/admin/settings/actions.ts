@@ -112,11 +112,7 @@ export async function endGames(formData: FormData) {
     );
   }
 
-  const { error } = await supabase.rpc("set_season_controls_v2", {
-    p_registration_open: false,
-    p_submissions_open: false,
-    p_status: "completed",
-  });
+  const { error } = await supabase.rpc("close_current_season_v2");
 
   if (error)
     redirect("/admin/settings?error=" + encodeURIComponent(error.message));

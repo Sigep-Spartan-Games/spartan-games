@@ -71,6 +71,27 @@ begin
 
   if exists (
     select 1
+    from public.submission_attachments attachment
+    join public.submissions submission on submission.id = attachment.submission_id
+    where submission.voided_at is not null
+      and attachment.deleted_at is null
+  ) then
+    raise exception 'Invariant failed: voided submission proof is not queued for cleanup';
+  end if;
+
+  if exists (
+    select 1
+    from public.submission_edit_requests request
+    join public.submissions submission on submission.id = request.submission_id
+    where request.request_type = 'delete'
+      and request.status = 'approved'
+      and submission.voided_at is null
+  ) then
+    raise exception 'Invariant failed: approved deletion request has an active submission';
+  end if;
+
+  if exists (
+    select 1
     from public.score_events se
     join public.teams t on t.id = se.team_id
     join public.competition_weeks cw on cw.id = se.week_id
@@ -162,6 +183,54 @@ begin
       and p.prosrc like '%activity_units%'
   ) then
     raise exception 'Invariant failed: edit request RPC still accepts the retired numeric-value key';
+  end if;
+
+  if to_regprocedure('public.close_current_season_v2()') is null then
+    raise exception 'Invariant failed: coordinated season-close RPC is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'finalize_competition_week'
+      and p.prosrc like '%t.archived_at is null%'
+  ) then
+    raise exception 'Invariant failed: week finalization does not exclude archived teams';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'set_season_controls_v2'
+      and p.prosrc like '%close_current_season_v2%'
+  ) then
+    raise exception 'Invariant failed: season completion can bypass coordinated close';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'start_new_season_v2'
+      and p.prosrc like '%close_current_season_v2%'
+  ) then
+    raise exception 'Invariant failed: season rollover can bypass coordinated close';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'resolve_submission_edit_request_v2'
+      and p.prosrc like '%void_submission_v2%'
+  ) then
+    raise exception 'Invariant failed: deletion approval does not void its submission';
   end if;
 end;
 $$;

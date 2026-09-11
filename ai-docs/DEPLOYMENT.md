@@ -2,7 +2,7 @@
 
 > **Purpose:** Release order and production infrastructure.
 > **Source of truth:** `vercel.json`, `package.json`, and [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md).
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-11
 
 ## Current Production Status
 
@@ -11,9 +11,9 @@ The normalized database and compatibility retirement are live. Application commi
 2026-09-10. Production invariants, database lint, migration history, retained row
 counts, the anonymous login redirect, and idempotent finalization passed.
 
-`CRON_SECRET` was not present in the production Vercel environment at verification
-time. The two cron routes are safely returning HTTP 503, but scheduled finalization
-and proof cleanup are paused until the secret is configured and Vercel redeploys.
+`CRON_SECRET` is now present in the production Vercel environment: unauthenticated
+requests to both cron routes return HTTP 401 as intended. Confirm an authorized
+scheduled invocation in Vercel logs to verify the complete service-role path.
 Authenticated team, submission, proof, and admin workflow smoke tests still require
 a maintainer test account.
 
@@ -68,7 +68,7 @@ Exact first-deployment, baseline-repair, verification, and rollback commands are
 
 | Route | UTC schedule | Behavior |
 |---|---:|---|
-| `/api/cron/finalize-week` | `0 6 * * 1` | Finalize previous week idempotently |
+| `/api/cron/finalize-week` | `0 6 * * *` | Finalize the previous week idempotently; daily execution supplies retry opportunities |
 | `/api/cron/cleanup-proofs` | `30 6 * * *` | Purge queued private proof images |
 
 Vercel sends `Authorization: Bearer <CRON_SECRET>`. Both routes return 503 if the secret is not configured and 401 if it does not match.

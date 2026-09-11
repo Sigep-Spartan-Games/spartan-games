@@ -2,7 +2,29 @@
 
 > **Purpose:** Safe migration, verification, rollback, and routine-maintenance runbook.
 > **Source of truth:** `supabase/config.toml`, `supabase/migrations/`, `supabase/tests/`, and `package.json`.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-11
+
+## Season-Close and Deletion Hardening — 2026-09-11
+
+Migration `20260911010000_harden_season_close_and_deletion_requests.sql` was
+applied to Supabase project `fkudsbomcwahlwmyqndb` after a rollback-only
+production-schema rehearsal. The rehearsal covered an approved deletion with a
+proof, an archived team, all missing/completed season weeks, and the current
+partial week.
+
+The migration excludes archived teams from newly finalized results and introduces
+`close_current_season_v2()`. Season completion closes submissions under the season
+row lock, ensures and finalizes every week from the season start through the
+current partial week, and only then records the completed status. Both the older
+season-control API and new-season rollover delegate to this workflow.
+
+Deletion-request approval now invokes submission voiding in the request-resolution
+transaction. The migration repaired one previously approved deletion request:
+production now has 2,082 active submissions, one auditable voided submission, no
+ledger event attached to that voided row, and no approved deletion linked to an
+active submission. That request had no proof attachment, so it queued no Storage
+object. Post-migration invariants, database lint, and migration-history comparison
+all passed, and live TypeScript database types were regenerated.
 
 ## Production Compatibility Retirement — 2026-09-10
 
@@ -100,6 +122,7 @@ The normalized rollout migrations are:
 4. `20260910010000_retire_legacy_compatibility.sql` — canonical-only RPCs/reads and removal of duplicate tables, columns, and sync routines.
 5. `20260910020000_normalize_edit_request_payload.sql` — lossless JSON-key backfill plus dual-key deployment bridge.
 6. `20260910030000_remove_edit_request_payload_bridge.sql` — canonical-only edit-request payload validation.
+7. `20260911010000_harden_season_close_and_deletion_requests.sql` — archived-team exclusion, coordinated season completion/rollover, atomic deletion-request approval, and repair of previously approved deletions.
 
 ## Production Rollout
 
@@ -161,12 +184,12 @@ Never hand-delete rows from `score_events`, `team_week_results`, `team_membershi
 
 Vercel invokes:
 
-- `/api/cron/finalize-week` at 06:00 UTC Monday.
+- `/api/cron/finalize-week` daily at 06:00 UTC.
 - `/api/cron/cleanup-proofs` daily at 06:30 UTC.
 
 Both require `Authorization: Bearer <CRON_SECRET>` and fail closed when the secret is absent. `proxy.ts` permits the request to reach the route; the route performs bearer authentication.
 
-`finalize_competition_week` uses an advisory transaction lock plus a `job_runs` deduplication key. Repeated requests return `already_finalized`. Proof cleanup processes at most 250 queued attachments per run and records success/failure in `job_runs`.
+`finalize_competition_week` uses an advisory transaction lock plus a `job_runs` deduplication key. Repeated requests return `already_finalized`, and archived teams are excluded from newly finalized results. `close_current_season_v2` closes submissions and finalizes every season week, including the current partial week, in the completion transaction. Proof cleanup processes at most 250 queued attachments per run and records success/failure in `job_runs`.
 
 ## Invariants
 
@@ -178,6 +201,8 @@ Both require `Authorization: Bearer <CRON_SECRET>` and fail closed when the secr
 - canonical submission references are populated;
 - active submission points match the ledger;
 - voided submissions have no ledger events;
+- voided-submission proofs are queued for cleanup and approved deletion requests have no active submission;
+- season completion and rollover route through the coordinated close workflow;
 - retired compatibility tables, columns, and synchronization routines remain absent.
 
 The test is read-only and ends with `ROLLBACK`.

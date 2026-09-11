@@ -1,8 +1,8 @@
 # Business Rules
 
 > **Purpose:** Domain behavior enforced by the database workflows.
-> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, and database constraints.
-> **Last reviewed:** 2026-09-10
+> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, and database constraints.
+> **Last reviewed:** 2026-09-11
 
 ## Season Lifecycle
 
@@ -10,6 +10,8 @@
 - `active`: registration is closed and submissions may be open.
 - `completed`: both are closed and an end date is recorded.
 - Starting a new season archives the previous season and its teams, preserves all history, and copies tier goals and current scoring rules.
+- Completing an active season first locks its season row, closes submissions, ensures every Monday–Sunday week from the season start through the current partial week exists, and finalizes those weeks before recording the completed status.
+- Starting a new season invokes the same close workflow before archiving the outgoing season, so rollover cannot strand an unfinalized final week.
 
 Admins may independently toggle registration/submissions for controlled testing. All controls are changed through `set_season_controls_v2` and stored on the current `seasons` row.
 
@@ -79,7 +81,7 @@ Do not store or increment duplicate point totals on `teams`; query the ledger-de
 `finalize_competition_week`:
 
 - accepts an explicit week or selects the previous season-local week;
-- rejects an unfinished week;
+- rejects an unfinished week while submissions remain open; coordinated season close may finalize the current partial week after closing submissions;
 - uses an advisory lock and `job_runs` deduplication key;
 - sums ledger points for every active season team;
 - snapshots tier goal and streak;
@@ -96,3 +98,5 @@ Finalization never deletes submissions or resets authoritative data.
 Users may request edits only for their own non-voided activity submissions. Suggested JSON keys are allow-listed. The database derives ownership and team; it does not trust browser-supplied IDs.
 
 Admin edits recalculate against the current rule and update canonical references and ledger points in one transaction. Admin “delete” voids the submission, removes its ledger events, preserves the row, and queues its proof for cleanup.
+
+Approving a member deletion request performs that same void operation before marking the request approved. Both changes share one database transaction, so an approved deletion request cannot leave an active submission or scoring events behind. Rejecting the request changes only the request status.

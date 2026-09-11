@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteSubmission } from "./actions";
+import { approveDeletionRequest, deleteSubmission } from "./actions";
 import SubmissionFilters from "./submission-filters";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { RejectRequestButton } from "./reject-request-button";
@@ -271,12 +271,27 @@ async function AdminSubmissionsInner({
                       </div>
                     </div>
                     <div className="flex flex-row md:flex-col gap-2 shrink-0">
-                      <Link
-                        href={`/admin/submissions/${req.submission_id}?requestId=${req.id}&team=${teamId}`}
-                        className="flex min-h-11 flex-1 items-center justify-center rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
-                      >
-                        Approve / Edit
-                      </Link>
+                      {req.request_type === "delete" ? (
+                        <ConfirmDeleteButton
+                          action={approveDeletionRequest}
+                          payload={{
+                            request_id: req.id,
+                            ...(teamId ? { team: teamId } : {}),
+                          }}
+                          title="Approve deletion request"
+                          description="This voids the submission, removes its points, and queues any proof image for permanent cleanup."
+                          buttonSize="default"
+                          buttonText="Approve deletion"
+                          className="flex-1"
+                        />
+                      ) : (
+                        <Link
+                          href={`/admin/submissions/${req.submission_id}?requestId=${req.id}&team=${teamId}`}
+                          className="flex min-h-11 flex-1 items-center justify-center rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                        >
+                          Approve / Edit
+                        </Link>
+                      )}
                       <div className="flex-1 flex">
                         <RejectRequestButton
                           requestId={req.id}

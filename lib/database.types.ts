@@ -1290,6 +1290,7 @@ export type Database = {
         Args: { p_team_id: string; p_tier_key: string }
         Returns: undefined
       }
+      close_current_season_v2: { Args: never; Returns: Json }
       create_activity_submission_v2: {
         Args: {
           p_activity_date: string

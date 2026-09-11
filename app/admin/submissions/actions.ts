@@ -48,6 +48,28 @@ export async function deleteSubmission(formData: FormData) {
   redirect(listUrl(teamFilter));
 }
 
+/** Approve a member deletion request and atomically void its submission. */
+export async function approveDeletionRequest(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/submissions");
+  const requestId = String(formData.get("request_id") ?? "").trim();
+  const teamFilter = String(formData.get("team") ?? "").trim();
+  if (!requestId) redirect("/admin/submissions?error=missing_request_id");
+
+  const { error } = await supabase.rpc("resolve_submission_edit_request_v2", {
+    p_request_id: requestId,
+    p_status: "approved",
+    p_resolution_note: "Deletion approved by administrator",
+  });
+  if (error) {
+    redirect(
+      `${listUrl(teamFilter)}${teamFilter ? "&" : "?"}error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  refreshSubmissionViews();
+  redirect(listUrl(teamFilter));
+}
+
 export async function updateSubmission(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/submissions");
   const id = String(formData.get("id") ?? "").trim();

@@ -2,7 +2,7 @@
 
 > **Purpose:** Canonical database entities, relationships, derived views, and lifecycle rules.
 > **Source of truth:** `supabase/migrations/`.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-11
 
 ## Design Rules
 
@@ -39,7 +39,7 @@ job_runs records cron/idempotent workflow executions.
 
 Owns the competition lifecycle: name/slug, timezone, dates, `draft|registration|active|completed`, registration/submission switches, and streak settings. At most one unarchived registration/active season exists.
 
-`current_season_id()` selects the unarchived season used by application views and RPCs.
+`current_season_id()` selects the unarchived season used by application views and RPCs. `close_current_season_v2()` is the canonical completion workflow: it closes submissions and finalizes all eligible weeks, including the current partial week, before setting `status = 'completed'`.
 
 ### `tiers` and `season_tiers`
 
@@ -87,7 +87,7 @@ The immutable-by-convention final result for a team/week: tier snapshot, points,
 
 ### `submission_edit_requests`
 
-Stores user-owned edit/delete requests, structured suggested changes, status, request type, resolver, resolution time, and note. Numeric suggested values use the canonical `activity_value_number` JSON key. A user can have only one pending request per submission. The database derives the team through `submission_id`; no duplicate team column is stored.
+Stores user-owned edit/delete requests, structured suggested changes, status, request type, resolver, resolution time, and note. Numeric suggested values use the canonical `activity_value_number` JSON key. A user can have only one pending request per submission. The database derives the team through `submission_id`; no duplicate team column is stored. Approval of a deletion request atomically voids the linked submission and queues its attachment before the request becomes approved.
 
 ### `submission_attachments`
 
@@ -136,6 +136,7 @@ values now come from `team_standings`; it stores no duplicate state.
 - Teams are archived, not deleted.
 - Seasons are completed/archived and retained.
 - Submissions are voided; their point events are removed and their row remains auditable.
+- Proof attachment `deleted_at` is set by the same void transaction; `purged_at` is set only after the cleanup job removes the Storage object.
 - Activity definitions are archived; scoring versions remain.
 - User deletion nulls historical user references and retains name snapshots.
 - Foreign keys use `RESTRICT` for competition history and `SET NULL` for user identity where appropriate.

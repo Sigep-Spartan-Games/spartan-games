@@ -1,7 +1,7 @@
 # Backend and APIs
 
 > **Purpose:** Server boundaries, write APIs, route handlers, and failure behavior.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-11
 
 ## Architecture
 
@@ -51,6 +51,7 @@ Prefer these database read contracts:
 - `save_activity_rules_bulk_v2(rules)`
 - `archive_activity_v2(activity_key)`
 - `set_season_controls_v2(...)`
+- `close_current_season_v2()`
 - `update_streak_settings_v2(increment, max)`
 - `update_tier_goals_v2(gold, purple, red)`
 - `start_new_season_v2(name, starts_on)`
@@ -61,6 +62,8 @@ Prefer these database read contracts:
 - `finalize_competition_week(week_id)`
 
 Admin RPCs are callable by the authenticated role but assert `profiles.is_admin` inside the security-definer function. Granting execute is not equivalent to granting authority.
+
+`set_season_controls_v2(..., status = 'completed')` delegates to `close_current_season_v2()`. `start_new_season_v2(...)` also closes the outgoing season before archiving it. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
 
 ## Server Actions
 
