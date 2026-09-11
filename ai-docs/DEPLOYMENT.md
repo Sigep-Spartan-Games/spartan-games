@@ -11,6 +11,12 @@ The normalized database and compatibility retirement are live. Application commi
 2026-09-10. Production invariants, database lint, migration history, retained row
 counts, the anonymous login redirect, and idempotent finalization passed.
 
+Season-close/deletion hardening migration `20260911010000` and matching application
+commit `81bd9db` are also live as of 2026-09-11. The migration was exercised with a
+rollback-only production-schema workflow test before application, then passed the
+production invariant suite and database lint. Vercel reported the application
+deployment successful.
+
 `CRON_SECRET` is now present in the production Vercel environment: unauthenticated
 requests to both cron routes return HTTP 401 as intended. Confirm an authorized
 scheduled invocation in Vercel logs to verify the complete service-role path.

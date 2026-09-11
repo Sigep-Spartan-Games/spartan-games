@@ -26,6 +26,10 @@ active submission. That request had no proof attachment, so it queued no Storage
 object. Post-migration invariants, database lint, and migration-history comparison
 all passed, and live TypeScript database types were regenerated.
 
+Matching application commit `81bd9db` deployed successfully through Vercel. The
+production homepage preserved its authentication redirect, and unauthenticated
+requests to both cron endpoints returned HTTP 401 after deployment.
+
 ## Production Compatibility Retirement — 2026-09-10
 
 The compatibility-free application commit `ad84886` was deployed successfully
