@@ -11,33 +11,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
-const TIER_LABELS: Record<string, string> = {
+type TierKey = "gold" | "purple" | "red";
+
+const TIER_LABELS: Record<TierKey, string> = {
   gold: "Gold",
   purple: "Purple",
   red: "Red",
 };
 
-const TIER_COLORS: Record<string, string> = {
-  gold: "border-achievement/30 bg-achievement/10 text-achievement",
+const TIER_COLORS: Record<TierKey, string> = {
+  gold: "border-achievement/30 bg-achievement/10 text-foreground",
   purple: "border-primary/30 bg-primary/10 text-primary",
   red: "border-competition/30 bg-competition/10 text-competition",
 };
 
+const OPTION_CLASS = "bg-popover text-popover-foreground";
+
 type Team = {
   id: string;
   name: string;
-  tier: "gold" | "purple" | "red" | null;
+  tier: TierKey | null;
 };
 
 export default function TierSelector({ team }: { team: Team }) {
   const [showConfirm, setShowConfirm] = useState(false);
-  const [selectedTier, setSelectedTier] = useState(team.tier ?? "");
+  const [selectedTier, setSelectedTier] = useState<TierKey | "">(
+    team.tier ?? "",
+  );
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (newTier: string) => {
-    if (newTier !== team.tier) {
-      setSelectedTier(newTier);
+    if (newTier in TIER_LABELS && newTier !== team.tier) {
+      const tier = newTier as TierKey;
+      setSelectedTier(tier);
       setShowConfirm(true);
     }
   };
@@ -64,12 +72,23 @@ export default function TierSelector({ team }: { team: Team }) {
         onChange={(event) => handleChange(event.target.value)}
         disabled={isPending}
         aria-label={`Tier for ${team.name}`}
-        className={`h-11 w-full min-w-24 cursor-pointer rounded-control border bg-background px-2 text-xs text-foreground ${team.tier ? TIER_COLORS[team.tier] : ""}`}
+        className={cn(
+          "h-11 w-full min-w-24 cursor-pointer rounded-control border bg-background px-2 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark]",
+          selectedTier ? TIER_COLORS[selectedTier] : undefined,
+        )}
       >
-        <option value="" disabled>Select...</option>
-        <option value="gold">Gold</option>
-        <option value="purple">Purple</option>
-        <option value="red">Red</option>
+        <option className={OPTION_CLASS} value="" disabled>
+          Select...
+        </option>
+        <option className={OPTION_CLASS} value="gold">
+          Gold
+        </option>
+        <option className={OPTION_CLASS} value="purple">
+          Purple
+        </option>
+        <option className={OPTION_CLASS} value="red">
+          Red
+        </option>
       </select>
 
       <Dialog open={showConfirm} onOpenChange={(open) => !open && handleCancel()}>
@@ -77,7 +96,7 @@ export default function TierSelector({ team }: { team: Team }) {
           <DialogHeader>
             <DialogTitle>Confirm tier change</DialogTitle>
             <DialogDescription>
-              Change {team.name} from {team.tier ? TIER_LABELS[team.tier] : "No Tier"} to {TIER_LABELS[selectedTier]}?
+              Change {team.name} from {team.tier ? TIER_LABELS[team.tier] : "No Tier"} to {selectedTier ? TIER_LABELS[selectedTier] : "No Tier"}?
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -58,7 +58,7 @@ export default function TeamFilters({
                         id="progress"
                         value={currentProgress}
                         onChange={(e) => updateFilters("progress", e.target.value)}
-                        className="h-11 w-full min-w-[140px] rounded-control border bg-background px-3 text-sm"
+                        className="h-11 w-full min-w-[140px] rounded-control border bg-background px-3 text-sm [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-popover [&>option]:text-popover-foreground"
                     >
                         <option value="">All Teams</option>
                         <option value="below">Below Goal</option>
@@ -75,7 +75,7 @@ export default function TeamFilters({
                         id="tier"
                         value={currentTier}
                         onChange={(e) => updateFilters("tier", e.target.value)}
-                        className="h-11 w-full min-w-[120px] rounded-control border bg-background px-3 text-sm"
+                        className="h-11 w-full min-w-[120px] rounded-control border bg-background px-3 text-sm [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-popover [&>option]:text-popover-foreground"
                     >
                         <option value="">All Tiers</option>
                         <option value="gold">Gold</option>
