@@ -2,7 +2,7 @@
 
 > **Purpose:** Canonical database entities, relationships, derived views, and lifecycle rules.
 > **Source of truth:** `supabase/migrations/`.
-> **Last reviewed:** 2026-09-11
+> **Last reviewed:** 2026-09-14
 
 ## Design Rules
 
@@ -32,6 +32,12 @@ seasons
 
 job_runs records cron/idempotent workflow executions.
 ```
+
+### `profiles`
+
+Profiles mirror registered Supabase Auth users and hold names, email, and application access flags. `is_admin` grants operational admin access. `is_owner` designates the single administrator allowed to manage admin membership and transfer ownership; database constraints require the owner to remain an admin.
+
+`admin_access_events` is the immutable database audit trail for administrator grants, revocations, and ownership transfers. It retains actor and target identifiers plus email snapshots even if an account is later deleted.
 
 ## Canonical Tables
 

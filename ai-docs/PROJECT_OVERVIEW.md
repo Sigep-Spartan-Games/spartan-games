@@ -1,13 +1,13 @@
 # Project Overview
 
 > **Purpose:** Product, roles, core workflows, and project maturity.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-14
 
 ## Product
 
 Spartan Games gamifies fitness and fraternity activities for SigEp members. Members form two-person teams, choose a competition tier, log activities, earn points/streak bonuses, and compete in weekly and season standings.
 
-Roles are member and admin. Admin status is `profiles.is_admin`; database workflows re-check it for privileged mutations.
+Roles are member, admin, and owner. `profiles.is_admin` grants operational administration, while the single `profiles.is_owner` account controls administrator membership and ownership transfer. Database workflows re-check the applicable privilege for every mutation.
 
 ## Capabilities
 
@@ -18,7 +18,7 @@ Roles are member and admin. Admin status is `profiles.is_admin`; database workfl
 5. Team streak bonuses stored as separate point-ledger events.
 6. Live ledger-derived weekly and season standings by Gold/Purple/Red tier.
 7. Idempotent weekly finalization with result snapshots, deterministic winners, and job history.
-8. Admin activity, submission, team, history, season, goal, streak, notification, and export tools.
+8. Admin activity, submission, team, history, season, goal, streak, notification, access-management, and export tools.
 9. User submission edit/delete requests with admin resolution.
 10. Non-destructive season rollover and auditable submission voiding.
 

@@ -4,6 +4,136 @@ begin;
 
 do $$
 begin
+  if exists (
+    select 1 from public.profiles where is_owner and not is_admin
+  ) then
+    raise exception 'Invariant failed: owner is not an administrator';
+  end if;
+
+  if (select count(*) from public.profiles where is_owner) > 1 then
+    raise exception 'Invariant failed: multiple application owners exist';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint constraint_row
+    where constraint_row.conrelid = 'public.profiles'::regclass
+      and constraint_row.conname = 'profiles_owner_requires_admin'
+      and constraint_row.contype = 'c'
+  ) then
+    raise exception 'Invariant failed: owner/admin constraint is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_indexes index_row
+    where index_row.schemaname = 'public'
+      and index_row.tablename = 'profiles'
+      and index_row.indexname = 'profiles_single_owner_idx'
+      and index_row.indexdef like 'CREATE UNIQUE INDEX%WHERE is_owner'
+  ) then
+    raise exception 'Invariant failed: single-owner index is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.profiles'::regclass
+      and trigger_row.tgname in ('profiles_protect_owner', 'profiles_require_owner')
+      and not trigger_row.tgisinternal
+    group by trigger_row.tgrelid
+    having count(*) = 2
+  ) then
+    raise exception 'Invariant failed: owner protection trigger is missing';
+  end if;
+
+  if exists (select 1 from public.profiles where is_admin)
+     and not exists (select 1 from public.profiles where is_owner) then
+    raise exception 'Invariant failed: administrators exist without an owner';
+  end if;
+
+  if to_regprocedure('public.grant_admin_access_v2(uuid)') is null
+     or to_regprocedure('public.revoke_admin_access_v2(uuid)') is null
+     or to_regprocedure('public.transfer_admin_ownership_v2(uuid)') is null then
+    raise exception 'Invariant failed: admin access management RPC is missing';
+  end if;
+
+  if not has_function_privilege(
+    'authenticated', 'public.grant_admin_access_v2(uuid)', 'EXECUTE'
+  ) or not has_function_privilege(
+    'authenticated', 'public.revoke_admin_access_v2(uuid)', 'EXECUTE'
+  ) or not has_function_privilege(
+    'authenticated', 'public.transfer_admin_ownership_v2(uuid)', 'EXECUTE'
+  ) or has_function_privilege(
+    'anon', 'public.grant_admin_access_v2(uuid)', 'EXECUTE'
+  ) or has_function_privilege(
+    'anon', 'public.revoke_admin_access_v2(uuid)', 'EXECUTE'
+  ) or has_function_privilege(
+    'anon', 'public.transfer_admin_ownership_v2(uuid)', 'EXECUTE'
+  ) then
+    raise exception 'Invariant failed: admin access RPC grants are incorrect';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_class table_row
+    join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace
+    where namespace_row.nspname = 'public'
+      and table_row.relname = 'admin_access_events'
+      and table_row.relrowsecurity
+  ) then
+    raise exception 'Invariant failed: admin access audit trail or RLS is missing';
+  end if;
+
+  if not has_table_privilege(
+    'authenticated', 'public.admin_access_events', 'SELECT'
+  ) or has_table_privilege(
+    'authenticated', 'public.admin_access_events', 'INSERT'
+  ) or has_table_privilege(
+    'authenticated', 'public.admin_access_events', 'UPDATE'
+  ) or has_table_privilege(
+    'authenticated', 'public.admin_access_events', 'DELETE'
+  ) then
+    raise exception 'Invariant failed: admin access audit grants are incorrect';
+  end if;
+
+  if not has_table_privilege(
+    'service_role', 'public.admin_access_events', 'SELECT'
+  ) or has_table_privilege(
+    'service_role', 'public.admin_access_events', 'INSERT'
+  ) or has_table_privilege(
+    'service_role', 'public.admin_access_events', 'UPDATE'
+  ) or has_table_privilege(
+    'service_role', 'public.admin_access_events', 'DELETE'
+  ) then
+    raise exception 'Invariant failed: service role has mutable audit-table grants';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.admin_access_events'::regclass
+      and trigger_row.tgname = 'admin_access_events_prevent_mutation'
+      and not trigger_row.tgisinternal
+  ) then
+    raise exception 'Invariant failed: admin access audit trail is mutable';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.routine_privileges privilege
+    where privilege.routine_schema = 'public'
+      and privilege.routine_name in (
+        'assert_owner',
+        'protect_admin_access_event',
+        'protect_owner_profile',
+        'ensure_admin_owner'
+      )
+      and privilege.grantee in ('PUBLIC', 'anon', 'authenticated')
+  ) then
+    raise exception 'Invariant failed: internal owner function is directly executable';
+  end if;
+
   if exists (select 1 from public.teams where season_id is null) then
     raise exception 'Invariant failed: team without a season';
   end if;

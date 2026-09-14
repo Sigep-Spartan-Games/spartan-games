@@ -1,7 +1,7 @@
 # Feature and Fix Guide
 
 > **Purpose:** Cross-layer workflow for future changes.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-14
 
 ## Before Editing
 
@@ -19,7 +19,7 @@
 | Teams | team RPCs, `lib/team-data.ts` | memberships, roster views, invite privacy, season archive |
 | Streak | `create_activity_submission_v2` | team lock, bonus ledger event, season settings |
 | Finalization | `finalize_competition_week` | ledger, team results, history export, cron/job runs |
-| Auth/RLS | `proxy.ts`, RLS migration, `assert_admin` | object ownership, grants, service-role use |
+| Auth/RLS | `proxy.ts`, RLS migration, `assert_admin`, `assert_owner` | admin ownership, object ownership, grants, service-role use |
 | Upload | submit action, storage policies | attachment metadata, signed URLs, cleanup cron |
 | Schema | ordered migration | backfill, locks, constraints, RLS, indexes, tests, types, docs |
 

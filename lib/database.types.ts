@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_access_events: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string
+          created_at: string
+          id: string
+          target_email: string | null
+          target_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id: string
+          created_at?: string
+          id?: string
+          target_email?: string | null
+          target_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string
+          created_at?: string
+          id?: string
+          target_email?: string | null
+          target_id?: string
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           archived_at: string | null
@@ -156,6 +186,7 @@ export type Database = {
           first_name: string | null
           id: string
           is_admin: boolean
+          is_owner: boolean
           last_name: string | null
         }
         Insert: {
@@ -164,6 +195,7 @@ export type Database = {
           first_name?: string | null
           id: string
           is_admin?: boolean
+          is_owner?: boolean
           last_name?: string | null
         }
         Update: {
@@ -172,6 +204,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           is_admin?: boolean
+          is_owner?: boolean
           last_name?: string | null
         }
         Relationships: []
@@ -1286,6 +1319,7 @@ export type Database = {
       }
       archive_team_v2: { Args: { p_team_id: string }; Returns: undefined }
       assert_admin: { Args: never; Returns: undefined }
+      assert_owner: { Args: never; Returns: undefined }
       change_team_tier_v2: {
         Args: { p_team_id: string; p_tier_key: string }
         Returns: undefined
@@ -1328,6 +1362,10 @@ export type Database = {
         }[]
       }
       get_my_team_v2: { Args: never; Returns: Json }
+      grant_admin_access_v2: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       is_admin: { Args: { uid: string }; Returns: boolean }
       is_in_current_week: { Args: { d: string }; Returns: boolean }
       join_team_by_code_v2: { Args: { p_code: string }; Returns: string }
@@ -1398,6 +1436,14 @@ export type Database = {
         Returns: undefined
       }
       void_submission_v2: { Args: { p_submission_id: string }; Returns: string }
+      revoke_admin_access_v2: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      transfer_admin_ownership_v2: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       week_identifier: { Args: { p_monday: string }; Returns: string }
       week_start: { Args: { d: string }; Returns: string }
     }

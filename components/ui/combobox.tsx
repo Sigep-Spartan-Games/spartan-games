@@ -17,6 +17,8 @@ type ComboboxProps = {
     name?: string;
     required?: boolean;
     className?: string;
+    emptyMessage?: string;
+    ariaLabel?: string;
 };
 
 export function Combobox({
@@ -27,6 +29,8 @@ export function Combobox({
     name,
     required,
     className = "",
+    emptyMessage = "No activities found",
+    ariaLabel,
 }: ComboboxProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -139,6 +143,7 @@ export function Combobox({
                 placeholder={isOpen ? placeholder : selectedOption?.label ?? placeholder}
                 role="combobox"
                 aria-autocomplete="list"
+                aria-label={ariaLabel}
                 aria-expanded={isOpen}
                 aria-controls={listId}
                 aria-activedescendant={
@@ -169,7 +174,7 @@ export function Combobox({
                 >
                     {filteredOptions.length === 0 ? (
                         <li className="px-3 py-2 text-sm text-muted-foreground">
-                            No activities found
+                            {emptyMessage}
                         </li>
                     ) : (
                         filteredOptions.map((option, idx) => (

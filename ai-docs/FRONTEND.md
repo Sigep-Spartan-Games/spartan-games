@@ -3,7 +3,7 @@
 > **Purpose:** Document routes, components, styling, and UI patterns.
 > **Audience:** Developers making UI changes, AI agents.
 > **Source of truth:** `app/` directory, `components/` directory, `app/globals.css`, `tailwind.config.ts`.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-14
 
 ## Route Table
 
@@ -30,7 +30,7 @@
 | `/admin/teams` | Team management and tier assignment | Yes | Yes | `app/admin/teams/page.tsx` | `team_standings`, `active_team_rosters`, current tier settings |
 | `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `team_week_results`, `competition_weeks`, standings |
 | `/admin/announcements` | Send notices via Slack/Email | Yes | Page: No; action: Yes | `app/admin/announcements/page.tsx` | — |
-| `/admin/settings` | Season controls, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | current season/tier views and admin RPCs |
+| `/admin/settings` | Season controls, admin access, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | profiles, current season/tier views, owner/admin RPCs |
 | `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | canonical submissions, memberships, standings, rules, weeks/results |
 | `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions`, `team_memberships` |
 | `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `team_standings`, `team_memberships`, `team_week_results` |

@@ -1,7 +1,7 @@
 # Security and Secrets
 
 > **Purpose:** Secret handling, security controls, PII, and remaining risks.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-14
 
 ## Secret Rules
 
@@ -19,6 +19,7 @@ See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for the catalog.
 - Cron routes bypass session redirection only so they can enforce `CRON_SECRET`; missing secret fails 503 and mismatch fails 401.
 - Slack routes verify request signatures.
 - Admin pages/actions use `requireAdmin`; admin RPCs independently call `assert_admin`.
+- The single application owner is the only administrator allowed to manage admin membership; owner RPCs lock and re-check that profile and write an immutable audit event.
 - Competition tables use RLS and remove direct browser mutation grants.
 - Security-definer functions use an empty search path and schema-qualified names.
 - Team/member/submission RPCs derive ownership from `auth.uid()` and database relationships.

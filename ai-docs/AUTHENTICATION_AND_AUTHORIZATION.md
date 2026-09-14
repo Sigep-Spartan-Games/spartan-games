@@ -1,7 +1,7 @@
 # Authentication and Authorization
 
 > **Purpose:** Authentication, route protection, database authorization, and private-file access.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-14
 
 ## Authentication
 
@@ -13,10 +13,14 @@ Client components may use the browser Supabase client for session-aware UI. Auth
 
 ## Admin Identity
 
-`profiles.is_admin` is the application admin flag.
+`profiles.is_admin` is the operational administrator flag. Exactly one existing administrator is designated by `profiles.is_owner` whenever administrators exist.
 
 - Pages/actions use `requireAdmin()` before admin work.
 - Database admin RPCs independently call `assert_admin()`.
+- Only the owner may grant or revoke ordinary admin access or transfer ownership. Those RPCs lock and re-check the owner profile before changing access.
+- Ownership transfer promotes the recipient if necessary and leaves the previous owner as an ordinary administrator.
+- The owner cannot be demoted or deleted before ownership is transferred.
+- Every grant, revocation, and ownership transfer writes an immutable `admin_access_events` audit row in the same transaction. Only the owner can read the audit table through RLS.
 - `get_all_user_emails()` performs its own admin assertion.
 - Cron finalization permits `service_role` in addition to an admin.
 

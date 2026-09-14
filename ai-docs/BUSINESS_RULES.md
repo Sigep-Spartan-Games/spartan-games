@@ -1,8 +1,17 @@
 # Business Rules
 
 > **Purpose:** Domain behavior enforced by the database workflows.
-> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, `20260911030000_keep_finalized_results_in_sync.sql`, and database constraints.
-> **Last reviewed:** 2026-09-11
+> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, `20260911030000_keep_finalized_results_in_sync.sql`, `20260914010000_add_admin_access_management.sql`, and database constraints.
+> **Last reviewed:** 2026-09-14
+
+## Administrator Access
+
+- Any profile with `is_admin = true` retains the existing operational admin permissions.
+- One administrator is the owner. Only that account may add or remove ordinary administrators or transfer ownership.
+- Access changes target existing registered profiles and are performed only through owner-guarded database RPCs.
+- Ownership transfer is atomic, promotes the recipient when needed, and retains the previous owner as an ordinary administrator.
+- The owner cannot be removed or deleted until ownership has been transferred.
+- Each access change records its action, actor, target, email snapshots, and timestamp in `admin_access_events`.
 
 ## Season Lifecycle
 

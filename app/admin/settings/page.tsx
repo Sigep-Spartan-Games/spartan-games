@@ -10,6 +10,14 @@ import GameControls from "./game-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBanner } from "@/components/ui/status-banner";
+import AdminAccessSection, {
+  type AdminAccessProfile,
+} from "./admin-access-section";
+import {
+  grantAdminAccess,
+  revokeAdminAccess,
+  transferAdminOwnership,
+} from "./admin-access-actions";
 
 function SettingsSkeleton() {
   return (
@@ -30,25 +38,45 @@ async function AdminSettingsInner({
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   noStore();
-  const { supabase } = await requireAdmin("/admin/settings");
+  const { supabase, user } = await requireAdmin("/admin/settings");
 
   const sp = (await searchParams) ?? {};
   const ok = typeof sp.ok === "string" ? sp.ok : null;
   const err = typeof sp.error === "string" ? sp.error : null;
 
-  // Fetch current game settings
-  const { data: settings } = await supabase
-    .from("current_season_settings")
-    .select("status")
-    .maybeSingle();
+  const [{ data: settings }, { data: profileData, error: profilesError }] =
+    await Promise.all([
+      supabase
+        .from("current_season_settings")
+        .select("status")
+        .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email, is_admin, is_owner"),
+    ]);
 
   const seasonStatus = settings?.status ?? "registration";
+  const allProfiles = ((profileData ?? []) as AdminAccessProfile[]).sort((a, b) => {
+    const aName = [a.first_name, a.last_name, a.email].filter(Boolean).join(" ");
+    const bName = [b.first_name, b.last_name, b.email].filter(Boolean).join(" ");
+    return aName.localeCompare(bName) || a.id.localeCompare(b.id);
+  });
+  const currentProfile = allProfiles.find((profile) => profile.id === user.id);
+  const profiles = currentProfile?.is_owner
+    ? allProfiles
+    : allProfiles.filter((profile) => profile.is_admin);
 
   return (
     <div className="space-y-4">
       {err && <StatusBanner variant="error" title="Settings error">{err}</StatusBanner>}
 
       {ok && <StatusBanner variant="success" title="Done">{ok}</StatusBanner>}
+
+      {profilesError && (
+        <StatusBanner variant="error" title="Administrator access unavailable">
+          {profilesError.message}
+        </StatusBanner>
+      )}
 
       {/* Game Controls - Always visible */}
       <CollapsibleSection
@@ -66,6 +94,22 @@ async function AdminSettingsInner({
 
         </div>
       </CollapsibleSection>
+
+      {/* Administrator access */}
+      {!profilesError && (
+        <CollapsibleSection
+          title="Administrator Access"
+          description="Manage administrators and application ownership"
+        >
+          <AdminAccessSection
+            currentUserId={user.id}
+            profiles={profiles}
+            grantAction={grantAdminAccess}
+            revokeAction={revokeAdminAccess}
+            transferAction={transferAdminOwnership}
+          />
+        </CollapsibleSection>
+      )}
 
       {/* Tier Weekly Goals */}
       <CollapsibleSection

@@ -113,7 +113,7 @@ The easiest way to deploy allows for seamless integration with Vercel.
 
 ## 🔐 Admin Access
 
-To access the admin dashboard (`/admin`), a user must have `is_admin = true` in the `profiles` table. Keep page/action guards and Row Level Security (RLS) policies aligned; see the authorization documentation for the current exceptions.
+To access the admin dashboard (`/admin`), a user must have `is_admin = true` in the `profiles` table. One administrator must also have `is_owner = true`; that owner can add and remove ordinary administrators or transfer ownership from Admin Settings. On a clean installation, bootstrap the first administrator by setting both flags to `true` in the same transaction. Keep page/action guards and Row Level Security (RLS) policies aligned; see the authorization documentation for the current exceptions.
 
 ## 📜 License
 

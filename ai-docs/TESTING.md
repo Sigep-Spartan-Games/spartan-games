@@ -1,7 +1,7 @@
 # Testing and Verification
 
 > **Purpose:** Required checks for application and database changes.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-14
 
 ## Standard Checks
 
@@ -69,6 +69,9 @@ Local Supabase requires Docker or another supported container runtime. If that i
 ### Security
 
 - Non-admin cannot call admin RPCs despite execute grant.
+- Ordinary admins cannot grant/revoke access or transfer ownership.
+- Admin grants, revocations, and ownership transfers are atomic and audited.
+- Exactly one owner remains after concurrent or repeated access-management requests.
 - User cannot read another team’s invite code or profile email.
 - User cannot edit/request edits for another user’s submission.
 - Public storage URLs fail; authorized signed URLs work and expire.
