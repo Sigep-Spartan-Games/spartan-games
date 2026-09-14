@@ -16,9 +16,8 @@ const TIER_COLORS: Record<string, string> = {
   red: "border-competition/30 bg-competition/10 text-competition",
 };
 
-type HistoryEntry = {
+export type HistoryEntry = {
   id: string;
-  week_identifier: string;
   weekly_points: number;
   tier: string | null;
   weekly_goal: number;
@@ -27,8 +26,22 @@ type HistoryEntry = {
   streak_count: number | null;
   created_at: string;
   team_id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  teams: any;
+  teams: { name: string } | { name: string }[] | null;
+};
+
+export type HistoryWeek = {
+  id: string;
+  label: string;
+  starts_on: string;
+  results: HistoryEntry[];
+};
+
+type TeamSummary = {
+  id: string;
+  name: string;
+  tier: string | null;
+  total_points: number;
+  weekly_points: number;
 };
 
 type TeamTotal = {
@@ -49,23 +62,28 @@ function getTeamName(h: HistoryEntry): string {
 }
 
 export function HistoryFilters({
-  history,
+  weeks,
   teams,
 }: {
-  history: HistoryEntry[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  teams: any[];
+  weeks: HistoryWeek[];
+  teams: TeamSummary[];
 }) {
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [goalFilter, setGoalFilter] = useState<string>("all");
 
-  // Apply filters
-  const filtered = history.filter((h) => {
-    if (tierFilter !== "all" && h.tier !== tierFilter) return false;
-    if (goalFilter === "met" && !h.met_goal) return false;
-    if (goalFilter === "not_met" && h.met_goal) return false;
-    return true;
-  });
+  const history = weeks.flatMap((week) => week.results);
+  const hasActiveFilters = tierFilter !== "all" || goalFilter !== "all";
+  const visibleWeeks = weeks
+    .map((week) => ({
+      ...week,
+      results: week.results.filter((entry) => {
+        if (tierFilter !== "all" && entry.tier !== tierFilter) return false;
+        if (goalFilter === "met" && !entry.met_goal) return false;
+        if (goalFilter === "not_met" && entry.met_goal) return false;
+        return true;
+      }),
+    }))
+    .filter((week) => week.results.length > 0 || !hasActiveFilters);
 
   // Calculate All-Time Totals
   const teamTotalsMap: Record<string, TeamTotal> = {};
@@ -102,34 +120,20 @@ export function HistoryFilters({
     })
     .sort((a, b) => b.all_time_points - a.all_time_points);
 
-  // Group filtered history by week
-  const byWeek: Record<string, HistoryEntry[]> = {};
-  filtered.forEach((h) => {
-    if (!byWeek[h.week_identifier]) {
-      byWeek[h.week_identifier] = [];
-    }
-    byWeek[h.week_identifier].push(h);
-  });
-
-  const weeks = Object.keys(byWeek).sort().reverse();
-
   // Collapse state for weekly history
-  const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>(() => {
-    // Default the most recent week to open, others closed
-    if (weeks.length > 0) {
-      return { [weeks[0]]: true };
-    }
-    return {};
-  });
+  const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>({});
 
   // Collapse state for All-Time Totals
   const [showTotals, setShowTotals] = useState(false);
 
-  const toggleWeek = (week: string) => {
-    setOpenWeeks((prev) => ({
-      ...prev,
-      [week]: !prev[week],
-    }));
+  const toggleWeek = (weekId: string) => {
+    setOpenWeeks((prev) => {
+      const defaultsOpen = weekId === visibleWeeks[0]?.id;
+      return {
+        ...prev,
+        [weekId]: !(prev[weekId] ?? defaultsOpen),
+      };
+    });
   };
 
   return (
@@ -276,26 +280,26 @@ export function HistoryFilters({
         </div>
       )}
 
-      {weeks.length === 0 ? (
+      {visibleWeeks.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          {history.length === 0
+          {weeks.length === 0
             ? 'No weekly history recorded yet. Use "Finalize Week" to start tracking performance.'
             : "No results match the selected filters."}
         </div>
       ) : (
-        weeks.map((week) => {
-          const weekData = byWeek[week];
+        visibleWeeks.map((week, weekIndex) => {
+          const weekData = week.results;
           const metGoalCount = weekData.filter((h) => h.met_goal).length;
           const totalTeams = weekData.length;
           const successRate =
             totalTeams > 0 ? Math.round((metGoalCount / totalTeams) * 100) : 0;
 
-          const isOpen = openWeeks[week] || false;
+          const isOpen = openWeeks[week.id] ?? weekIndex === 0;
 
           return (
-            <div key={week} className="space-y-3">
+            <div key={week.id} className="space-y-3">
               <button
-                onClick={() => toggleWeek(week)}
+                onClick={() => toggleWeek(week.id)}
                 className="flex min-h-11 w-full items-center justify-between rounded-lg p-2 transition-colors hover:bg-muted/30"
                 aria-expanded={isOpen}
               >
@@ -305,7 +309,7 @@ export function HistoryFilters({
                   ) : (
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   )}
-                  <h2 className="text-lg font-semibold">{week}</h2>
+                  <h2 className="text-lg font-semibold">{week.label}</h2>
                 </div>
                 <div className="text-sm border rounded-full px-3 py-1 bg-background">
                   <span

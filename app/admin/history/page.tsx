@@ -2,12 +2,64 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { HistoryFilters } from "./history-filters";
+import {
+  HistoryFilters,
+  type HistoryEntry,
+  type HistoryWeek,
+} from "./history-filters";
 
-type WeekRelation = { label: string; starts_on: string };
+const HISTORY_PAGE_SIZE = 1000;
 
-function oneRelation<T>(value: T | T[] | null): T | null {
-  return Array.isArray(value) ? value[0] ?? null : value;
+type QueryError = { message: string };
+
+type CompetitionWeek = {
+  id: string;
+  label: string;
+  starts_on: string;
+};
+
+type HistoryRow = {
+  id: string;
+  week_id: string;
+  points: number;
+  tier_key: string;
+  goal_points: number;
+  won: boolean;
+  streak_count: number;
+  finalized_at: string;
+  team_id: string;
+  teams: { name: string } | { name: string }[] | null;
+};
+
+type PageResult<T> = {
+  data: T[] | null;
+  error: QueryError | null;
+};
+
+async function fetchAllPages<T>(
+  fetchPage: (from: number, to: number) => Promise<PageResult<T>>,
+): Promise<{ data: T[]; error: QueryError | null }> {
+  const allRows: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await fetchPage(
+      from,
+      from + HISTORY_PAGE_SIZE - 1,
+    );
+
+    if (error) return { data: [], error };
+
+    const page = data ?? [];
+    if (page.length === 0) break;
+
+    allRows.push(...page);
+    if (page.length < HISTORY_PAGE_SIZE) break;
+
+    from += page.length;
+  }
+
+  return { data: allRows, error: null };
 }
 
 function HistorySkeleton() {
@@ -36,41 +88,69 @@ async function AdminHistoryInner() {
     .select("id")
     .maybeSingle();
 
-  // Canonical finalized results joined to their competition-week labels.
-  const { data: rawHistory, error } = await supabase
-    .from("team_week_results")
-    .select(
-      `
-            id,
-            points,
-            tier_key,
-            goal_points,
-            won,
-            streak_count,
-            finalized_at,
-            team_id,
-            teams ( name ),
-            competition_weeks ( label, starts_on )
-        `,
-    )
-    .eq("season_id", season?.id ?? "00000000-0000-0000-0000-000000000000")
-    .order("finalized_at", { ascending: false })
-    .limit(500);
+  const seasonId =
+    season?.id ?? "00000000-0000-0000-0000-000000000000";
 
+  const [weeksResult, historyResult, teamsResult] = await Promise.all([
+    fetchAllPages<CompetitionWeek>(async (from, to) => {
+      const { data, error } = await supabase
+        .from("competition_weeks")
+        .select("id, label, starts_on")
+        .eq("season_id", seasonId)
+        .eq("status", "finalized")
+        .order("starts_on", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+
+      return { data: data as CompetitionWeek[] | null, error };
+    }),
+    fetchAllPages<HistoryRow>(async (from, to) => {
+      const { data, error } = await supabase
+        .from("team_week_results")
+        .select(
+          `
+              id,
+              week_id,
+              points,
+              tier_key,
+              goal_points,
+              won,
+              streak_count,
+              finalized_at,
+              team_id,
+              teams ( name )
+          `,
+        )
+        .eq("season_id", seasonId)
+        .order("id", { ascending: true })
+        .range(from, to);
+
+      return { data: data as HistoryRow[] | null, error };
+    }),
+    supabase
+      .from("team_standings")
+      .select("id, name, tier, season_points, weekly_points")
+      .eq("season_id", seasonId)
+      .is("archived_at", null),
+  ]);
+
+  const rowsByWeek = new Map<string, HistoryRow[]>();
+  historyResult.data.forEach((row) => {
+    const rows = rowsByWeek.get(row.week_id) ?? [];
+    rows.push(row);
+    rowsByWeek.set(row.week_id, rows);
+  });
+
+  const resultsByWeek = new Map<string, HistoryEntry[]>();
   const winsByTeam = new Map<string, number>();
-  const history = [...(rawHistory ?? [])]
-    .sort((a, b) => {
-      const aWeek = oneRelation(a.competition_weeks as WeekRelation | WeekRelation[] | null);
-      const bWeek = oneRelation(b.competition_weeks as WeekRelation | WeekRelation[] | null);
-      return String(aWeek?.starts_on ?? "").localeCompare(String(bWeek?.starts_on ?? ""));
-    })
-    .map((row) => {
-      const week = oneRelation(row.competition_weeks as WeekRelation | WeekRelation[] | null);
+
+  [...weeksResult.data].reverse().forEach((week) => {
+    const entries = (rowsByWeek.get(week.id) ?? []).map((row) => {
       const wins = (winsByTeam.get(row.team_id) ?? 0) + (row.won ? 1 : 0);
       winsByTeam.set(row.team_id, wins);
+
       return {
         id: row.id,
-        week_identifier: week?.label ?? "Unknown week",
         weekly_points: row.points,
         tier: row.tier_key,
         weekly_goal: row.goal_points,
@@ -81,16 +161,19 @@ async function AdminHistoryInner() {
         team_id: row.team_id,
         teams: row.teams,
       };
-    })
-    .reverse();
+    });
 
-  const { data: teamsData, error: teamsError } = await supabase
-    .from("team_standings")
-    .select("id, name, tier, season_points, weekly_points")
-    .eq("season_id", season?.id ?? "00000000-0000-0000-0000-000000000000")
-    .is("archived_at", null);
+    resultsByWeek.set(week.id, entries);
+  });
 
-  const teams = (teamsData ?? []).map((team) => ({
+  const weeks: HistoryWeek[] = weeksResult.data.map((week) => ({
+    id: week.id,
+    label: week.label,
+    starts_on: week.starts_on,
+    results: resultsByWeek.get(week.id) ?? [],
+  }));
+
+  const teams = (teamsResult.data ?? []).map((team) => ({
     id: team.id,
     name: team.name,
     tier: team.tier,
@@ -98,17 +181,20 @@ async function AdminHistoryInner() {
     weekly_points: 0,
   }));
 
-  if (seasonError || error || teamsError) {
+  const loadError =
+    seasonError || weeksResult.error || historyResult.error || teamsResult.error;
+
+  if (loadError) {
     return (
       <div className="rounded-lg border p-5 text-sm text-muted-foreground">
-        Error loading history: {seasonError?.message || error?.message || teamsError?.message}
+        Error loading history: {loadError.message}
       </div>
     );
   }
 
   return (
     <HistoryFilters
-      history={history}
+      weeks={weeks}
       teams={teams}
     />
   );
