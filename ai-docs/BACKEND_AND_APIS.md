@@ -1,7 +1,7 @@
 # Backend and APIs
 
 > **Purpose:** Server boundaries, write APIs, route handlers, and failure behavior.
-> **Last reviewed:** 2026-09-11
+> **Last reviewed:** 2026-09-15
 
 ## Architecture
 
@@ -52,6 +52,9 @@ Prefer these database read contracts:
 - `archive_activity_v2(activity_key)`
 - `set_season_controls_v2(...)`
 - `close_current_season_v2()`
+- `prepare_season_completion_v2()`
+- `complete_season_champions_v2(selections)`
+- `get_pending_champion_ties_v2()`
 - `update_streak_settings_v2(increment, max)`
 - `update_tier_goals_v2(gold, purple, red)`
 - `start_new_season_v2(name, starts_on)`
@@ -63,15 +66,17 @@ Prefer these database read contracts:
 
 Admin RPCs are callable by the authenticated role but assert `profiles.is_admin` inside the security-definer function. Granting execute is not equivalent to granting authority.
 
-`set_season_controls_v2` enforces the one-way `registration -> active -> completed` lifecycle. Starting active play opens submissions and keeps late registration open; a completed season cannot be reopened. `set_season_controls_v2(..., status = 'completed')` delegates to `close_current_season_v2()`, which closes both controls. `start_new_season_v2(...)` also closes the outgoing season before archiving it. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
+`set_season_controls_v2` enforces the one-way season lifecycle. Starting active play opens submissions and keeps late registration open; a completed season cannot be reopened. `prepare_season_completion_v2()` closes both controls, finalizes all weeks, and either records automatic champions or pauses in `finalizing` for exact ties. `complete_season_champions_v2(...)` validates one selected finalist per tied tier and atomically completes the season. `start_new_season_v2(...)` cannot bypass unresolved ties. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
 
 `recalculate_week_results(week_id, preserve_snapshots)` is an internal, non-client
 RPC shared by normal finalization, administrator edits, and voids. Editing a
 submission that moves between weeks refreshes both the original and destination
 week when finalized. Recalculation covers every team because one point change may
-alter ranks and the weekly winner.
+alter ranks and the weekly winner. `rebuild_team_streaks_internal(...)` also
+replays affected teams' activity submissions in receipt order so administrator
+edits and voids cannot leave stale streak bonuses.
 
-Team creation, joining, and leaving all enforce the participant-level activity lock. Once the caller owns a non-voided activity in the season, that caller cannot switch teams. Joining still permits an unteamed late registrant to fill a one-person team, and a membership trigger guarantees that every write path respects the two-member maximum. Non-admin captains may change tier only in the registration stage; admin corrections remain available later.
+Team creation, joining, and leaving all enforce the participant-level activity lock. Once the caller owns a non-voided activity in the season, that caller cannot switch teams. Joining still permits an unteamed late registrant to fill a one-person team, and a membership trigger guarantees that every write path respects the two-member maximum. Team tiers are locked for captains and administrators after registration.
 
 ## Server Actions
 
@@ -98,7 +103,7 @@ Uses the same auth. Claims a daily `job_runs` key, removes up to 250 queued priv
 ## Other Routes
 
 - `/api/slack/command` and `/api/slack/notify`: verify Slack signatures before dispatching announcements.
-- `/admin/settings/export/*.csv|xlsx`: require an admin session, then use server-only access to export current operational data.
+- `/admin/settings/export/*.csv|xlsx`: require an admin session, page through complete datasets, neutralize spreadsheet formulas, and support `scope=current` or `scope=all` for a full archive. Team exports include champion results.
 - `/auth/confirm`: exchanges Supabase email tokens.
 
 ## Failure and Retry Rules

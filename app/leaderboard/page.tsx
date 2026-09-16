@@ -11,6 +11,8 @@ import { StatusBanner } from "@/components/ui/status-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { getTeamDirectory } from "@/lib/team-data";
+import { ChampionCards } from "@/components/champion-cards";
+import type { SeasonChampion } from "@/lib/champions";
 
 const tierTabStyles = {
   all: "border-primary bg-primary text-primary-foreground",
@@ -45,7 +47,35 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
   const user = await getCachedUser();
   const sp = await searchParams;
 
-  const { teams, error } = await getTeamDirectory(supabase);
+  const [{ teams, error }, { data: season }] = await Promise.all([
+    getTeamDirectory(supabase),
+    supabase
+      .from("current_season_settings")
+      .select("id, status")
+      .maybeSingle(),
+  ]);
+
+  const { data: championRows } = season?.id
+    ? await supabase
+        .from("season_champions")
+        .select(
+          "season_id,tier_key,team_id,team_name_snapshot,weekly_wins,season_points,goals_met,decision_method,finalized_at",
+        )
+        .eq("season_id", season.id)
+        .order("tier_key")
+    : { data: [] };
+
+  const champions: SeasonChampion[] = (championRows ?? []).map((row) => ({
+    season_id: row.season_id,
+    tier_key: row.tier_key,
+    team_id: row.team_id,
+    team_name: row.team_name_snapshot,
+    weekly_wins: row.weekly_wins,
+    season_points: row.season_points,
+    goals_met: row.goals_met,
+    decision_method: row.decision_method as SeasonChampion["decision_method"],
+    finalized_at: row.finalized_at,
+  }));
 
   const myTeam = user
     ? teams.find((team) => team.captain_id === user.id || team.member_id === user.id) ?? null
@@ -89,6 +119,16 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
             </div>
           }
         />
+
+        {season?.status === "finalizing" ? (
+          <StatusBanner variant="info" title="Final standings are locked">
+            An administrator is resolving an exact champion tie. Tier champions will appear here when the season is completed.
+          </StatusBanner>
+        ) : null}
+
+        {season?.status === "completed" ? (
+          <ChampionCards champions={champions} />
+        ) : null}
 
         {error ? (
           <StatusBanner variant="error" title="Could not load the leaderboard">

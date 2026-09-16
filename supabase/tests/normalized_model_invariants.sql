@@ -372,8 +372,9 @@ begin
       and p.proname = 'set_season_controls_v2'
       and p.prosrc like '%Completed seasons cannot be reopened%'
       and p.prosrc like '%Invalid season transition%'
+      and p.prosrc like '%Resolve champion ties before changing season controls%'
   ) then
-    raise exception 'Invariant failed: season lifecycle is not one-way';
+    raise exception 'Invariant failed: season lifecycle is not one-way or finalizing controls can reopen';
   end if;
 
   if not exists (
@@ -382,9 +383,9 @@ begin
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname = 'change_team_tier_v2'
-      and p.prosrc like '%Only admins can change a team tier after the games start%'
+      and p.prosrc like '%Team tiers are locked once the games start%'
   ) then
-    raise exception 'Invariant failed: participant tier changes are not frozen after start';
+    raise exception 'Invariant failed: team tier changes are not frozen after start';
   end if;
 
   if not exists (
@@ -404,7 +405,8 @@ begin
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname = 'start_new_season_v2'
-      and p.prosrc like '%close_current_season_v2%'
+      and p.prosrc like '%prepare_season_completion_v2%'
+      and p.prosrc like '%Resolve champion ties before starting a new season%'
   ) then
     raise exception 'Invariant failed: season rollover can bypass coordinated close';
   end if;
@@ -452,9 +454,74 @@ begin
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname = 'void_submission_v2'
-      and p.prosrc like '%recalculate_week_results%'
+      and p.prosrc like '%rebuild_team_streaks_internal%'
   ) then
-    raise exception 'Invariant failed: submission voids do not refresh finalized history';
+    raise exception 'Invariant failed: submission voids do not rebuild downstream streak history';
+  end if;
+
+  if to_regclass('public.season_champions') is null then
+    raise exception 'Invariant failed: immutable season champion storage is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'season_champions'
+      and c.relrowsecurity
+  ) then
+    raise exception 'Invariant failed: season champion RLS is disabled';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint constraint_row
+    where constraint_row.conrelid = 'public.season_champions'::regclass
+      and constraint_row.contype = 'u'
+      and pg_get_constraintdef(constraint_row.oid) like '%season_id, tier_key%'
+  ) then
+    raise exception 'Invariant failed: one champion per season tier is not enforced';
+  end if;
+
+  if to_regprocedure('public.prepare_season_completion_v2()') is null
+     or to_regprocedure('public.complete_season_champions_v2(jsonb)') is null
+     or to_regprocedure('public.get_pending_champion_ties_v2()') is null then
+    raise exception 'Invariant failed: champion completion workflow is incomplete';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'prepare_season_completion_v2'
+      and p.prosrc like '%status = ''finalizing''%'
+      and p.prosrc like '%season_champion_candidates_internal%'
+  ) then
+    raise exception 'Invariant failed: season close does not freeze scoring and calculate champions';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'admin_update_submission_v2'
+      and p.prosrc like '%rebuild_team_streaks_internal%'
+      and p.prosrc like '%Submission scoring is frozen after the games end%'
+  ) then
+    raise exception 'Invariant failed: admin edits do not rebuild streaks or respect scoring freeze';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.season_champions'::regclass
+      and trigger_row.tgname = 'season_champions_immutable'
+      and not trigger_row.tgisinternal
+  ) then
+    raise exception 'Invariant failed: champion rows are not protected from mutation';
   end if;
 end;
 $$;

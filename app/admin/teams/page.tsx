@@ -54,7 +54,13 @@ async function AdminTeamsInner({
   const progressFilter = typeof sp.progress === "string" ? sp.progress : "";
   const tierFilter = typeof sp.tier === "string" ? sp.tier : "";
 
-  const [standingsResult, identitiesResult, rostersResult, tierSettingsResult] =
+  const [
+    standingsResult,
+    identitiesResult,
+    rostersResult,
+    tierSettingsResult,
+    seasonResult,
+  ] =
     await Promise.all([
       supabase
         .from("team_standings")
@@ -73,13 +79,18 @@ async function AdminTeamsInner({
       supabase
         .from("current_tier_settings")
         .select("tier, weekly_goal"),
+      supabase
+        .from("current_season_settings")
+        .select("status")
+        .maybeSingle(),
     ]);
 
   const error =
     standingsResult.error ??
     identitiesResult.error ??
     rostersResult.error ??
-    tierSettingsResult.error;
+    tierSettingsResult.error ??
+    seasonResult.error;
   const inviteCodes = new Map(
     (identitiesResult.data ?? []).map((team) => [team.id, team.invite_code]),
   );
@@ -88,6 +99,7 @@ async function AdminTeamsInner({
   );
   const teams = standingsResult.data ?? [];
   const tierSettings = tierSettingsResult.data;
+  const tiersLocked = seasonResult.data?.status !== "registration";
 
   const tierGoals: Record<string, number> = {};
   (tierSettings || []).forEach((ts) => {
@@ -263,6 +275,7 @@ async function AdminTeamsInner({
                 <div className="col-span-2 flex justify-end items-center gap-3 pl-2">
                   <TierSelector
                     team={{ id: t.id, name: t.name, tier: t.tier }}
+                    locked={tiersLocked}
                   />
                   <ConfirmDeleteButton
                     action={deleteTeam}
@@ -326,6 +339,7 @@ async function AdminTeamsInner({
                   <div className="flex-1">
                     <TierSelector
                       team={{ id: t.id, name: t.name, tier: t.tier }}
+                      locked={tiersLocked}
                     />
                   </div>
                   <ConfirmDeleteButton

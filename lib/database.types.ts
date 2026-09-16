@@ -386,6 +386,94 @@ export type Database = {
           },
         ]
       }
+      season_champions: {
+        Row: {
+          created_at: string
+          decision_method: string
+          finalized_at: string
+          goals_met: number
+          id: string
+          season_id: string
+          season_points: number
+          selected_by: string | null
+          team_id: string
+          team_name_snapshot: string
+          tier_key: string
+          weekly_wins: number
+        }
+        Insert: {
+          created_at?: string
+          decision_method: string
+          finalized_at?: string
+          goals_met: number
+          id?: string
+          season_id: string
+          season_points: number
+          selected_by?: string | null
+          team_id: string
+          team_name_snapshot: string
+          tier_key: string
+          weekly_wins: number
+        }
+        Update: {
+          created_at?: string
+          decision_method?: string
+          finalized_at?: string
+          goals_met?: number
+          id?: string
+          season_id?: string
+          season_points?: number
+          selected_by?: string | null
+          team_id?: string
+          team_name_snapshot?: string
+          tier_key?: string
+          weekly_wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_champions_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "current_season_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_champions_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_champions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "active_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_champions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_standings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_champions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_champions_tier_key_fkey"
+            columns: ["tier_key"]
+            isOneToOne: false
+            referencedRelation: "tiers"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       season_tiers: {
         Row: {
           created_at: string
@@ -1325,6 +1413,10 @@ export type Database = {
         Returns: undefined
       }
       close_current_season_v2: { Args: never; Returns: Json }
+      complete_season_champions_v2: {
+        Args: { p_selections: Json }
+        Returns: Json
+      }
       create_activity_submission_v2: {
         Args: {
           p_activity_date: string
@@ -1361,6 +1453,7 @@ export type Database = {
           email: string
         }[]
       }
+      get_pending_champion_ties_v2: { Args: never; Returns: Json }
       get_my_team_v2: { Args: never; Returns: Json }
       grant_admin_access_v2: {
         Args: { p_user_id: string }
@@ -1372,6 +1465,7 @@ export type Database = {
       leave_team_v2: { Args: { p_team_id: string }; Returns: undefined }
       parse_week_end: { Args: { p_label: string }; Returns: string }
       parse_week_start: { Args: { p_label: string }; Returns: string }
+      prepare_season_completion_v2: { Args: never; Returns: Json }
       recalculate_week_results: {
         Args: { p_preserve_snapshots?: boolean; p_week_id: string }
         Returns: number

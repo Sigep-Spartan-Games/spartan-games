@@ -191,7 +191,13 @@ export default function GameControls({
           confirmMessage="Are you sure you want to START the games? Submissions will open and registration will remain open for unteamed users."
           variant="primary"
           disabled={seasonStatus !== "registration"}
-          disabledReason={seasonStatus === "completed" ? "Start a new season before starting games again." : "Games can only start from registration."}
+          disabledReason={
+            seasonStatus === "completed"
+              ? "Start a new season before starting games again."
+              : seasonStatus === "finalizing"
+                ? "Resolve champion ties before starting games again."
+                : "Games can only start from registration."
+          }
         />
         <GameControlButton
           action={endGamesAction}
@@ -199,7 +205,11 @@ export default function GameControls({
           confirmMessage="Are you sure you want to END the games? The final week will be finalized, and registration and submissions will close permanently for this season."
           variant="secondary"
           disabled={seasonStatus !== "active"}
-          disabledReason="Games can only end while the season is active."
+          disabledReason={
+            seasonStatus === "finalizing"
+              ? "Scoring is frozen while champion ties are resolved."
+              : "Games can only end while the season is active."
+          }
         />
       </div>
     </section>

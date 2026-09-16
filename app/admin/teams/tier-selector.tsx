@@ -35,7 +35,13 @@ type Team = {
   tier: TierKey | null;
 };
 
-export default function TierSelector({ team }: { team: Team }) {
+export default function TierSelector({
+  team,
+  locked = false,
+}: {
+  team: Team;
+  locked?: boolean;
+}) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedTier, setSelectedTier] = useState<TierKey | "">(
     team.tier ?? "",
@@ -70,10 +76,12 @@ export default function TierSelector({ team }: { team: Team }) {
       <select
         value={selectedTier}
         onChange={(event) => handleChange(event.target.value)}
-        disabled={isPending}
+        disabled={isPending || locked}
+        title={locked ? "Team tiers are locked once the games start." : undefined}
         aria-label={`Tier for ${team.name}`}
         className={cn(
-          "h-11 w-full min-w-24 cursor-pointer rounded-control border bg-background px-2 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark]",
+          "h-11 w-full min-w-24 rounded-control border bg-background px-2 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark]",
+          locked ? "cursor-not-allowed opacity-70" : "cursor-pointer",
           selectedTier ? TIER_COLORS[selectedTier] : undefined,
         )}
       >

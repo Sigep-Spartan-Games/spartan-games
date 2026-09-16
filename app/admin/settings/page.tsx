@@ -2,7 +2,12 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
-import { resetSpartanGames, startGames, endGames } from "./actions";
+import {
+  completeChampionSelection,
+  resetSpartanGames,
+  startGames,
+  endGames,
+} from "./actions";
 import TierGoalsSection from "./tier-goals-section";
 import StreakSettingsSection from "./streak-settings-section";
 import CollapsibleSection from "./collapsible-section";
@@ -18,6 +23,10 @@ import {
   revokeAdminAccess,
   transferAdminOwnership,
 } from "./admin-access-actions";
+import ChampionResolution from "./champion-resolution";
+import { ChampionCards } from "@/components/champion-cards";
+import { parseSeasonCompletionResult } from "@/lib/champions";
+import ExportLinks from "./export-links";
 
 function SettingsSkeleton() {
   return (
@@ -44,18 +53,25 @@ async function AdminSettingsInner({
   const ok = typeof sp.ok === "string" ? sp.ok : null;
   const err = typeof sp.error === "string" ? sp.error : null;
 
-  const [{ data: settings }, { data: profileData, error: profilesError }] =
+  const [
+    { data: settings },
+    { data: completionData },
+    { data: profileData, error: profilesError },
+  ] =
     await Promise.all([
       supabase
         .from("current_season_settings")
-        .select("status")
+        .select("id, status")
         .maybeSingle(),
+      supabase.rpc("get_pending_champion_ties_v2"),
       supabase
         .from("profiles")
         .select("id, first_name, last_name, email, is_admin, is_owner"),
     ]);
 
   const seasonStatus = settings?.status ?? "registration";
+  const completion = parseSeasonCompletionResult(completionData);
+  const scoringLocked = seasonStatus === "finalizing" || seasonStatus === "completed";
   const allProfiles = ((profileData ?? []) as AdminAccessProfile[]).sort((a, b) => {
     const aName = [a.first_name, a.last_name, a.email].filter(Boolean).join(" ");
     const bName = [b.first_name, b.last_name, b.email].filter(Boolean).join(" ");
@@ -77,6 +93,17 @@ async function AdminSettingsInner({
           {profilesError.message}
         </StatusBanner>
       )}
+
+      {seasonStatus === "finalizing" ? (
+        <ChampionResolution
+          ties={completion.ties}
+          action={completeChampionSelection}
+        />
+      ) : null}
+
+      {seasonStatus === "completed" ? (
+        <ChampionCards champions={completion.champions} />
+      ) : null}
 
       {/* Game Controls - Always visible */}
       <CollapsibleSection
@@ -116,7 +143,13 @@ async function AdminSettingsInner({
         title="Weekly Point Goals"
         description="Set target weekly points for each tier"
       >
-        <TierGoalsSection />
+        {scoringLocked ? (
+          <p className="text-sm text-muted-foreground">
+            Weekly goals are frozen after the games end.
+          </p>
+        ) : (
+          <TierGoalsSection />
+        )}
       </CollapsibleSection>
 
       {/* Streak Bonus Settings */}
@@ -124,7 +157,13 @@ async function AdminSettingsInner({
         title="Streak Bonus"
         description="Configure streak bonus rewards"
       >
-        <StreakSettingsSection />
+        {scoringLocked ? (
+          <p className="text-sm text-muted-foreground">
+            Streak settings are frozen after the games end.
+          </p>
+        ) : (
+          <StreakSettingsSection />
+        )}
       </CollapsibleSection>
 
       {/* Export */}
@@ -132,34 +171,7 @@ async function AdminSettingsInner({
         title="Export Data"
         description="Download current Spartan Games data"
       >
-        <div className="space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <a
-              className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              href="/admin/settings/export/spartan-games.xlsx"
-            >
-              Download Excel (.xlsx)
-            </a>
-
-            <a
-              className="inline-flex min-h-11 items-center justify-center rounded-control border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted"
-              href="/admin/settings/export/submissions.csv"
-            >
-              Download Submissions CSV
-            </a>
-
-            <a
-              className="inline-flex min-h-11 items-center justify-center rounded-control border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted"
-              href="/admin/settings/export/teams.csv"
-            >
-              Download Teams CSV
-            </a>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Tip: Submissions export includes team name + all scoring-related columns.
-          </p>
-        </div>
+        <ExportLinks />
       </CollapsibleSection>
 
       {/* Season rollover */}
@@ -199,7 +211,17 @@ async function AdminSettingsInner({
             />
           </label>
 
-          <Button type="submit" variant="destructive">
+          {seasonStatus === "finalizing" ? (
+            <p className="text-sm font-medium text-achievement">
+              Resolve champion ties before starting a new season.
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            variant="destructive"
+            disabled={seasonStatus === "finalizing"}
+          >
             Archive and Start New Season
           </Button>
         </form>

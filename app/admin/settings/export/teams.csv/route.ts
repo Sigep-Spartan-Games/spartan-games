@@ -1,144 +1,141 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/admin/settings/export/teams.csv/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+
+import {
+  exportFilename,
+  ExportError,
+  ExportRequestError,
+  fetchAllExportRows,
+  parseExportScope,
+  resolveExportSeasons,
+  toCsv,
+} from "@/lib/export-utils";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {
   buildTeamRosterMap,
   EMPTY_TEAM_ROSTER,
   type CanonicalRosterRow,
 } from "@/lib/team-rosters";
 
-function csvEscape(v: any) {
-  const s = v === null || v === undefined ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function weeksWonStr(weeks: string[] | null): string {
-  if (!weeks || weeks.length === 0) return "";
-  return weeks.join("; ");
-}
-
 async function requireAdminForRoute() {
   const supabase = await createClient();
-
   const { data: auth } = await supabase.auth.getUser();
-  const user = auth.user;
-  if (!user) return { ok: false as const, status: 401 };
-
+  if (!auth.user) return false;
   const { data: profile } = await supabase
     .from("profiles")
     .select("is_admin")
-    .eq("id", user.id)
+    .eq("id", auth.user.id)
     .single();
-
-  if (!profile?.is_admin) return { ok: false as const, status: 403 };
-
-  return { ok: true as const, status: 200, supabase };
+  return profile?.is_admin === true;
 }
 
-export async function GET() {
-  const guard = await requireAdminForRoute();
-  if (!guard.ok)
-    return new NextResponse("Unauthorized", { status: guard.status });
-
-  const supabase = createAdminClient();
-
-  const [standingsResult, identitiesResult, rostersResult, winsResult] =
-    await Promise.all([
-      supabase
-        .from("team_standings")
-        .select(
-          "id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date",
-        )
-        .order("season_points", { ascending: false })
-        .order("name", { ascending: true }),
-      supabase.from("teams").select("id,invite_code"),
-      supabase
-        .from("team_memberships")
-        .select(
-          "team_id,user_id,role,display_name:display_name_snapshot,joined_at",
-        )
-        .is("left_at", null),
-      supabase
-        .from("team_week_results")
-        .select("team_id,competition_weeks(starts_on)")
-        .eq("won", true),
-    ]);
-
-  const error =
-    standingsResult.error ??
-    identitiesResult.error ??
-    rostersResult.error ??
-    winsResult.error;
-
-  if (error) return new NextResponse(error.message, { status: 500 });
-
-  const inviteCodes = new Map(
-    (identitiesResult.data ?? []).map((team) => [team.id, team.invite_code]),
-  );
-  const rosterMap = buildTeamRosterMap(
-    (rostersResult.data ?? []) as CanonicalRosterRow[],
-  );
-  const winDates = new Map<string, string[]>();
-  for (const result of winsResult.data ?? []) {
-    const relation = Array.isArray(result.competition_weeks)
-      ? result.competition_weeks[0]
-      : result.competition_weeks;
-    if (!relation?.starts_on) continue;
-    const dates = winDates.get(result.team_id) ?? [];
-    dates.push(relation.starts_on);
-    winDates.set(result.team_id, dates);
+export async function GET(request: Request) {
+  if (!(await requireAdminForRoute())) {
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const rows = (standingsResult.data ?? []).map((team) => {
-    const roster = rosterMap.get(team.id) ?? EMPTY_TEAM_ROSTER;
-    return {
-      team_name: team.name,
-      total_points: team.season_points ?? 0,
-      weekly_points: team.weekly_points ?? 0,
-      tier: team.tier ?? "",
-      streak_count: team.streak_count ?? 0,
-      last_activity_date: team.last_activity_date ?? "",
-      weeks_won: weeksWonStr(winDates.get(team.id) ?? []),
-      member1_name: roster.captain_name ?? "",
-      member2_name: roster.teammate_name ?? "",
-      invite_code: inviteCodes.get(team.id) ?? "",
-      team_id: team.id,
-      member1_id: roster.captain_id ?? "",
-      member2_id: roster.teammate_id ?? "",
-      created_at: team.created_at,
-    };
-  });
+  try {
+    const scope = parseExportScope(request);
+    const supabase = createAdminClient();
+    const seasons = await resolveExportSeasons(supabase, scope);
+    const currentSeasonId = seasons[0].id;
+    const seasonNames = new Map(seasons.map((season) => [season.id, season.name]));
 
-  const headers = [
-    "team_name",
-    "total_points",
-    "weekly_points",
-    "tier",
-    "streak_count",
-    "last_activity_date",
-    "weeks_won",
-    "member1_name",
-    "member2_name",
-    "invite_code",
-    "team_id",
-    "member1_id",
-    "member2_id",
-    "created_at",
-  ];
+    const [standings, identities, memberships, wins, champions] = await Promise.all([
+      fetchAllExportRows<any>((from, to) => {
+        let query = supabase.from("team_standings").select(
+          "id,season_id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date,archived_at,weeks_won_count",
+        );
+        if (scope === "current") query = query.eq("season_id", currentSeasonId);
+        return query.order("season_id").order("season_points", { ascending: false }).order("id").range(from, to);
+      }),
+      fetchAllExportRows<any>((from, to) => {
+        let query = supabase.from("teams").select("id,season_id,invite_code");
+        if (scope === "current") query = query.eq("season_id", currentSeasonId);
+        return query.order("season_id").order("id").range(from, to);
+      }),
+      fetchAllExportRows<any>((from, to) => {
+        let query = supabase
+          .from("team_memberships")
+          .select("id,season_id,team_id,user_id,role,display_name:display_name_snapshot,joined_at")
+          .is("left_at", null);
+        if (scope === "current") query = query.eq("season_id", currentSeasonId);
+        return query.order("season_id").order("team_id").order("joined_at").order("id").range(from, to);
+      }),
+      fetchAllExportRows<any>((from, to) => {
+        let query = supabase
+          .from("team_week_results")
+          .select("id,season_id,team_id,competition_weeks(starts_on)")
+          .eq("won", true);
+        if (scope === "current") query = query.eq("season_id", currentSeasonId);
+        return query.order("season_id").order("id").range(from, to);
+      }),
+      fetchAllExportRows<any>((from, to) => {
+        let query = supabase.from("season_champions").select(
+          "id,season_id,team_id,tier_key,decision_method,finalized_at",
+        );
+        if (scope === "current") query = query.eq("season_id", currentSeasonId);
+        return query.order("season_id").order("tier_key").order("id").range(from, to);
+      }),
+    ]);
 
-  const csv =
-    headers.join(",") +
-    "\n" +
-    rows
-      .map((r) => headers.map((h) => csvEscape((r as any)[h])).join(","))
-      .join("\n");
+    const inviteCodes = new Map(identities.map((team) => [team.id, team.invite_code]));
+    const rosterMap = buildTeamRosterMap(memberships as CanonicalRosterRow[]);
+    const championMap = new Map(champions.map((champion) => [champion.team_id, champion]));
+    const winDates = new Map<string, string[]>();
+    for (const result of wins) {
+      const week = Array.isArray(result.competition_weeks)
+        ? result.competition_weeks[0]
+        : result.competition_weeks;
+      if (!week?.starts_on) continue;
+      const dates = winDates.get(result.team_id) ?? [];
+      dates.push(week.starts_on);
+      winDates.set(result.team_id, dates);
+    }
 
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="spartan-games-teams.csv"`,
-    },
-  });
+    const rows = standings.map((team) => {
+      const roster = rosterMap.get(team.id) ?? EMPTY_TEAM_ROSTER;
+      const champion = championMap.get(team.id);
+      return {
+        season_name: seasonNames.get(team.season_id) ?? "Unknown season",
+        season_id: team.season_id,
+        team_name: team.name,
+        total_points: team.season_points ?? 0,
+        weekly_points: team.weekly_points ?? 0,
+        tier: team.tier,
+        streak_count: team.streak_count ?? 0,
+        last_activity_date: team.last_activity_date ?? "",
+        weeks_won_count: team.weeks_won_count ?? 0,
+        weeks_won: (winDates.get(team.id) ?? []).sort().join("; "),
+        champion: champion ? "TRUE" : "FALSE",
+        champion_decision: champion?.decision_method ?? "",
+        captain_name: roster.captain_name ?? "",
+        teammate_name: roster.teammate_name ?? "",
+        invite_code: inviteCodes.get(team.id) ?? "",
+        team_id: team.id,
+        captain_id: roster.captain_id ?? "",
+        teammate_id: roster.teammate_id ?? "",
+        team_status: team.archived_at ? "archived" : "active",
+        created_at: team.created_at,
+      };
+    });
+
+    const headers = [
+      "season_name", "season_id", "team_name", "total_points", "weekly_points",
+      "tier", "streak_count", "last_activity_date", "weeks_won_count", "weeks_won",
+      "champion", "champion_decision", "captain_name", "teammate_name", "invite_code",
+      "team_id", "captain_id", "teammate_id", "team_status", "created_at",
+    ];
+
+    return new NextResponse(toCsv(headers, rows), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${exportFilename("spartan-games-teams", scope, "csv")}"`,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof ExportError ? error.message : "Could not generate teams export.";
+    return new NextResponse(message, { status: error instanceof ExportRequestError ? 400 : 500 });
+  }
 }

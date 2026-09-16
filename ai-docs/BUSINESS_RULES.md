@@ -1,8 +1,8 @@
 # Business Rules
 
 > **Purpose:** Domain behavior enforced by the database workflows.
-> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, `20260911030000_keep_finalized_results_in_sync.sql`, `20260914010000_add_admin_access_management.sql`, and database constraints.
-> **Last reviewed:** 2026-09-14
+> **Source of truth:** `20260909020000_transactional_workflows.sql`, `20260910010000_retire_legacy_compatibility.sql`, `20260911010000_harden_season_close_and_deletion_requests.sql`, `20260911020000_enforce_season_and_roster_lifecycle.sql`, `20260911030000_keep_finalized_results_in_sync.sql`, `20260914010000_add_admin_access_management.sql`, `20260915010000_add_season_champions_and_rebuild_streaks.sql`, and database constraints.
+> **Last reviewed:** 2026-09-15
 
 ## Administrator Access
 
@@ -17,8 +17,9 @@
 
 - `registration`: registration may be open; submissions normally remain closed.
 - `active`: submissions are open and registration remains open by default so unteamed users may register late.
+- `finalizing`: scoring and configuration are frozen while an administrator resolves any exact champion tie.
 - `completed`: both are closed and an end date is recorded.
-- Lifecycle transitions are one-way: `registration -> active -> completed`. A completed season cannot be restarted; an admin must create a new season.
+- Lifecycle transitions are one-way: `registration -> active -> finalizing -> completed` (an automatic result may pass through `finalizing` in one transaction). A completed season cannot be restarted; an admin must create a new season.
 - Starting a new season archives the previous season and its teams, preserves all history, and copies tier goals and current scoring rules.
 - Completing an active season first locks its season row, closes submissions, ensures every Monday–Sunday week from the season start through the current partial week exists, and finalizes those weeks before recording the completed status.
 - Starting a new season invokes the same close workflow before archiving the outgoing season, so rollover cannot strand an unfinalized final week.
@@ -31,7 +32,7 @@ The admin UI intentionally exposes lifecycle actions instead of independent regi
 - A user may belong to one active team per season.
 - A team has at most two active members and one captain.
 - The creator is captain. Joining uses an eight-character invite code generated in PostgreSQL.
-- Only the captain or an admin may rename a team or change its tier. A non-admin captain may change tier only before Start Games; admins retain the correction override afterward.
+- Only the captain or an admin may rename a team. A captain or admin may change a team tier only during registration; tiers are immutable after Start Games.
 - An unteamed user may create or join a team during active play while registration is open. Existing members do not occupy a second team.
 - After a participant records a non-voided activity in a season, that participant cannot leave, create another team, or join another team for that season. This lock belongs to the submitting participant, so a late registrant may still fill the open spot on a one-member team.
 - Before that lock applies, when a captain leaves the remaining member becomes captain. An empty team is archived. End Games closes registration and therefore all member roster changes.
@@ -76,7 +77,16 @@ Changing an activity rule creates a new version. Historical submissions and resu
 - Same-day or backdated submission: no streak change and no bonus.
 - Bonus is `min(streak_count × daily_bonus_increment, max_streak_bonus)`.
 
-The streak update and activity submission share one transaction and team row lock. A bonus is a separate `streak_bonus` ledger event linked to the activity submission; it is not a synthetic activity.
+The streak update and activity submission share one transaction and team row lock. A bonus is a separate `streak_bonus` ledger event linked to the activity submission; it is not a synthetic activity. When an administrator edits or voids an activity, the affected teams' streaks and streak-bonus events are replayed in original receipt order in the same transaction. Same-day and backdated submissions retain the no-advance policy during replay.
+
+## Season Champions
+
+- Each tier with at least one positive-point team has exactly one champion.
+- All finalized weeks count. Teams are ranked by weekly wins, then total season points, then weekly goals met.
+- Solo and two-person teams use the same ranking.
+- If teams remain tied on all three measures, the season enters `finalizing` and an administrator selects one of the tied teams.
+- Champion rows are immutable snapshots. Once the season is completed, scoring data, tier goals, streak settings, weekly results, and champion results cannot change.
+- A tier in which every team has zero points has no champion.
 
 ## Derived Standings
 

@@ -1,7 +1,7 @@
 # Testing and Verification
 
 > **Purpose:** Required checks for application and database changes.
-> **Last reviewed:** 2026-09-14
+> **Last reviewed:** 2026-09-15
 
 ## Standard Checks
 
@@ -47,6 +47,7 @@ Local Supabase requires Docker or another supported container runtime. If that i
 - A user cannot join/create a second team in one season.
 - Non-captains cannot rename/change tier.
 - Captain departure promotes the remaining member; empty team archives.
+- Captain and admin tier changes are both rejected after Start Games.
 
 ### Scoring/submissions
 
@@ -55,6 +56,7 @@ Local Supabase requires Docker or another supported container runtime. If that i
 - Teammate multiplier rounds down once as documented.
 - Weekly cap includes the attempted submission under concurrent requests.
 - First/consecutive/gap/same-day/backdated streak cases.
+- Admin edit/void replays affected streaks in receipt order and refreshes finalized weeks.
 - Failed RPC after upload removes the orphan object when possible.
 - Voiding removes ledger events but retains submission history.
 
@@ -65,6 +67,19 @@ Local Supabase requires Docker or another supported container runtime. If that i
 - Tie breakers are deterministic.
 - Repeated request returns `already_finalized`.
 - Ledger-derived standings, `team_week_results`, and `job_runs` agree.
+
+### Season completion
+
+- Weekly wins, then season points, then goals met determine each tier champion.
+- All-zero tiers produce no champion; solo and two-person teams rank identically.
+- Exact ties enter `finalizing`, reject invalid selections, and require one selected finalist per tied tier.
+- Completed champions and scoring data reject updates/deletes, and new-season rollover cannot bypass a pending tie.
+
+### Exports
+
+- Current-season and all-seasons scopes return every row beyond the API's 1,000-row default.
+- CSV and XLSX values beginning with spreadsheet formula markers are neutralized.
+- Season identifiers and champion snapshots are present in archival exports.
 
 ### Security
 

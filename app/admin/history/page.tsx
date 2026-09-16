@@ -7,6 +7,8 @@ import {
   type HistoryEntry,
   type HistoryWeek,
 } from "./history-filters";
+import { ChampionCards } from "@/components/champion-cards";
+import type { SeasonChampion } from "@/lib/champions";
 
 const HISTORY_PAGE_SIZE = 1000;
 
@@ -85,13 +87,13 @@ async function AdminHistoryInner() {
 
   const { data: season, error: seasonError } = await supabase
     .from("current_season_settings")
-    .select("id")
+    .select("id, status")
     .maybeSingle();
 
   const seasonId =
     season?.id ?? "00000000-0000-0000-0000-000000000000";
 
-  const [weeksResult, historyResult, teamsResult] = await Promise.all([
+  const [weeksResult, historyResult, teamsResult, championsResult] = await Promise.all([
     fetchAllPages<CompetitionWeek>(async (from, to) => {
       const { data, error } = await supabase
         .from("competition_weeks")
@@ -132,6 +134,13 @@ async function AdminHistoryInner() {
       .select("id, name, tier, season_points, weekly_points")
       .eq("season_id", seasonId)
       .is("archived_at", null),
+    supabase
+      .from("season_champions")
+      .select(
+        "season_id,tier_key,team_id,team_name_snapshot,weekly_wins,season_points,goals_met,decision_method,finalized_at",
+      )
+      .eq("season_id", seasonId)
+      .order("tier_key"),
   ]);
 
   const rowsByWeek = new Map<string, HistoryRow[]>();
@@ -182,7 +191,11 @@ async function AdminHistoryInner() {
   }));
 
   const loadError =
-    seasonError || weeksResult.error || historyResult.error || teamsResult.error;
+    seasonError ||
+    weeksResult.error ||
+    historyResult.error ||
+    teamsResult.error ||
+    championsResult.error;
 
   if (loadError) {
     return (
@@ -192,11 +205,25 @@ async function AdminHistoryInner() {
     );
   }
 
+  const champions: SeasonChampion[] = (championsResult.data ?? []).map((row) => ({
+    season_id: row.season_id,
+    tier_key: row.tier_key,
+    team_id: row.team_id,
+    team_name: row.team_name_snapshot,
+    weekly_wins: row.weekly_wins,
+    season_points: row.season_points,
+    goals_met: row.goals_met,
+    decision_method: row.decision_method as SeasonChampion["decision_method"],
+    finalized_at: row.finalized_at,
+  }));
+
   return (
-    <HistoryFilters
-      weeks={weeks}
-      teams={teams}
-    />
+    <div className="space-y-6">
+      {season?.status === "completed" ? (
+        <ChampionCards champions={champions} />
+      ) : null}
+      <HistoryFilters weeks={weeks} teams={teams} />
+    </div>
   );
 }
 
