@@ -121,9 +121,9 @@ export default function SubmitFormClient({
           defaultValue={today}
           min={seasonStartDate}
           max={today}
-          className={`${fieldClass} max-w-full appearance-none cursor-pointer`}
+          className={`${fieldClass} block min-w-0 max-w-full cursor-pointer`}
           required
-          onClick={(event) => event.currentTarget.showPicker()}
+          onClick={(event) => event.currentTarget.showPicker?.()}
         />
       </div>
 
