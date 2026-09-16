@@ -2,7 +2,7 @@
 
 > **Purpose:** Canonical database entities, relationships, derived views, and lifecycle rules.
 > **Source of truth:** `supabase/migrations/`.
-> **Last reviewed:** 2026-09-15
+> **Last reviewed:** 2026-09-16
 
 ## Design Rules
 
@@ -30,7 +30,7 @@ seasons
   │    └─ submission_edit_requests
   └─ team_week_results
 
-job_runs records cron/idempotent workflow executions.
+job_runs records cron/idempotent workflow executions. `announcement_events` records immutable announcement delivery metadata.
 ```
 
 ### `profiles`
@@ -45,7 +45,7 @@ Profiles mirror registered Supabase Auth users and hold names, email, and applic
 
 Owns the competition lifecycle: name/slug, timezone, dates, `draft|registration|active|finalizing|completed`, registration/submission switches, and streak settings. At most one unarchived registration, active, or finalizing season exists.
 
-`current_season_id()` selects the unarchived season used by application views and RPCs. Lifecycle transitions are one-way; completed seasons cannot be reopened. Active play keeps registration open by default for unteamed late entrants. `prepare_season_completion_v2()` closes registration and submissions, finalizes all eligible weeks including the current partial week, and calculates per-tier champions. It completes automatically unless an exact tie requires the `finalizing` state and `complete_season_champions_v2()`.
+`current_season_id()` selects the unarchived season used by application views and RPCs. Lifecycle transitions are one-way; completed seasons cannot be reopened. A registration season carries a provisional start date so the column remains non-null. Transitioning to active play atomically sets `starts_on` to the current date in the season timezone, with no extra administrator input. Active play keeps registration open by default for unteamed late entrants. Submission activity dates cannot precede `starts_on`, and finalization does not create weeks that ended before it. `prepare_season_completion_v2()` closes registration and submissions, finalizes all eligible weeks including the current partial week, and calculates per-tier champions. It completes automatically unless an exact tie requires the `finalizing` state and `complete_season_champions_v2()`.
 
 ### `tiers` and `season_tiers`
 
@@ -114,6 +114,10 @@ Tracks private storage objects, uploader, MIME type, size, deletion request, pur
 ### `job_runs`
 
 Tracks job type, deduplication key, status, attempts, times, error, and metadata. `(job_type, deduplication_key)` is unique.
+
+### `announcement_events`
+
+Stores immutable audit metadata for admin-UI and Slack-command broadcasts: actor/source identity, a bounded subject snapshot, message length, requested channels, delivery statuses, recipient counts, and a short error summary. Message bodies are intentionally not retained. Administrators can read events; only the server service role can insert them, and update/delete are blocked.
 
 ## Read Views
 

@@ -15,8 +15,6 @@ const eslintConfig = [
       ".next/**",
       "node_modules/**",
       "lib/database.types.ts",
-      "check_schema.js",
-      "test_history.js",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

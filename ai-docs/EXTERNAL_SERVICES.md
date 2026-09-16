@@ -3,7 +3,7 @@
 > **Purpose:** Inventory of all external services and integration details.
 > **Audience:** New maintainer, handoff recipient.
 > **Source of truth:** Source code, `vercel.json`, `package.json`.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-16
 
 ## Service Inventory
 
@@ -27,7 +27,7 @@
 | **Integration** | Connected to GitHub repository |
 | **Configuration** | `vercel.json` — cron schedule; `vercel-ignore-build.sh` — only builds `main` branch |
 | **Required env vars** | Supabase public variables are core; service-role, SMTP, cron, and Slack variables are feature-dependent. See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) |
-| **Cron jobs** | `0 6 * * 1` → `GET /api/cron/finalize-week` with `CRON_SECRET` |
+| **Cron jobs** | Daily: `0 6 * * *` → finalization retry; `30 6 * * *` → proof cleanup. Both require `CRON_SECRET` |
 | **Domains** | `Needs maintainer confirmation` — likely `spartan-games.vercel.app` and possibly custom domain |
 | **Transfer** | Transfer Vercel project/team ownership |
 | **Billing** | `Needs maintainer confirmation` — likely Hobby (free) or Pro tier |
@@ -38,12 +38,12 @@
 | Item | Detail |
 |------|--------|
 | **Purpose** | PostgreSQL database, authentication, file storage |
-| **Project ref** | `Needs maintainer confirmation` — `check_schema.js` references a URL suggesting a specific project |
+| **Project ref** | Read from the deployment's `NEXT_PUBLIC_SUPABASE_URL`; no project identifier is committed |
 | **Integration** | `@supabase/ssr` and `@supabase/supabase-js` packages |
 | **Required env vars** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 | **Features used** | PostgreSQL, Auth (email/password), Storage (`submission-proofs` bucket), RLS, Database Functions, Triggers, RPCs |
 | **Auth config** | `Needs maintainer confirmation` — Email confirmations, password reset redirects |
-| **Storage** | The application assumes public reads from `submission-proofs`; bucket policy is not versioned |
+| **Storage** | The `submission-proofs` bucket is private; authenticated uploads are folder-scoped and UI reads use expiring signed URLs |
 | **Transfer** | Transfer Supabase organization ownership |
 | **Billing** | `Needs maintainer confirmation` — likely Free tier |
 | **Failure impact** | All data access, authentication, and file storage fail |
@@ -60,7 +60,9 @@
 | **Limits** | Code comments assume a Brevo free-tier limit; confirm the active provider/account plan |
 | **Transfer** | Transfer the active SMTP provider account access |
 | **Billing** | `Needs maintainer confirmation` |
-| **Failure impact** | No email notifications sent; non-blocking (errors are caught) |
+| **Failure impact** | Season state changes remain committed; the admin UI reports full, partial, skipped, test-mode, or failed provider acceptance and server logs retain the technical error |
+
+SMTP acceptance means the provider accepted a recipient for processing; it does not prove inbox delivery or detect later bounces. True delivery/bounce reporting would require a provider webhook and is not currently implemented.
 
 ### 5. Slack
 
@@ -68,13 +70,13 @@
 |------|--------|
 | **Purpose** | Announcement notifications, slash commands |
 | **Integration** | Incoming webhooks (`lib/slack.ts`) and slash commands (`/api/slack/command`, `/api/slack/notify`) |
-| **Required env vars** | `SLACK_WEBHOOK_URL`, `SLACK_SIGNING_SECRET` |
+| **Required env vars** | `SLACK_WEBHOOK_URL`, `SLACK_SIGNING_SECRET`, `SLACK_ALLOWED_TEAM_ID`, `SLACK_ALLOWED_USER_IDS`; `SLACK_ALLOWED_CHANNEL_IDS` is optional |
 | **Slash commands** | Handler accepts `/spartangamesbot` and `/spartan-games-notify`; actual Slack configuration requires confirmation |
-| **Auth method** | Webhook URL + request signature verification |
+| **Auth method** | Request signature plus workspace/user allow-lists and an optional channel allow-list |
 | **Configuration outside repo** | Slack App configuration: slash command URLs, webhook URL, signing secret |
 | **Transfer** | Transfer Slack workspace admin access, update Slack App ownership |
 | **Billing** | `Needs maintainer confirmation` |
-| **Failure impact** | No Slack notifications; non-blocking (errors are logged) |
+| **Failure impact** | Slack failure is reported independently; email delivery is still attempted when selected |
 
 ### 6. Sender Mailbox / Gmail (Conditional)
 
@@ -105,7 +107,7 @@ The following common services are **not used** in this repository:
 | Vercel Cron | App | `GET /api/cron/finalize-week` | Weekly finalization |
 | Vercel Cron | App | `GET /api/cron/cleanup-proofs` | Private proof cleanup |
 | Slack | App | `POST /api/slack/command` | Slash command handler |
-| Slack | App | `POST /api/slack/notify` | Slash command handler (duplicate) |
+| Slack | App | `POST /api/slack/notify` | Backward-compatible alias to the canonical command handler |
 | Supabase Auth | App | `GET /auth/confirm` | Email verification callback |
 
 `proxy.ts` permits `/api/cron/*` through the session layer; each cron route requires the Vercel bearer secret and fails closed when it is absent.

@@ -523,6 +523,83 @@ begin
   ) then
     raise exception 'Invariant failed: champion rows are not protected from mutation';
   end if;
+
+  if not exists (
+    select 1
+    from pg_proc function_row
+    join pg_namespace namespace_row on namespace_row.oid = function_row.pronamespace
+    where namespace_row.nspname = 'public'
+      and function_row.proname = 'set_season_controls_v2'
+      and function_row.prosrc like '%v_activation_date := (now() at time zone v_season.timezone)::date%'
+      and function_row.prosrc like '%starts_on = coalesce(v_activation_date, season.starts_on)%'
+  ) then
+    raise exception 'Invariant failed: season activation does not set the local start date';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.submissions'::regclass
+      and trigger_row.tgname = 'submissions_guard_season_start'
+      and not trigger_row.tgisinternal
+  ) then
+    raise exception 'Invariant failed: pre-season submission dates are not guarded';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc function_row
+    join pg_namespace namespace_row on namespace_row.oid = function_row.pronamespace
+    where namespace_row.nspname = 'public'
+      and function_row.proname = 'finalize_competition_week'
+      and function_row.prosrc like '%v_target_start + 6 < v_season.starts_on%'
+      and function_row.prosrc like '%''before_season''%'
+  ) then
+    raise exception 'Invariant failed: pre-season week finalization is not skipped';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_class table_row
+    join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace
+    where namespace_row.nspname = 'public'
+      and table_row.relname = 'announcement_events'
+      and table_row.relrowsecurity
+  ) then
+    raise exception 'Invariant failed: announcement audit trail or RLS is missing';
+  end if;
+
+  if not has_table_privilege(
+    'authenticated', 'public.announcement_events', 'SELECT'
+  ) or has_table_privilege(
+    'authenticated', 'public.announcement_events', 'INSERT'
+  ) or has_table_privilege(
+    'authenticated', 'public.announcement_events', 'UPDATE'
+  ) or has_table_privilege(
+    'authenticated', 'public.announcement_events', 'DELETE'
+  ) then
+    raise exception 'Invariant failed: announcement audit grants are incorrect';
+  end if;
+
+  if not has_table_privilege(
+    'service_role', 'public.announcement_events', 'INSERT'
+  ) or has_table_privilege(
+    'service_role', 'public.announcement_events', 'UPDATE'
+  ) or has_table_privilege(
+    'service_role', 'public.announcement_events', 'DELETE'
+  ) then
+    raise exception 'Invariant failed: announcement service-role grants are incorrect';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.announcement_events'::regclass
+      and trigger_row.tgname = 'announcement_events_immutable'
+      and not trigger_row.tgisinternal
+  ) then
+    raise exception 'Invariant failed: announcement audit trail is mutable';
+  end if;
 end;
 $$;
 

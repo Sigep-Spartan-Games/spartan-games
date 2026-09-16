@@ -1,7 +1,7 @@
 # Security and Secrets
 
 > **Purpose:** Secret handling, security controls, PII, and remaining risks.
-> **Last reviewed:** 2026-09-14
+> **Last reviewed:** 2026-09-15
 
 ## Secret Rules
 
@@ -17,8 +17,10 @@ See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for the catalog.
 
 - `proxy.ts` validates Supabase sessions for application pages.
 - Cron routes bypass session redirection only so they can enforce `CRON_SECRET`; missing secret fails 503 and mismatch fails 401.
-- Slack routes verify request signatures.
-- Admin pages/actions use `requireAdmin`; admin RPCs independently call `assert_admin`.
+- Slack routes verify request signatures and require configured workspace/user allow-lists; an optional channel allow-list further narrows access.
+- The shared admin layout and admin actions use `requireAdmin`; admin RPCs independently call `assert_admin`.
+- Authentication callbacks accept only same-origin relative redirect paths.
+- Announcement content is bounded and HTML-escaped, and delivery metadata is recorded in an immutable audit table without storing message bodies.
 - The single application owner is the only administrator allowed to manage admin membership; owner RPCs lock and re-check that profile and write an immutable audit event.
 - Competition tables use RLS and remove direct browser mutation grants.
 - Security-definer functions use an empty search path and schema-qualified names.
@@ -43,15 +45,13 @@ The service role bypasses RLS. It is limited to server modules, scheduled jobs, 
 | edit requests | user UUID, reason text | owner/admin read |
 | proof storage | user images | private bucket and signed URLs |
 
-Treat committed diagnostic exports such as `data.json`, `dump.txt`, and logs as data artifacts. Review and remove them separately if they contain unnecessary production identifiers; this database change does not delete user files.
+Generated diagnostic exports and logs are not tracked. Root-level diagnostic filenames are ignored to prevent accidental recommits.
 
 ## Remaining Risks
 
-1. Slack signature verification authenticates Slack, not the individual Slack user. Add an allow-list or application-admin mapping.
-2. Announcement text is interpolated into email HTML. Escape plain text or sanitize a strict allow-list.
-3. No application-level rate limiter protects login, submissions, Slack, or cron beyond provider controls.
-4. Admin layout itself is not the primary authorization boundary; keep page/action/RPC checks and consider guarding the layout for defense in depth.
-5. There is no automated dependency/security scanning workflow.
+1. Slack access is maintained as environment allow-lists rather than automatically mapped to application administrators; keep the configured Slack IDs current.
+2. No application-level rate limiter protects login, submissions, Slack, or cron beyond provider controls.
+3. There is no automated dependency/security scanning workflow.
 
 ## Review Checklist
 

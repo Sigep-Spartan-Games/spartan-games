@@ -105,7 +105,8 @@ Email is NOT sent via Brevo's API — the README mentions Brevo but the code use
 | **GitHub** | Source control; a Vercel Git integration is expected but is dashboard state |
 
 ### Vercel Configuration (`vercel.json`)
-- Single cron job: `/api/cron/finalize-week` runs `0 6 * * 1` (every Monday at 6:00 AM UTC)
+- `/api/cron/finalize-week` runs daily at 06:00 UTC for idempotent finalization/retry.
+- `/api/cron/cleanup-proofs` runs daily at 06:30 UTC.
 
 ### Build Ignoring (`vercel-ignore-build.sh`)
 - Only builds on the `main` branch; other branches skip deployment
@@ -121,7 +122,7 @@ Email is NOT sent via Brevo's API — the README mentions Brevo but the code use
 
 | Tool | Configuration |
 |------|--------------|
-| **ESLint** | `eslint.config.mjs` — extends `next/core-web-vitals` and `next/typescript`; currently lacks generated-directory ignores and does not pass |
+| **ESLint** | `eslint.config.mjs` — extends `next/core-web-vitals` and `next/typescript`; generated output and database types are ignored |
 | **TypeScript** | `strict: true` in `tsconfig.json` |
 
 ### Notable Absences

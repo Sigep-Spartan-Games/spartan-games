@@ -1,17 +1,20 @@
 // app/admin/layout.tsx
 import { Suspense } from "react";
 import { ShieldCheck } from "lucide-react";
+import { requireAdmin } from "@/lib/admin";
 import AdminTabs from "./admin-tabs";
 
 function AdminTabsSkeleton() {
   return <div className="h-24 animate-pulse rounded-lg border bg-muted/20 sm:h-14" />;
 }
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await requireAdmin("/profile");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">

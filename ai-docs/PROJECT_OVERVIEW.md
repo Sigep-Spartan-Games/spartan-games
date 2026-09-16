@@ -64,7 +64,4 @@ Gold, Purple, and Red have default weekly goals of 100, 75, and 50. Goals are co
 
 - Add browser E2E tests for critical member/admin workflows.
 - Add rate limiting for abuse-prone routes/actions.
-- Authorize Slack command users, not only the Slack request signature.
-- Escape/sanitize announcement HTML and consolidate duplicate Slack routes.
-- Remove committed legacy diagnostic/data artifacts after confirming they are not needed.
 - Decide whether the static rules pages should render live scoring values.

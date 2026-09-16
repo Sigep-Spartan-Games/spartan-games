@@ -167,10 +167,12 @@ function GameControlButton({
 export default function GameControls({
   startGamesAction,
   endGamesAction,
+  resendNotificationAction,
   seasonStatus,
 }: {
   startGamesAction: (formData: FormData) => Promise<void>;
   endGamesAction: (formData: FormData) => Promise<void>;
+  resendNotificationAction: () => Promise<void>;
   seasonStatus: string;
 }) {
   return (
@@ -188,7 +190,7 @@ export default function GameControls({
         <GameControlButton
           action={startGamesAction}
           label="Start Games"
-          confirmMessage="Are you sure you want to START the games? Submissions will open and registration will remain open for unteamed users."
+          confirmMessage="Are you sure you want to START the games? Today becomes the official season start date, submissions will open, and registration will remain open for unteamed users."
           variant="primary"
           disabled={seasonStatus !== "registration"}
           disabledReason={
@@ -212,6 +214,18 @@ export default function GameControls({
           }
         />
       </div>
+
+      {seasonStatus === "active" || seasonStatus === "completed" ? (
+        <form action={resendNotificationAction} className="flex flex-wrap items-center gap-3">
+          <Button type="submit" variant="outline" size="sm">
+            <Mail aria-hidden="true" />
+            Resend {seasonStatus === "active" ? "start" : "end"} notification
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Retries the notification without changing the season status.
+          </p>
+        </form>
+      ) : null}
     </section>
   );
 }

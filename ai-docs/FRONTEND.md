@@ -3,7 +3,7 @@
 > **Purpose:** Document routes, components, styling, and UI patterns.
 > **Audience:** Developers making UI changes, AI agents.
 > **Source of truth:** `app/` directory, `components/` directory, `app/globals.css`, `tailwind.config.ts`.
-> **Last reviewed:** 2026-09-14
+> **Last reviewed:** 2026-09-15
 
 ## Route Table
 
@@ -15,7 +15,7 @@
 | `/teams` | Team management (create/join/leave/rename) | Yes | No | `app/teams/page.tsx` | standings/roster views, team RPCs |
 | `/profile` | User's submissions and edit requests | Yes | No | `app/profile/page.tsx` | `submissions`, `submission_edit_requests`, `teams` |
 | `/rules` | Static game-play explanation (not dynamic scoring values) | Yes | No | `app/rules/page.tsx` | None |
-| `/protected` | Legacy authenticated account/session placeholder | Yes | No | `app/protected/page.tsx` | Supabase Auth claims |
+| `/protected` | Compatibility redirect to `/profile` for old links | Yes | No | `app/protected/page.tsx` | None |
 | `/auth/login` | Email/password login | No | No | `app/auth/login/page.tsx` | — |
 | `/auth/sign-up` | Account registration | No | No | `app/auth/sign-up/page.tsx` | — |
 | `/auth/sign-up-success` | Registration success message | No | No | `app/auth/sign-up-success/page.tsx` | — |
@@ -25,17 +25,17 @@
 | `/auth/error` | Auth error display | No | No | `app/auth/error/page.tsx` | — |
 | `/admin` | Redirects to guarded `/admin/scoring` | Yes | Yes | `app/admin/page.tsx` | — |
 | `/admin/scoring` | Versioned activity rules editor | Yes | Yes | `app/admin/scoring/page.tsx` | `current_activity_rules`, scoring RPCs |
-| `/admin/submissions` | Submission review/edit/void | Yes | Yes | `app/admin/submissions/page.tsx` | submissions, requests, admin RPCs, signed storage URLs |
+| `/admin/submissions` | Paginated submission review/edit/void with season, team, date, and status filters | Yes | Yes | `app/admin/submissions/page.tsx` | submissions, requests, admin RPCs, signed storage URLs |
 | `/admin/submissions/[id]` | Individual submission editor | Yes | Yes | `app/admin/submissions/[id]/page.tsx` | submissions, current rules, normalized edit RPC |
 | `/admin/teams` | Team management and tier assignment | Yes | Yes | `app/admin/teams/page.tsx` | `team_standings`, `active_team_rosters`, current tier settings |
 | `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `team_week_results`, `competition_weeks`, standings |
-| `/admin/announcements` | Send notices via Slack/Email | Yes | Page: No; action: Yes | `app/admin/announcements/page.tsx` | — |
+| `/admin/announcements` | Send validated notices via Slack/Email | Yes | Yes | `app/admin/announcements/page.tsx` | `announcement_events` audit metadata |
 | `/admin/settings` | Season controls, admin access, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | profiles, current season/tier views, owner/admin RPCs |
 | `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | canonical submissions, memberships, standings, rules, weeks/results |
 | `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions`, `team_memberships` |
 | `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `team_standings`, `team_memberships`, `team_week_results` |
 
-The shared admin layout is unguarded, but all current data-backed admin pages call `requireAdmin()`. The announcements client page is the exception; it renders for authenticated non-admins, while its action remains guarded.
+The shared admin layout calls `requireAdmin()` so every admin page is protected. Mutations and sensitive reads retain their own authorization checks as defense in depth.
 
 ## Layout Hierarchy
 
@@ -86,13 +86,11 @@ app/admin/layout.tsx (Admin sub-layout)
 | `admin-link.tsx` | Server | Conditionally renders admin navigation link |
 | `app-shell.tsx` | Client | Hides the application shell on auth routes and sizes admin/non-admin content |
 | `auth-button.tsx` | Server | Shows account menu or login link |
-| `auth-refresh.tsx` | Unused | Entire implementation is commented out |
 | `auth-shell.tsx` | Server | Centered card layout for auth pages |
 | `competition-badges.tsx` | Server | TierBadge and StreakBadge components |
 | `confirm-delete-button.tsx` | Client | Button with confirmation dialog for destructive actions |
 | `env-var-warning.tsx` | Server | Shows a setup warning when public Supabase variables are absent |
 | `forgot-password-form.tsx` | Client | Password reset request form |
-| `hero.tsx` | Server | Hero section (appears unused/legacy) |
 | `login-form.tsx` | Client | Email/password login form with useActionState |
 | `logout-button.tsx` | Client | Sign out button |
 | `pull-to-refresh.tsx` | Client | Mobile pull-to-refresh functionality |
@@ -105,8 +103,6 @@ app/admin/layout.tsx (Admin sub-layout)
 | `time-duration-input.tsx` | Client | Hours/minutes duration picker |
 | `update-password-form.tsx` | Client | New password entry form |
 | `weekly-progress-bar.tsx` | Server | Progress bar toward weekly tier goal |
-
-Legacy/template components `deploy-button.tsx`, `hero.tsx`, `next-logo.tsx`, and `supabase-logo.tsx` are not part of the primary application flow. `hero.tsx` references the logo components; `deploy-button.tsx` is imported but not rendered in the legacy `/protected` layout.
 
 ### UI Components (`components/ui/`)
 

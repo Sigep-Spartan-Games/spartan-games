@@ -1,7 +1,7 @@
 # Testing and Verification
 
 > **Purpose:** Required checks for application and database changes.
-> **Last reviewed:** 2026-09-15
+> **Last reviewed:** 2026-09-16
 
 ## Standard Checks
 
@@ -11,7 +11,7 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-The build needs network access for `next/font` Google font downloads. The ESLint configuration excludes generated `.next`, dependencies, generated database types, and legacy ad hoc diagnostic scripts.
+The build needs network access for `next/font` Google font downloads. The ESLint configuration excludes generated `.next`, dependencies, and generated database types.
 
 ## Database Checks
 
@@ -24,6 +24,10 @@ npm.cmd run db:verify
 - `db:migrations` compares local and linked migration histories.
 - `db:lint` runs Supabase/Postgres lint against the linked database.
 - `db:verify` runs read-only normalized-model invariants and finishes with `ROLLBACK`.
+
+`supabase/tests/season_start_activation.sql` is a rollback-only behavior test. It
+confirms that activation records the season-local date, pre-start submissions
+are rejected, and pre-season finalization does not create an empty week.
 
 `db:verify` requires the normalized migrations to be deployed. Do not expect it to pass against the legacy schema.
 
@@ -70,6 +74,8 @@ Local Supabase requires Docker or another supported container runtime. If that i
 
 ### Season completion
 
+- Starting games replaces the provisional registration date with the season-local activation date.
+- Pre-start activity dates are rejected and the cron skips weeks that ended before the season began.
 - Weekly wins, then season points, then goals met determine each tier champion.
 - All-zero tiers produce no champion; solo and two-person teams rank identically.
 - Exact ties enter `finalizing`, reject invalid selections, and require one selected finalist per tied tier.
@@ -91,6 +97,9 @@ Local Supabase requires Docker or another supported container runtime. If that i
 - User cannot edit/request edits for another user’s submission.
 - Public storage URLs fail; authorized signed URLs work and expire.
 - Cron missing/wrong secret returns 503/401.
+- Auth confirmation rejects absolute and protocol-relative redirect destinations.
+- Slack commands reject invalid signatures and non-allow-listed workspaces, users, and configured channels.
+- Announcement HTML escapes user content and delivery audit rows cannot be updated or deleted.
 
 ## Current Limitations
 

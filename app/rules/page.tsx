@@ -22,7 +22,7 @@ const gameRules = [
   {
     title: "Weekly Competition",
     description:
-      "The season is divided into weekly matchups (Monday to Monday). Points accumulate during the week to determine the weekly winner. At the end of the week, points reset, and a new battle begins.",
+      "The season is divided into weekly matchups running Monday through Sunday. Points accumulate during the week to determine the weekly winner. A new competition week begins each Monday.",
     icon: CalendarDays,
     accent: "bg-competition/10 text-competition",
   },
@@ -36,7 +36,7 @@ const gameRules = [
   {
     title: "The Championship",
     description:
-      "While every week has its own winner, your consistent performance counts. Weekly wins and total points accumulated throughout the season determine the ultimate Spartan Games Champions.",
+      "Each tier has one champion. Teams are ranked by weekly wins, then total season points, then weekly goals met. If teams remain tied, an administrator selects the champion.",
     icon: Trophy,
     accent: "bg-achievement/10 text-achievement",
   },

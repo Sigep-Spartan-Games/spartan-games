@@ -30,6 +30,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+/data.json
+/dev_log.txt
+/dump.txt
+/out.txt
+/tsc_output.txt
 
 # env files (can opt-in for committing if needed)
 .env*.local

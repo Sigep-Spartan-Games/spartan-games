@@ -7,14 +7,16 @@ export async function sendToSlack(subject: string, message: string) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    console.warn("SLACK_WEBHOOK_URL is not defined in environment variables.");
-    // In production, we might want to throw an error, but for dev/if not set up, warn is better
-    // throw new Error("SLACK_WEBHOOK_URL not configured");
-    return;
+    throw new Error("SLACK_WEBHOOK_URL is not configured");
   }
 
-  // Formatting the message for Slack
-  // Using blocks for better formatting
+  const escapedMessage = message
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/@(channel|here|everyone)/gi, "@\u200b$1");
+  const messageSections = escapedMessage.match(/[\s\S]{1,3000}/g) ?? [""];
+
   const payload = {
     blocks: [
       {
@@ -25,13 +27,13 @@ export async function sendToSlack(subject: string, message: string) {
           emoji: true,
         },
       },
-      {
+      ...messageSections.map((text) => ({
         type: "section",
         text: {
           type: "mrkdwn",
-          text: message,
+          text,
         },
-      },
+      })),
     ],
   };
 
@@ -94,8 +96,55 @@ export async function verifySlackRequest(
       .update(sigBaseString)
       .digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(mySignature),
-    Buffer.from(signature),
+  const expected = Buffer.from(mySignature);
+  const received = Buffer.from(signature);
+  return (
+    expected.length === received.length && crypto.timingSafeEqual(expected, received)
   );
+}
+
+function commaSeparatedValues(value: string | undefined) {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+}
+
+export function authorizeSlackCommand({
+  teamId,
+  userId,
+  channelId,
+}: {
+  teamId: string | null;
+  userId: string | null;
+  channelId: string | null;
+}) {
+  const allowedTeam = process.env.SLACK_ALLOWED_TEAM_ID?.trim();
+  const allowedUsers = commaSeparatedValues(process.env.SLACK_ALLOWED_USER_IDS);
+  const allowedChannels = commaSeparatedValues(
+    process.env.SLACK_ALLOWED_CHANNEL_IDS,
+  );
+
+  if (!allowedTeam || allowedUsers.size === 0) {
+    return {
+      allowed: false,
+      reason: "Slack command authorization is not configured",
+    };
+  }
+  if (!teamId || teamId !== allowedTeam) {
+    return { allowed: false, reason: "Slack workspace is not authorized" };
+  }
+  if (!userId || !allowedUsers.has(userId)) {
+    return { allowed: false, reason: "Slack user is not authorized" };
+  }
+  if (
+    allowedChannels.size > 0 &&
+    (!channelId || !allowedChannels.has(channelId))
+  ) {
+    return { allowed: false, reason: "Slack channel is not authorized" };
+  }
+
+  return { allowed: true, reason: null };
 }

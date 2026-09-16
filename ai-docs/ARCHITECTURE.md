@@ -1,7 +1,7 @@
 # Architecture
 
 > **Purpose:** System boundaries and durable engineering decisions.
-> **Last reviewed:** 2026-09-10
+> **Last reviewed:** 2026-09-15
 
 ## System Shape
 
@@ -14,7 +14,7 @@ Browser
   └─ Supabase Auth client ────────────────┘
 
 Vercel Cron ── bearer-auth route ── service role ── RPC/Storage
-Slack ── signature-auth route ── announcement services
+Slack ── signature + actor allow-list ── announcement services/audit
 ```
 
 ## Boundaries

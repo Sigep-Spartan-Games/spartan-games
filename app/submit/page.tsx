@@ -39,7 +39,7 @@ async function SubmitInner({
 
   const { data: settings, error: settingsError } = await supabase
     .from("current_season_settings")
-    .select("submissions_open")
+    .select("starts_on, submissions_open")
     .maybeSingle();
 
   if (settingsError) {
@@ -103,6 +103,7 @@ async function SubmitInner({
         action={createSubmission}
         teamId={team.id}
         teamName={team.name}
+        seasonStartDate={settings.starts_on}
         activityRules={rules ?? []}
       />
     </div>

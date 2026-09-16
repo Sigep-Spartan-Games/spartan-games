@@ -44,6 +44,63 @@ export type Database = {
         }
         Relationships: []
       }
+      announcement_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          email_recipient_count: number
+          email_requested: boolean
+          email_sent_count: number
+          email_status: string
+          error_summary: string | null
+          id: string
+          message_length: number
+          slack_channel_id: string | null
+          slack_requested: boolean
+          slack_status: string
+          slack_team_id: string | null
+          slack_user_id: string | null
+          source: string
+          subject_snapshot: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          email_recipient_count?: number
+          email_requested: boolean
+          email_sent_count?: number
+          email_status: string
+          error_summary?: string | null
+          id?: string
+          message_length: number
+          slack_channel_id?: string | null
+          slack_requested: boolean
+          slack_status: string
+          slack_team_id?: string | null
+          slack_user_id?: string | null
+          source: string
+          subject_snapshot: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          email_recipient_count?: number
+          email_requested?: boolean
+          email_sent_count?: number
+          email_status?: string
+          error_summary?: string | null
+          id?: string
+          message_length?: number
+          slack_channel_id?: string | null
+          slack_requested?: boolean
+          slack_status?: string
+          slack_team_id?: string | null
+          slack_user_id?: string | null
+          source?: string
+          subject_snapshot?: string
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           archived_at: string | null

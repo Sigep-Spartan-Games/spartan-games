@@ -1,7 +1,7 @@
 # Backend and APIs
 
 > **Purpose:** Server boundaries, write APIs, route handlers, and failure behavior.
-> **Last reviewed:** 2026-09-15
+> **Last reviewed:** 2026-09-16
 
 ## Architecture
 
@@ -66,7 +66,7 @@ Prefer these database read contracts:
 
 Admin RPCs are callable by the authenticated role but assert `profiles.is_admin` inside the security-definer function. Granting execute is not equivalent to granting authority.
 
-`set_season_controls_v2` enforces the one-way season lifecycle. Starting active play opens submissions and keeps late registration open; a completed season cannot be reopened. `prepare_season_completion_v2()` closes both controls, finalizes all weeks, and either records automatic champions or pauses in `finalizing` for exact ties. `complete_season_champions_v2(...)` validates one selected finalist per tied tier and atomically completes the season. `start_new_season_v2(...)` cannot bypass unresolved ties. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
+`set_season_controls_v2` enforces the one-way season lifecycle. Starting active play opens submissions, keeps late registration open, and atomically replaces the provisional registration date with the activation date in the season timezone; a completed season cannot be reopened. Submission writes reject activity dates before that start date, and default weekly finalization skips weeks that ended before it. `prepare_season_completion_v2()` closes both controls, finalizes all weeks, and either records automatic champions or pauses in `finalizing` for exact ties. `complete_season_champions_v2(...)` validates one selected finalist per tied tier and atomically completes the season. `start_new_season_v2(...)` cannot bypass unresolved ties. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
 
 `recalculate_week_results(week_id, preserve_snapshots)` is an internal, non-client
 RPC shared by normal finalization, administrator edits, and voids. Editing a
@@ -87,8 +87,11 @@ Team creation, joining, and leaving all enforce the participant-level activity l
 - `app/admin/settings/*actions.ts`: season, tier, streak, and finalization RPCs.
 - `app/admin/submissions/actions.ts`: normalized admin edit, void, and request resolution.
 - `app/admin/teams/actions.ts`: archive/tier RPCs.
+- `app/admin/announcements/actions.ts`: validated Slack/email delivery with immutable audit metadata.
 
 Server Actions redirect with URL-encoded feedback. Database errors are treated as user-safe domain feedback only where the RPC raises controlled messages; do not expose arbitrary internal exceptions in new endpoints.
+
+Season start/end email is deliberately non-transactional: the season change remains committed if SMTP fails. The settings UI reports whether the provider accepted all, some, or none of the intended recipients and calls out test-mode diversion. Provider acceptance is not proof of inbox delivery.
 
 ## Cron Routes
 
@@ -102,9 +105,9 @@ Uses the same auth. Claims a daily `job_runs` key, removes up to 250 queued priv
 
 ## Other Routes
 
-- `/api/slack/command` and `/api/slack/notify`: verify Slack signatures before dispatching announcements.
+- `/api/slack/command` and its `/api/slack/notify` compatibility alias: verify Slack signatures, enforce workspace/user/channel allow-lists, safely render email HTML, and audit delivery outcomes. Service-role recipient lookup pages through confirmed Auth users instead of calling an admin-session RPC.
 - `/admin/settings/export/*.csv|xlsx`: require an admin session, page through complete datasets, neutralize spreadsheet formulas, and support `scope=current` or `scope=all` for a full archive. Team exports include champion results.
-- `/auth/confirm`: exchanges Supabase email tokens.
+- `/auth/confirm`: exchanges Supabase email tokens and accepts only same-origin relative redirect paths.
 
 ## Failure and Retry Rules
 

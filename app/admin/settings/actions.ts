@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/admin";
 import { parseSeasonCompletionResult } from "@/lib/champions";
-import { sendBulkEmail } from "@/lib/email";
+import {
+  sendBulkEmail,
+  type BulkEmailDeliveryReport,
+} from "@/lib/email";
 
 type AdminSupabase = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 
@@ -12,20 +15,82 @@ async function getAllUserEmails(supabase: AdminSupabase) {
   const { data, error } = await supabase.rpc("get_all_user_emails");
   if (error) {
     console.error("Error fetching user emails:", error.message);
-    return [];
+    throw new Error("Could not load notification recipients.");
   }
-  return (data ?? []).map((row: { email: string }) => row.email);
+  const rows = (data ?? []) as Array<{ email: string | null }>;
+  return [
+    ...new Set(
+      rows
+        .map((row) => row.email)
+        .filter((email): email is string => Boolean(email)),
+    ),
+  ];
 }
 
-async function sendGamesEndedNotification(supabase: AdminSupabase) {
+type LifecycleEmailOutcome = {
+  variant: "success" | "warning";
+  message: string;
+};
+
+function describeEmailReport(report: BulkEmailDeliveryReport): LifecycleEmailOutcome {
+  if (report.testMode && report.status === "sent") {
+    return {
+      variant: "warning",
+      message: `Email test mode is enabled. One test message was accepted for ${report.requestedRecipientCount} intended recipient(s); no user notifications were sent.`,
+    };
+  }
+
+  if (report.status === "sent") {
+    return {
+      variant: "success",
+      message: `The email provider accepted notifications for ${report.acceptedRecipientCount} recipient(s).`,
+    };
+  }
+
+  if (report.status === "partial") {
+    return {
+      variant: "warning",
+      message: `The email provider accepted ${report.acceptedRecipientCount} of ${report.attemptedRecipientCount} notification recipient(s). ${report.failedRecipientCount} recipient(s) were not accepted.`,
+    };
+  }
+
+  if (report.reason === "no_recipients") {
+    return {
+      variant: "warning",
+      message: "No confirmed email recipients were found, so no notification was sent.",
+    };
+  }
+
+  return {
+    variant: "warning",
+    message: "The notification email could not be sent. Review the server email logs before retrying.",
+  };
+}
+
+async function sendLifecycleNotification(
+  supabase: AdminSupabase,
+  kind: "started" | "ended",
+): Promise<LifecycleEmailOutcome> {
   try {
     const emails = await getAllUserEmails(supabase);
-    if (emails.length === 0) return;
-
-    await sendBulkEmail({
+    const started = kind === "started";
+    const report = await sendBulkEmail({
       recipients: emails,
-      subject: "Spartan Games Have Ended",
-      html: `
+      subject: started ? "Spartan Games Have Started!" : "Spartan Games Have Ended",
+      html: started
+        ? `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
+              <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">The Games Have Started!</h1>
+              <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">Spartan Games are live and submissions are open.</p>
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/submit"
+                 style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                Submit an Activity
+              </a>
+            </div>
+          </div>
+        `
+        : `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
             <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">The Games Have Ended</h1>
@@ -46,10 +111,23 @@ async function sendGamesEndedNotification(supabase: AdminSupabase) {
         </div>
       `,
     });
-    console.log(`Games ended: notification sent to ${emails.length} users`);
+
+    return describeEmailReport(report);
   } catch (emailError) {
-    console.error("Failed to send end-games emails:", emailError);
+    console.error(`Failed to send ${kind}-games emails:`, emailError);
+    return {
+      variant: "warning",
+      message: "Notification recipients could not be loaded or emailed. Review the server email logs before retrying.",
+    };
   }
+}
+
+function redirectWithOutcome(stateMessage: string, emailOutcome?: LifecycleEmailOutcome): never {
+  const message = emailOutcome
+    ? `${stateMessage} ${emailOutcome.message}`
+    : stateMessage;
+  const parameter = emailOutcome?.variant === "warning" ? "warning" : "ok";
+  redirect(`/admin/settings?${parameter}=${encodeURIComponent(message)}`);
 }
 
 export async function startGames(formData: FormData) {
@@ -79,39 +157,15 @@ export async function startGames(formData: FormData) {
   });
   if (error) redirect("/admin/settings?error=" + encodeURIComponent(error.message));
 
-  if (shouldSendEmail) {
-    try {
-      const emails = await getAllUserEmails(supabase);
-      if (emails.length > 0) {
-        await sendBulkEmail({
-          recipients: emails,
-          subject: "Spartan Games Have Started!",
-          html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; text-align: center;">
-                <h1 style="color: #e2e8f0; font-size: 28px; margin: 0 0 8px 0;">The Games Have Started!</h1>
-                <p style="color: #94a3b8; font-size: 16px; margin: 0 0 24px 0;">Spartan Games are live and submissions are open.</p>
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/submit"
-                   style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                  Submit an Activity
-                </a>
-              </div>
-            </div>
-          `,
-        });
-      }
-    } catch (emailError) {
-      console.error("Failed to send start-games emails:", emailError);
-    }
-  }
+  const emailOutcome = shouldSendEmail
+    ? await sendLifecycleNotification(supabase, "started")
+    : undefined;
 
-  redirect(
-    "/admin/settings?ok=" +
-      encodeURIComponent(
-        shouldSendEmail
-          ? "Games started: registration and submissions are open. Notification emails sent!"
-          : "Games started: registration and submissions are open. (No emails sent)",
-      ),
+  redirectWithOutcome(
+    shouldSendEmail
+      ? "Games started: registration and submissions are open."
+      : "Games started: registration and submissions are open. No notification email was requested.",
+    emailOutcome,
   );
 }
 
@@ -153,15 +207,15 @@ export async function endGames(formData: FormData) {
     );
   }
 
-  if (shouldSendEmail) await sendGamesEndedNotification(supabase);
+  const emailOutcome = shouldSendEmail
+    ? await sendLifecycleNotification(supabase, "ended")
+    : undefined;
 
-  redirect(
-    "/admin/settings?ok=" +
-      encodeURIComponent(
-        shouldSendEmail
-          ? "Games ended and champions locked. Notification emails sent!"
-          : "Games ended and champions locked. (No emails sent)",
-      ),
+  redirectWithOutcome(
+    shouldSendEmail
+      ? "Games ended and champions locked."
+      : "Games ended and champions locked. No notification email was requested.",
+    emailOutcome,
   );
 }
 
@@ -188,26 +242,78 @@ export async function completeChampionSelection(formData: FormData) {
   }
 
   const shouldSendEmail = formData.get("sendEmail") === "on";
-  if (shouldSendEmail) await sendGamesEndedNotification(supabase);
+  const emailOutcome = shouldSendEmail
+    ? await sendLifecycleNotification(supabase, "ended")
+    : undefined;
 
-  redirect(
-    "/admin/settings?ok=" +
-      encodeURIComponent(
-        shouldSendEmail
-          ? "Champions locked and season completed. Notification emails sent!"
-          : "Champions locked and season completed.",
-      ),
+  redirectWithOutcome(
+    shouldSendEmail
+      ? "Champions locked and season completed."
+      : "Champions locked and season completed. No notification email was requested.",
+    emailOutcome,
+  );
+}
+
+export async function resendSeasonNotification() {
+  const { supabase } = await requireAdmin("/admin/settings");
+  const { data: current, error } = await supabase
+    .from("current_season_settings")
+    .select("status")
+    .maybeSingle();
+
+  if (error) {
+    redirect("/admin/settings?error=" + encodeURIComponent(error.message));
+  }
+
+  if (current?.status !== "active" && current?.status !== "completed") {
+    redirect(
+      "/admin/settings?error=" +
+        encodeURIComponent(
+          "Start or complete the season before resending its notification.",
+        ),
+    );
+  }
+
+  const emailOutcome = await sendLifecycleNotification(
+    supabase,
+    current.status === "active" ? "started" : "ended",
+  );
+
+  redirectWithOutcome(
+    current.status === "active"
+      ? "Start-games notification retried."
+      : "End-games notification retried.",
+    emailOutcome,
   );
 }
 
 export async function finalizeWeek() {
   const { supabase } = await requireAdmin("/admin/settings");
-  const { error } = await supabase.rpc("finalize_competition_week", {
+  const { data, error } = await supabase.rpc("finalize_competition_week", {
     p_week_id: undefined,
   });
   if (error) redirect("/admin/settings?error=" + encodeURIComponent(error.message));
+
+  const result = (data ?? {}) as { status?: string; label?: string };
+  if (result.status === "before_season") {
+    redirect(
+      "/admin/settings?ok=" +
+        encodeURIComponent("The previous week ended before this season started, so nothing was finalized."),
+    );
+  }
+  if (result.status === "season_not_active") {
+    redirect(
+      "/admin/settings?ok=" +
+        encodeURIComponent("The season is not active, so no week was finalized."),
+    );
+  }
   redirect(
-    "/admin/settings?ok=" + encodeURIComponent("Previous week finalized successfully."),
+    "/admin/settings?ok=" +
+      encodeURIComponent(
+        result.status === "already_finalized"
+          ? `${result.label ?? "The previous week"} was already finalized.`
+          : `${result.label ?? "The previous week"} finalized successfully.`,
+      ),
   );
 }
 

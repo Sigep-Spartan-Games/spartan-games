@@ -25,7 +25,7 @@ type InitialSubmission = {
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
-  teamFilter?: string;
+  returnQuery?: string;
   requestId?: string;
   teams: Team[];
   activityRules: ActivityRule[];
@@ -34,7 +34,7 @@ type Props = {
 
 export default function EditSubmissionFormClient({
   action,
-  teamFilter,
+  returnQuery,
   requestId,
   teams,
   activityRules,
@@ -102,8 +102,8 @@ export default function EditSubmissionFormClient({
       <form action={action} className="space-y-4">
         {/* required for update */}
         <input type="hidden" name="id" value={initial.id} />
-        {teamFilter ? (
-          <input type="hidden" name="teamFilter" value={teamFilter} />
+        {returnQuery ? (
+          <input type="hidden" name="return_query" value={returnQuery} />
         ) : null}
         {requestId ? (
           <input type="hidden" name="request_id" value={requestId} />

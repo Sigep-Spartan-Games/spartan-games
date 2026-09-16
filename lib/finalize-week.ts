@@ -34,7 +34,11 @@ export async function finalizeWeekService() {
     message:
       result.status === "already_finalized"
         ? `${label} was already finalized.`
-        : `${label} finalized successfully (${result.result_count ?? 0} team results).`,
+        : result.status === "before_season"
+          ? "The previous week ended before this season started — skipped."
+          : result.status === "season_not_active"
+            ? "The season is not active — skipped."
+            : `${label} finalized successfully (${result.result_count ?? 0} team results).`,
     weekId: result.week_id,
   };
 }

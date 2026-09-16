@@ -16,11 +16,13 @@ export default function SubmitFormClient({
   action,
   teamId,
   teamName,
+  seasonStartDate,
   activityRules,
 }: {
   action: (formData: FormData) => Promise<void>;
   teamId: string;
   teamName: string;
+  seasonStartDate?: string;
   activityRules: ActivityRule[];
 }) {
   const sortedRules = useMemo(
@@ -117,6 +119,8 @@ export default function SubmitFormClient({
           name="activity_date"
           type="date"
           defaultValue={today}
+          min={seasonStartDate}
+          max={today}
           className={`${fieldClass} max-w-full appearance-none cursor-pointer`}
           required
           onClick={(event) => event.currentTarget.showPicker()}

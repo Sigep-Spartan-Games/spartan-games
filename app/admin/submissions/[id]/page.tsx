@@ -9,6 +9,10 @@ import { updateSubmission } from "../actions";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBanner } from "@/components/ui/status-banner";
+import {
+  sanitizeSubmissionListQuery,
+  submissionListUrl,
+} from "@/lib/submission-return";
 
 function EditSubmissionSkeleton() {
   return (
@@ -42,14 +46,14 @@ async function AdminSubmissionEditInner({
   const { id } = await params;
 
   const sp = (await searchParams) ?? {};
-  const teamFilter = typeof sp.team === "string" ? sp.team : "";
+  const returnQuery = sanitizeSubmissionListQuery(
+    typeof sp.return === "string" ? sp.return : "",
+  );
   const requestId = typeof sp.requestId === "string" ? sp.requestId : undefined;
 
   const { supabase } = await requireAdmin(`/admin/submissions/${id}`);
 
-  const backHref = teamFilter
-    ? `/admin/submissions?team=${encodeURIComponent(teamFilter)}`
-    : "/admin/submissions";
+  const backHref = submissionListUrl(returnQuery);
 
   const { data: teams, error: teamsErr } = await supabase
     .from("teams")
@@ -143,7 +147,7 @@ async function AdminSubmissionEditInner({
 
       <EditSubmissionFormClient
         action={updateSubmission}
-        teamFilter={teamFilter}
+        returnQuery={returnQuery}
         requestId={requestId}
         teams={teams ?? []}
         activityRules={activityRules ?? []}

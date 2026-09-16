@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
+import { sanitizeSubmissionListQuery, submissionListUrl } from "@/lib/submission-return";
 
 function numberOrNull(value: FormDataEntryValue | null) {
   if (value === null || String(value).trim() === "") return null;
@@ -13,10 +14,6 @@ function numberOrNull(value: FormDataEntryValue | null) {
 function stringOrNull(value: FormDataEntryValue | null) {
   const parsed = String(value ?? "").trim();
   return parsed || null;
-}
-
-function listUrl(teamFilter?: string) {
-  return teamFilter ? `/admin/submissions?team=${encodeURIComponent(teamFilter)}` : "/admin/submissions";
 }
 
 function editUrl(id: string, params: Record<string, string>) {
@@ -34,25 +31,31 @@ function refreshSubmissionViews() {
 export async function deleteSubmission(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/submissions");
   const id = String(formData.get("id") ?? "").trim();
-  const teamFilter = String(formData.get("team") ?? "").trim();
+  const returnQuery = sanitizeSubmissionListQuery(
+    String(formData.get("return_query") ?? ""),
+  );
   if (!id) redirect("/admin/submissions?error=missing_id");
 
   const { error } = await supabase.rpc("void_submission_v2", {
     p_submission_id: id,
   });
   if (error) {
-    redirect(`${listUrl(teamFilter)}${teamFilter ? "&" : "?"}error=${encodeURIComponent(error.message)}`);
+    const target = new URLSearchParams(returnQuery);
+    target.set("error", error.message);
+    redirect(`/admin/submissions?${target.toString()}`);
   }
 
   refreshSubmissionViews();
-  redirect(listUrl(teamFilter));
+  redirect(submissionListUrl(returnQuery));
 }
 
 /** Approve a member deletion request and atomically void its submission. */
 export async function approveDeletionRequest(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/submissions");
   const requestId = String(formData.get("request_id") ?? "").trim();
-  const teamFilter = String(formData.get("team") ?? "").trim();
+  const returnQuery = sanitizeSubmissionListQuery(
+    String(formData.get("return_query") ?? ""),
+  );
   if (!requestId) redirect("/admin/submissions?error=missing_request_id");
 
   const { error } = await supabase.rpc("resolve_submission_edit_request_v2", {
@@ -62,25 +65,30 @@ export async function approveDeletionRequest(formData: FormData) {
   });
   if (error) {
     redirect(
-      `${listUrl(teamFilter)}${teamFilter ? "&" : "?"}error=${encodeURIComponent(error.message)}`,
+      `/admin/submissions?${new URLSearchParams({
+        ...Object.fromEntries(new URLSearchParams(returnQuery)),
+        error: error.message,
+      }).toString()}`,
     );
   }
 
   refreshSubmissionViews();
-  redirect(listUrl(teamFilter));
+  redirect(submissionListUrl(returnQuery));
 }
 
 export async function updateSubmission(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/submissions");
   const id = String(formData.get("id") ?? "").trim();
-  const teamFilter = String(formData.get("teamFilter") ?? "").trim();
+  const returnQuery = sanitizeSubmissionListQuery(
+    String(formData.get("return_query") ?? ""),
+  );
   const requestId = String(formData.get("request_id") ?? "").trim();
   const teamId = String(formData.get("team_id") ?? "").trim();
   const activityKey = String(formData.get("activity_key") ?? "").trim();
   const activityDate = String(formData.get("activity_date") ?? "").trim();
 
   const backParams: Record<string, string> = {};
-  if (teamFilter) backParams.team = teamFilter;
+  if (returnQuery) backParams.return = returnQuery;
   if (requestId) backParams.requestId = requestId;
   if (!id) redirect("/admin/submissions?error=missing_id");
   if (!teamId || !activityKey || !/^\d{4}-\d{2}-\d{2}$/.test(activityDate)) {
@@ -114,7 +122,7 @@ export async function updateSubmission(formData: FormData) {
   }
 
   refreshSubmissionViews();
-  redirect(listUrl(teamFilter));
+  redirect(submissionListUrl(returnQuery));
 }
 
 export async function resolveEditRequest(formData: FormData) {

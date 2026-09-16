@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/admin";
 import {
   completeChampionSelection,
   resetSpartanGames,
+  resendSeasonNotification,
   startGames,
   endGames,
 } from "./actions";
@@ -51,6 +52,7 @@ async function AdminSettingsInner({
 
   const sp = (await searchParams) ?? {};
   const ok = typeof sp.ok === "string" ? sp.ok : null;
+  const warning = typeof sp.warning === "string" ? sp.warning : null;
   const err = typeof sp.error === "string" ? sp.error : null;
 
   const [
@@ -88,6 +90,12 @@ async function AdminSettingsInner({
 
       {ok && <StatusBanner variant="success" title="Done">{ok}</StatusBanner>}
 
+      {warning && (
+        <StatusBanner variant="warning" title="Season updated; check email delivery">
+          {warning}
+        </StatusBanner>
+      )}
+
       {profilesError && (
         <StatusBanner variant="error" title="Administrator access unavailable">
           {profilesError.message}
@@ -116,6 +124,7 @@ async function AdminSettingsInner({
           <GameControls
             startGamesAction={startGames}
             endGamesAction={endGames}
+            resendNotificationAction={resendSeasonNotification}
             seasonStatus={seasonStatus}
           />
 

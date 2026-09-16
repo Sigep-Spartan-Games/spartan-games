@@ -73,6 +73,7 @@ export default function AnnouncementsPage() {
                 id="subject"
                 name="subject"
                 placeholder="Event on Canavan Lawn at 3pm"
+                maxLength={150}
                 required
               />
               <p className="text-sm text-muted-foreground">
@@ -86,6 +87,7 @@ export default function AnnouncementsPage() {
                 id="message"
                 name="message"
                 placeholder="Details about the event, points, etc..."
+                maxLength={5000}
                 required
                 className="min-h-[150px]"
               />

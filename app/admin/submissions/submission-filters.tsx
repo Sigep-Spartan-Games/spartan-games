@@ -2,67 +2,109 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Team = { id: string; name: string };
+type Team = { id: string; name: string; season_id: string };
+type Season = { id: string; name: string; status: string };
 
 export default function SubmissionFilters({
-    teams,
-    teamId,
-    dateFilter,
+  teams,
+  seasons,
+  teamId,
+  seasonId,
+  dateFilter,
+  statusFilter,
 }: {
-    teams: Team[];
-    teamId: string;
-    dateFilter: string;
+  teams: Team[];
+  seasons: Season[];
+  teamId: string;
+  seasonId: string;
+  dateFilter: string;
+  statusFilter: "all" | "active" | "voided";
 }) {
-    const router = useRouter();
-    const searchParams = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const visibleTeams = seasonId
+    ? teams.filter((team) => team.season_id === seasonId)
+    : teams;
 
-    function updateParams(key: string, value: string) {
-        const params = new URLSearchParams(searchParams.toString());
+  function updateParams(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString());
 
-        if (value) params.set(key, value);
-        else params.delete(key);
+    if (value && value !== "all") params.set(key, value);
+    else params.delete(key);
 
-        router.replace(`/admin/submissions?${params.toString()}`);
-    }
+    if (key === "season") params.delete("team");
+    params.delete("page");
+    const query = params.toString();
+    router.replace(query ? `/admin/submissions?${query}` : "/admin/submissions");
+  }
 
-    return (
-        <div className="flex flex-col gap-3 overflow-hidden sm:flex-row sm:items-end">
-            <div className="space-y-1 flex-1 min-w-0">
-                <div className="text-sm font-medium">Filter by team</div>
-                <select
-                    value={teamId}
-                    onChange={(e) => updateParams("team", e.target.value)}
-                    className="h-11 w-full rounded-control border bg-background px-3 text-sm"
-                >
-                    <option value="">All teams</option>
-                    {teams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                            {t.name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-end">
+      <label className="min-w-0 space-y-1">
+        <span className="block text-sm font-medium">Season</span>
+        <select
+          value={seasonId}
+          onChange={(event) => updateParams("season", event.target.value)}
+          className="h-11 w-full rounded-control border bg-background px-3 text-sm"
+        >
+          <option value="">All seasons</option>
+          {seasons.map((season) => (
+            <option key={season.id} value={season.id}>
+              {season.name} ({season.status})
+            </option>
+          ))}
+        </select>
+      </label>
 
-            <div className="space-y-1 flex-1 min-w-0 overflow-hidden">
-                <div className="text-sm font-medium">Filter by activity date</div>
-                <input
-                    type="date"
-                    value={dateFilter}
-                    onChange={(e) => updateParams("date", e.target.value)}
-                    className="box-border h-11 w-full cursor-pointer rounded-control border bg-background px-3 text-sm"
-                    onClick={(e) => e.currentTarget.showPicker()}
-                />
-            </div>
+      <label className="min-w-0 space-y-1">
+        <span className="block text-sm font-medium">Team</span>
+        <select
+          value={teamId}
+          onChange={(event) => updateParams("team", event.target.value)}
+          className="h-11 w-full rounded-control border bg-background px-3 text-sm"
+        >
+          <option value="">All teams</option>
+          {visibleTeams.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
-            {(teamId || dateFilter) && (
-                <button
-                    type="button"
-                    onClick={() => router.replace("/admin/submissions")}
-                    className="h-11 rounded-control border px-4 text-sm hover:bg-muted/50"
-                >
-                    Clear filters
-                </button>
-            )}
-        </div>
-    );
+      <label className="min-w-0 space-y-1">
+        <span className="block text-sm font-medium">Activity date</span>
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(event) => updateParams("date", event.target.value)}
+          className="box-border h-11 w-full cursor-pointer rounded-control border bg-background px-3 text-sm"
+          onClick={(event) => event.currentTarget.showPicker()}
+        />
+      </label>
+
+      <label className="min-w-0 space-y-1">
+        <span className="block text-sm font-medium">Record status</span>
+        <select
+          value={statusFilter}
+          onChange={(event) => updateParams("status", event.target.value)}
+          className="h-11 w-full rounded-control border bg-background px-3 text-sm"
+        >
+          <option value="all">Active and voided</option>
+          <option value="active">Active only</option>
+          <option value="voided">Voided only</option>
+        </select>
+      </label>
+
+      {teamId || seasonId || dateFilter || statusFilter !== "all" ? (
+        <button
+          type="button"
+          onClick={() => router.replace("/admin/submissions")}
+          className="h-11 rounded-control border px-4 text-sm hover:bg-muted/50 xl:col-start-4"
+        >
+          Clear filters
+        </button>
+      ) : null}
+    </div>
+  );
 }

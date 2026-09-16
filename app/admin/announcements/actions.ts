@@ -1,90 +1,63 @@
 "use server";
 
-import { sendToSlack } from "@/lib/slack";
-import { sendBulkEmail } from "@/lib/email";
 import { requireAdmin } from "@/lib/admin";
-
-import { SupabaseClient } from "@supabase/supabase-js";
+import {
+  deliverAnnouncement,
+  recordAnnouncementEvent,
+  validateAnnouncement,
+} from "@/lib/announcements";
 
 export async function sendAnnouncement(formData: FormData) {
-  const subject = formData.get("subject") as string;
-  const message = formData.get("message") as string;
+  const parsed = validateAnnouncement(
+    String(formData.get("subject") ?? ""),
+    String(formData.get("message") ?? ""),
+  );
   const sendSlack = formData.get("sendSlack") === "on";
   const sendEmail = formData.get("sendEmail") === "on";
 
-  if (!subject || !message) {
-    return {
-      success: false,
-      error: "Subject and Message are required.",
-    };
+  if (parsed.error) return { success: false, error: parsed.error };
+  if (!sendSlack && !sendEmail) {
+    return { success: false, error: "Select at least one delivery channel." };
   }
 
-  // Auth check and client creation
-  const { supabase } = await requireAdmin("/admin/announcements");
+  const { supabase, user } = await requireAdmin("/admin/announcements");
+  let recipients: string[] = [];
+  let recipientError: string | undefined;
 
-  return await internalBroadcastAnnouncement(
-    supabase,
-    subject,
-    message,
+  if (sendEmail) {
+    const { data, error } = await supabase.rpc("get_all_user_emails");
+    if (error) {
+      console.error("Could not load announcement recipients:", error.message);
+      recipientError = "Could not load email recipients.";
+    } else {
+      const emailRows = (data ?? []) as Array<{ email: string | null }>;
+      recipients = [
+        ...new Set(
+          emailRows
+            .map((row) => row.email)
+            .filter((email): email is string => Boolean(email)),
+        ),
+      ];
+    }
+  }
+
+  const result = await deliverAnnouncement({
+    subject: parsed.subject,
+    message: parsed.message,
     sendSlack,
     sendEmail,
-  );
-}
+    recipients,
+    recipientError,
+  });
 
-export async function internalBroadcastAnnouncement(
-  supabase: SupabaseClient, // Use the passed client (Admin or Service Role)
-  subject: string,
-  message: string,
-  sendSlack: boolean,
-  sendEmail: boolean,
-) {
-  const errors: string[] = [];
+  await recordAnnouncementEvent({
+    context: { source: "admin_ui", actorId: user.id },
+    subject: parsed.subject,
+    message: parsed.message,
+    sendSlack,
+    sendEmail,
+    result,
+  });
 
-  // 1. Send to Slack
-  if (sendSlack) {
-    try {
-      await sendToSlack(subject, message);
-    } catch (err) {
-      console.warn("Slack warning:", err);
-    }
-  }
-
-  // 2. Send to Email
-  if (sendEmail) {
-    try {
-      // Use the passed client to call RPC
-      const { data, error } = await supabase.rpc("get_all_user_emails");
-
-      if (error) {
-        console.error("Error fetching user emails via RPC:", error.message);
-        errors.push("Could not fetch user emails.");
-      }
-
-      // NOTE: Test mode is handled centrally in lib/email.ts via EMAIL_TEST_MODE env var.
-      const recipients = (data ?? []).map(
-        (row: { email: string }) => row.email,
-      );
-
-      if (recipients.length > 0) {
-        const { errors: emailErrors } = await sendBulkEmail({
-          recipients,
-          subject,
-          html: `<p>${message.replace(/\n/g, "<br/>")}</p>`,
-        });
-
-        if (emailErrors.length > 0) {
-          errors.push(...emailErrors);
-        }
-      }
-    } catch (err) {
-      console.error("Email error:", err);
-      errors.push("Failed to send emails.");
-    }
-  }
-
-  if (errors.length > 0) {
-    return { success: false, error: errors.join(", ") };
-  }
-
-  return { success: true };
+  return result;
 }

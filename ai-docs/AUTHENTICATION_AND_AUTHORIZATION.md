@@ -1,13 +1,13 @@
 # Authentication and Authorization
 
 > **Purpose:** Authentication, route protection, database authorization, and private-file access.
-> **Last reviewed:** 2026-09-14
+> **Last reviewed:** 2026-09-15
 
 ## Authentication
 
 Supabase Auth provides email/password sessions. `proxy.ts` calls `lib/supabase/proxy.ts`, which validates the user with `auth.getUser()` and refreshes cookies.
 
-Public route prefixes are auth pages, Slack handlers, and `/api/cron`. Slack routes authenticate signatures; cron routes authenticate a bearer secret. All other application routes require a valid Supabase user.
+Public route prefixes are auth pages, Slack handlers, and `/api/cron`. Slack routes authenticate signatures and enforce workspace/user allow-lists (plus an optional channel allow-list); cron routes authenticate a bearer secret. All other application routes require a valid Supabase user.
 
 Client components may use the browser Supabase client for session-aware UI. Authorization must not depend on client state.
 

@@ -45,7 +45,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${window.location.origin}/profile`,
         },
       });
       if (error) throw error;
@@ -71,7 +71,9 @@ export function SignUpForm({
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="user@example.com"
                     required
                     value={email}
@@ -84,7 +86,9 @@ export function SignUpForm({
                   </div>
                   <Input
                     id="password"
+                    name="password"
                     type="password"
+                    autoComplete="new-password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -96,7 +100,9 @@ export function SignUpForm({
                   </div>
                   <Input
                     id="repeat-password"
+                    name="repeat-password"
                     type="password"
+                    autoComplete="new-password"
                     required
                     value={repeatPassword}
                     onChange={(e) => setRepeatPassword(e.target.value)}

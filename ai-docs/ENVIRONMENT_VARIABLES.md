@@ -3,7 +3,7 @@
 > **Purpose:** Complete catalog of every environment variable used in the application.
 > **Audience:** Developers setting up the project, deployment engineers, AI agents.
 > **Source of truth:** All `process.env` references in source code, `.gitignore`, `README.md`.
-> **Last reviewed:** 2026-09-09
+> **Last reviewed:** 2026-09-15
 
 > [!CAUTION]
 > Never commit actual secret values to this file or any file tracked by Git. Store all secrets in a password manager or the Vercel/Supabase dashboard.
@@ -36,7 +36,7 @@
 |----------|----------|--------|---------|--------|--------------|---------|
 | `NEXT_PUBLIC_SITE_URL` | No | Yes (client) | Site URL for email links | `https://spartan-games.vercel.app` | Known | `app/admin/settings/actions.ts` |
 | `VERCEL_URL` | No | No (auto) | Auto-set by Vercel deployment | `spartan-games-xxx.vercel.app` | Auto-injected by Vercel | `app/layout.tsx` |
-| `NODE_ENV` | Framework-managed | No | Enforces Slack signature validation in production | `development`, `production`, or `test` | Set by Next.js/runtime | `app/api/slack/*/route.ts` |
+| `NODE_ENV` | Framework-managed | No | Next.js runtime mode | `development`, `production`, or `test` | Set by Next.js/runtime | Next.js |
 
 ### Security
 
@@ -49,7 +49,10 @@
 | Variable | Required | Public | Purpose | Format | Where to Get | Used In |
 |----------|----------|--------|---------|--------|--------------|---------|
 | `SLACK_WEBHOOK_URL` | No | No | Slack incoming webhook URL | `https://hooks.slack.com/services/...` | Slack App → Incoming Webhooks | `lib/slack.ts` |
-| `SLACK_SIGNING_SECRET` | Yes for production Slack commands | No | Verifies requests came from Slack | Opaque signing-secret string | Slack App → Basic Information → Signing Secret | `lib/slack.ts`, `app/api/slack/*/route.ts` |
+| `SLACK_SIGNING_SECRET` | Yes for Slack commands | No | Verifies requests came from Slack; commands fail closed without it | Opaque signing-secret string | Slack App → Basic Information → Signing Secret | `lib/slack.ts`, `lib/slack-command.ts` |
+| `SLACK_ALLOWED_TEAM_ID` | Yes for Slack commands | No | Restricts commands to one Slack workspace | Slack team ID such as `T01234567` | Slack workspace settings | `lib/slack.ts` |
+| `SLACK_ALLOWED_USER_IDS` | Yes for Slack commands | No | Comma-separated Slack users allowed to broadcast | `U01234567,U07654321` | Slack member profiles | `lib/slack.ts` |
+| `SLACK_ALLOWED_CHANNEL_IDS` | No | No | Optional comma-separated channel restriction | `C01234567,C07654321` | Slack channel details | `lib/slack.ts` |
 
 ## Effect When Missing
 
@@ -61,10 +64,12 @@
 | `SMTP_HOST` | Email sending silently fails or throws |
 | `SMTP_USER` / `SMTP_PASS` | Email authentication fails |
 | `CRON_SECRET` | Cron endpoints fail closed with HTTP 503; scheduled maintenance does not run |
-| `SLACK_WEBHOOK_URL` | Slack notifications logged as warning and skipped |
-| `SLACK_SIGNING_SECRET` | Signature helper returns false; unsigned calls are tolerated only outside production when no secret is configured |
+| `SLACK_WEBHOOK_URL` | Requested Slack delivery fails and is reported separately from email delivery |
+| `SLACK_SIGNING_SECRET` | Slack command endpoint fails closed with HTTP 503 |
+| `SLACK_ALLOWED_TEAM_ID` / `SLACK_ALLOWED_USER_IDS` | Slack commands are rejected; no announcement is sent |
+| `SLACK_ALLOWED_CHANNEL_IDS` | No channel restriction is applied |
 | `NEXT_PUBLIC_SITE_URL` | Email links fall back to `https://spartan-games.vercel.app` |
-| `EMAIL_TEST_MODE=true` without `EMAIL_TEST_RECIPIENT` | Email helpers skip delivery and log a warning |
+| `EMAIL_TEST_MODE=true` without `EMAIL_TEST_RECIPIENT` | Email delivery fails closed; lifecycle actions remain committed and the admin UI reports the configuration failure |
 
 ## `.env.local` Template
 
@@ -94,6 +99,9 @@ CRON_SECRET=your-random-cron-secret
 # === Slack (optional) ===
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 SLACK_SIGNING_SECRET=your-slack-signing-secret
+SLACK_ALLOWED_TEAM_ID=T01234567
+SLACK_ALLOWED_USER_IDS=U01234567,U07654321
+# SLACK_ALLOWED_CHANNEL_IDS=C01234567
 ```
 
 ## Variables Not in `.env.local` But Referenced in Code
