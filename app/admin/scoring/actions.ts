@@ -30,7 +30,7 @@ async function requireAdmin() {
 
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
-  if (!user) redirect("/admin?error=not_authenticated");
+  if (!user) redirect("/admin/scoring?error=not_authenticated");
 
   const { data: profile, error } = await supabase
     .from("profiles")
@@ -38,8 +38,8 @@ async function requireAdmin() {
     .eq("id", user.id)
     .single();
 
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
-  if (!profile?.is_admin) redirect("/admin?error=not_admin");
+  if (error) redirect(`/admin/scoring?error=${encodeURIComponent(error.message)}`);
+  if (!profile?.is_admin) redirect("/admin/scoring?error=not_admin");
 
   return supabase;
 }
@@ -53,15 +53,15 @@ export async function upsertActivityRulesBulk(formData: FormData) {
   const ppuList = formData.getAll("points_per_unit[]");
   const bonusList = formData.getAll("teammate_bonus[]");
 
-  if (keys.length === 0) redirect("/admin?error=no_rows");
+  if (keys.length === 0) redirect("/admin/scoring?error=no_rows");
   if (keys.length !== ppuList.length || keys.length !== bonusList.length) {
-    redirect("/admin?error=bulk_mismatch");
+    redirect("/admin/scoring?error=bulk_mismatch");
   }
 
   const { data: existingRules, error: existingError } = await supabase
     .from("current_activity_rules")
     .select("*");
-  if (existingError) redirect(`/admin?error=${encodeURIComponent(existingError.message)}`);
+  if (existingError) redirect(`/admin/scoring?error=${encodeURIComponent(existingError.message)}`);
 
   const payload = keys.map((k, i) => {
     const pointsPerUnit = Number(ppuList[i]);
@@ -93,9 +93,9 @@ export async function upsertActivityRulesBulk(formData: FormData) {
     p_rules: payload,
   });
 
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/scoring?error=${encodeURIComponent(error.message)}`);
 
-  redirect("/admin?saved=1");
+  redirect("/admin/scoring?saved=1");
 }
 
 export async function updateActivityRule(formData: FormData) {
@@ -116,14 +116,14 @@ export async function updateActivityRule(formData: FormData) {
   const normalizedInputType = getInputTypeForActivityUnit(unitLabel);
   const weeklyCap = toNumberOrNull(formData.get("weekly_cap"));
 
-  if (!activityKey) redirect("/admin?error=missing_activity_key");
+  if (!activityKey) redirect("/admin/scoring?error=missing_activity_key");
   if (!Number.isFinite(pointsPerUnit) || pointsPerUnit <= 0)
-    redirect("/admin?error=invalid_points_per_unit");
+    redirect("/admin/scoring?error=invalid_points_per_unit");
   if (!Number.isFinite(teammateBonus) || teammateBonus <= 0)
-    redirect("/admin?error=invalid_teammate_bonus");
+    redirect("/admin/scoring?error=invalid_teammate_bonus");
 
   const targetKey = originalKey || activityKey;
-  if (targetKey !== activityKey) redirect("/admin?error=activity_keys_cannot_be_renamed");
+  if (targetKey !== activityKey) redirect("/admin/scoring?error=activity_keys_cannot_be_renamed");
 
   const { error } = await supabase.rpc("save_activity_rule_v2", {
     p_activity_key: targetKey,
@@ -138,13 +138,13 @@ export async function updateActivityRule(formData: FormData) {
     p_weekly_cap_points: weeklyCap != null ? Math.trunc(weeklyCap) : null,
   });
 
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/scoring?error=${encodeURIComponent(error.message)}`);
 
-  redirect("/admin?saved=1");
+  redirect("/admin/scoring?saved=1");
 }
 
 export async function resetActivityRulesDefaults() {
-  redirect("/admin?error=not_implemented");
+  redirect("/admin/scoring?error=not_implemented");
 }
 
 export async function addActivityRule(formData: FormData) {
@@ -171,11 +171,11 @@ export async function addActivityRule(formData: FormData) {
     activityKey = activityKey.replace(/\s+/g, "_").toLowerCase();
   }
 
-  if (!activityKey) redirect("/admin?error=missing_activity_key");
+  if (!activityKey) redirect("/admin/scoring?error=missing_activity_key");
   if (!Number.isFinite(pointsPerUnit) || pointsPerUnit <= 0)
-    redirect("/admin?error=invalid_points_per_unit");
+    redirect("/admin/scoring?error=invalid_points_per_unit");
   if (!Number.isFinite(teammateBonus) || teammateBonus <= 0)
-    redirect("/admin?error=invalid_teammate_bonus");
+    redirect("/admin/scoring?error=invalid_teammate_bonus");
 
   // Check if it already exists
   const { data: existing } = await supabase
@@ -185,7 +185,7 @@ export async function addActivityRule(formData: FormData) {
     .single();
 
   if (existing) {
-    redirect("/admin?error=activity_already_exists");
+    redirect("/admin/scoring?error=activity_already_exists");
   }
 
   const { error } = await supabase.rpc("save_activity_rule_v2", {
@@ -201,22 +201,22 @@ export async function addActivityRule(formData: FormData) {
     p_weekly_cap_points: weeklyCap != null ? Math.trunc(weeklyCap) : null,
   });
 
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/scoring?error=${encodeURIComponent(error.message)}`);
 
-  redirect("/admin?saved=1");
+  redirect("/admin/scoring?saved=1");
 }
 
 export async function deleteActivityRule(formData: FormData) {
   const supabase = await requireAdmin();
 
   const activityKey = String(formData.get("activity_key") ?? "").trim();
-  if (!activityKey) redirect("/admin?error=missing_activity_key");
+  if (!activityKey) redirect("/admin/scoring?error=missing_activity_key");
 
   const { error } = await supabase.rpc("archive_activity_v2", {
     p_activity_key: activityKey,
   });
 
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/scoring?error=${encodeURIComponent(error.message)}`);
 
-  redirect("/admin?saved=1");
+  redirect("/admin/scoring?saved=1");
 }

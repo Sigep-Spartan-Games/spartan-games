@@ -49,10 +49,16 @@ async function AdminScoringInner({
   // This reads auth/cookies -> must be inside Suspense
   const { supabase } = await requireAdmin("/admin/scoring");
 
-  const { data: rules, error: rulesError } = await supabase
-    .from("current_activity_rules")
-    .select("*")
-    .order("activity_key");
+  const [
+    { data: rules, error: rulesError },
+    { data: season, error: seasonError },
+  ] = await Promise.all([
+    supabase.from("current_activity_rules").select("*").order("activity_key"),
+    supabase.from("current_season_settings").select("status").maybeSingle(),
+  ]);
+
+  const activitiesLocked =
+    season?.status === "finalizing" || season?.status === "completed";
 
   return (
     <div className="space-y-5">
@@ -63,6 +69,19 @@ async function AdminScoringInner({
       {resetParam && (
         <StatusBanner variant="success" title="Reset">
           Scoring rules reset to defaults (10 per unit, +15 teammate).
+        </StatusBanner>
+      )}
+
+      {activitiesLocked && (
+        <StatusBanner variant="warning" title="Activity changes are locked">
+          The season is over, so activities can no longer be added, edited, or
+          deleted. Start a new season before making activity changes.
+        </StatusBanner>
+      )}
+
+      {seasonError && (
+        <StatusBanner variant="error" title="Season status unavailable">
+          {seasonError.message}
         </StatusBanner>
       )}
 
@@ -78,6 +97,7 @@ async function AdminScoringInner({
           resetDefaultsAction={resetActivityRulesDefaults}
           addAction={addActivityRule}
           deleteAction={deleteActivityRule}
+          locked={activitiesLocked}
         />
       )}
     </div>

@@ -54,6 +54,7 @@ export default function ScoringEditor({
   updateAction,
   addAction,
   deleteAction,
+  locked = false,
 }: {
   rules: ActivityRule[];
   saveAllAction: (formData: FormData) => Promise<void>;
@@ -61,6 +62,7 @@ export default function ScoringEditor({
   resetDefaultsAction: (formData: FormData) => Promise<void>;
   addAction: (formData: FormData) => Promise<void>;
   deleteAction: (formData: FormData) => Promise<void>;
+  locked?: boolean;
 }) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
 
@@ -74,7 +76,9 @@ export default function ScoringEditor({
         <div>
           <h2 className="text-lg font-semibold">Activity Rules</h2>
           <p className="text-sm text-muted-foreground">
-            Manage activities, units, and point values.
+            {locked
+              ? "View the activities and scoring rules from the completed season."
+              : "Manage activities, units, and point values."}
           </p>
         </div>
       </div>
@@ -86,7 +90,9 @@ export default function ScoringEditor({
           <div className="col-span-3 sm:col-span-2">Points</div>
           <div className="col-span-2 sm:col-span-1">Bonus</div>
           <div className="hidden sm:block sm:col-span-1">Cap</div>
-          <div className="col-span-3 sm:col-span-3 text-right">Action</div>
+          <div className="col-span-3 sm:col-span-3 text-right">
+            {locked ? "Status" : "Action"}
+          </div>
         </div>
 
         <div className="divide-y">
@@ -239,19 +245,27 @@ export default function ScoringEditor({
                   {r.weekly_cap != null ? r.weekly_cap : "∞"}
                 </div>
                 <div className="col-span-3 sm:col-span-3 flex justify-end gap-2">
-                  <button
-                    onClick={() => setEditingKey(r.activity_key)}
-                    className="flex h-11 w-11 items-center justify-center rounded-control hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    title="Edit"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <ConfirmDeleteButton
-                    action={deleteAction}
-                    payload={{ activity_key: r.activity_key }}
-                    title="Delete Activity Rule"
-                    description={`Are you sure you want to delete "${r.label ?? r.activity_key}"? This will prevent new submissions for this activity.`}
-                  />
+                  {locked ? (
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Season over
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setEditingKey(r.activity_key)}
+                        className="flex h-11 w-11 items-center justify-center rounded-control hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        title="Edit"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <ConfirmDeleteButton
+                        action={deleteAction}
+                        payload={{ activity_key: r.activity_key }}
+                        title="Delete Activity Rule"
+                        description={`Are you sure you want to delete "${r.label ?? r.activity_key}"? This will prevent new submissions for this activity.`}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -265,7 +279,7 @@ export default function ScoringEditor({
       </div>
 
       {/* Add New Rule Section */}
-      <AddNewActivityForm addAction={addAction} />
+      {!locked && <AddNewActivityForm addAction={addAction} />}
     </div>
   );
 }
