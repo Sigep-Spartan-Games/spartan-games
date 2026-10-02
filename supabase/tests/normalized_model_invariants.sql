@@ -600,6 +600,76 @@ begin
   ) then
     raise exception 'Invariant failed: announcement audit trail is mutable';
   end if;
+
+  if to_regprocedure('public.assert_current_scoring_rules_mutable()') is null
+     or not exists (
+       select 1
+       from pg_proc function_row
+       join pg_namespace namespace_row on namespace_row.oid = function_row.pronamespace
+       where namespace_row.nspname = 'public'
+         and function_row.proname in ('save_activity_rule_v2', 'archive_activity_v2')
+         and function_row.prosrc like '%assert_current_scoring_rules_mutable%'
+       group by namespace_row.nspname
+       having count(*) = 2
+     ) then
+    raise exception 'Invariant failed: scoring-rule mutations are not locked after season end';
+  end if;
+
+  if has_function_privilege(
+    'authenticated', 'public.assert_current_scoring_rules_mutable()', 'EXECUTE'
+  ) then
+    raise exception 'Invariant failed: internal scoring-rule guard is directly executable';
+  end if;
+
+  if to_regprocedure('public.get_my_profile_seasons_v1()') is null
+     or to_regprocedure('public.get_my_profile_summary_v1(uuid)') is null then
+    raise exception 'Invariant failed: season-aware profile RPCs are missing';
+  end if;
+
+  if not has_function_privilege(
+    'authenticated', 'public.get_my_profile_seasons_v1()', 'EXECUTE'
+  ) or not has_function_privilege(
+    'authenticated', 'public.get_my_profile_summary_v1(uuid)', 'EXECUTE'
+  ) or has_function_privilege(
+    'anon', 'public.get_my_profile_seasons_v1()', 'EXECUTE'
+  ) or has_function_privilege(
+    'anon', 'public.get_my_profile_summary_v1(uuid)', 'EXECUTE'
+  ) then
+    raise exception 'Invariant failed: profile RPC grants are incorrect';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_indexes index_row
+    where index_row.schemaname = 'public'
+      and index_row.tablename = 'submissions'
+      and index_row.indexname = 'submissions_profile_history_idx'
+      and index_row.indexdef like '%WHERE (voided_at IS NULL)%'
+  ) then
+    raise exception 'Invariant failed: player profile history index is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policy policy_row
+    where policy_row.polrelid = 'public.submissions'::regclass
+      and policy_row.polname = 'submissions_read_own_team_or_admin'
+      and pg_get_expr(policy_row.polqual, policy_row.polrelid) like '%submitted_by = auth.uid()%'
+  ) then
+    raise exception 'Invariant failed: players cannot retain access to their own submission history';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc function_row
+    join pg_namespace namespace_row on namespace_row.oid = function_row.pronamespace
+    where namespace_row.nspname = 'public'
+      and function_row.proname = 'request_submission_edit_v2'
+      and function_row.prosrc like '%Submission edits are only available during the active season%'
+      and function_row.prosrc like '%current_season_id%'
+  ) then
+    raise exception 'Invariant failed: historical submissions can still receive edit requests';
+  end if;
 end;
 $$;
 

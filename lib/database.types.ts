@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          label: string
+          measurement_type: string
+          min_value: number | null
+          step_value: number | null
+          unit_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          label: string
+          measurement_type: string
+          min_value?: number | null
+          step_value?: number | null
+          unit_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          label?: string
+          measurement_type?: string
+          min_value?: number | null
+          step_value?: number | null
+          unit_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_access_events: {
         Row: {
           action: string
@@ -98,48 +140,6 @@ export type Database = {
           slack_user_id?: string | null
           source?: string
           subject_snapshot?: string
-        }
-        Relationships: []
-      }
-      activities: {
-        Row: {
-          archived_at: string | null
-          created_at: string
-          description: string | null
-          id: string
-          key: string
-          label: string
-          measurement_type: string
-          min_value: number | null
-          step_value: number | null
-          unit_label: string | null
-          updated_at: string
-        }
-        Insert: {
-          archived_at?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          key: string
-          label: string
-          measurement_type: string
-          min_value?: number | null
-          step_value?: number | null
-          unit_label?: string | null
-          updated_at?: string
-        }
-        Update: {
-          archived_at?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          key?: string
-          label?: string
-          measurement_type?: string
-          min_value?: number | null
-          step_value?: number | null
-          unit_label?: string | null
-          updated_at?: string
         }
         Relationships: []
       }
@@ -1464,6 +1464,7 @@ export type Database = {
       }
       archive_team_v2: { Args: { p_team_id: string }; Returns: undefined }
       assert_admin: { Args: never; Returns: undefined }
+      assert_current_scoring_rules_mutable: { Args: never; Returns: string }
       assert_owner: { Args: never; Returns: undefined }
       change_team_tier_v2: {
         Args: { p_team_id: string; p_tier_key: string }
@@ -1510,22 +1511,36 @@ export type Database = {
           email: string
         }[]
       }
-      get_pending_champion_ties_v2: { Args: never; Returns: Json }
-      get_my_team_v2: { Args: never; Returns: Json }
-      grant_admin_access_v2: {
-        Args: { p_user_id: string }
-        Returns: undefined
+      get_my_profile_seasons_v1: { Args: never; Returns: Json }
+      get_my_profile_summary_v1: {
+        Args: { p_season_id?: string }
+        Returns: Json
       }
+      get_my_team_v2: { Args: never; Returns: Json }
+      get_pending_champion_ties_v2: { Args: never; Returns: Json }
+      grant_admin_access_v2: { Args: { p_user_id: string }; Returns: undefined }
       is_admin: { Args: { uid: string }; Returns: boolean }
       is_in_current_week: { Args: { d: string }; Returns: boolean }
       join_team_by_code_v2: { Args: { p_code: string }; Returns: string }
       leave_team_v2: { Args: { p_team_id: string }; Returns: undefined }
       parse_week_end: { Args: { p_label: string }; Returns: string }
       parse_week_start: { Args: { p_label: string }; Returns: string }
+      pending_champion_ties_json_internal: {
+        Args: { p_season_id: string }
+        Returns: Json
+      }
       prepare_season_completion_v2: { Args: never; Returns: Json }
+      rebuild_team_streaks_internal: {
+        Args: { p_team_ids: string[] }
+        Returns: undefined
+      }
       recalculate_week_results: {
         Args: { p_preserve_snapshots?: boolean; p_week_id: string }
         Returns: number
+      }
+      reject_pending_season_requests_internal: {
+        Args: { p_season_id: string }
+        Returns: undefined
       }
       rename_team_v2: {
         Args: { p_new_name: string; p_team_id: string }
@@ -1547,6 +1562,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      revoke_admin_access_v2: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       save_activity_rule_v2: {
         Args: {
           p_activity_key: string
@@ -1566,6 +1585,22 @@ export type Database = {
         Args: { p_rules: Json }
         Returns: undefined
       }
+      season_champion_candidates_internal: {
+        Args: { p_season_id: string }
+        Returns: {
+          goals_met: number
+          season_points: number
+          team_id: string
+          team_name: string
+          tied_count: number
+          tier_key: string
+          weekly_wins: number
+        }[]
+      }
+      season_champions_json_internal: {
+        Args: { p_season_id: string }
+        Returns: Json
+      }
       set_season_controls_v2: {
         Args: {
           p_registration_open?: boolean
@@ -1578,6 +1613,10 @@ export type Database = {
         Args: { p_name: string; p_starts_on?: string }
         Returns: string
       }
+      transfer_admin_ownership_v2: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       update_streak_settings_v2: {
         Args: { p_daily_bonus_increment: number; p_max_streak_bonus: number }
         Returns: undefined
@@ -1587,14 +1626,6 @@ export type Database = {
         Returns: undefined
       }
       void_submission_v2: { Args: { p_submission_id: string }; Returns: string }
-      revoke_admin_access_v2: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
-      transfer_admin_ownership_v2: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
       week_identifier: { Args: { p_monday: string }; Returns: string }
       week_start: { Args: { d: string }; Returns: string }
     }
