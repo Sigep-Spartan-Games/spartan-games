@@ -2,7 +2,7 @@
 
 > **Purpose:** Canonical database entities, relationships, derived views, and lifecycle rules.
 > **Source of truth:** `supabase/migrations/`.
-> **Last reviewed:** 2026-09-16
+> **Last reviewed:** 2026-10-13
 
 ## Design Rules
 
@@ -35,7 +35,7 @@ job_runs records cron/idempotent workflow executions. `announcement_events` reco
 
 ### `profiles`
 
-Profiles mirror registered Supabase Auth users and hold names, email, and application access flags. `is_admin` grants operational admin access. `is_owner` designates the single administrator allowed to manage admin membership and transfer ownership; database constraints require the owner to remain an admin.
+Profiles mirror registered Supabase Auth users and hold names, email, and application access flags. Email/password signup requires first and last name metadata; the auth-user trigger trims and stores those values in `profiles`. `is_admin` grants operational admin access. `is_owner` designates the single administrator allowed to manage admin membership and transfer ownership; database constraints require the owner to remain an admin.
 
 `admin_access_events` is the immutable database audit trail for administrator grants, revocations, and ownership transfers. It retains actor and target identifiers plus email snapshots even if an account is later deleted.
 
@@ -54,6 +54,8 @@ Owns the competition lifecycle: name/slug, timezone, dates, `draft|registration|
 ### `teams`, `team_memberships`, and `team_streaks`
 
 `teams` owns team identity, season, tier, invite code, and archive state. Canonical roster rows live in `team_memberships` with a role, display-name snapshot, join time, and leave time.
+
+Profile name corrections synchronize active membership snapshots in registration, active, or finalizing seasons. Departed memberships and completed-season snapshots remain unchanged so historical roster attribution is preserved.
 
 Database constraints enforce:
 

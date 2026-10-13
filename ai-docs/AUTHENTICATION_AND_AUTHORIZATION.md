@@ -1,11 +1,11 @@
 # Authentication and Authorization
 
 > **Purpose:** Authentication, route protection, database authorization, and private-file access.
-> **Last reviewed:** 2026-09-15
+> **Last reviewed:** 2026-10-13
 
 ## Authentication
 
-Supabase Auth provides email/password sessions. `proxy.ts` calls `lib/supabase/proxy.ts`, which validates the user with `auth.getUser()` and refreshes cookies.
+Supabase Auth provides email/password sessions. Signup requires first and last names, sends trimmed values as `first_name` and `last_name` Auth metadata, and persists them to `profiles` through `handle_new_user()`. `proxy.ts` calls `lib/supabase/proxy.ts`, which validates the user with `auth.getUser()` and refreshes cookies.
 
 Public route prefixes are auth pages, Slack handlers, and `/api/cron`. Slack routes authenticate signatures and enforce workspace/user allow-lists (plus an optional channel allow-list); cron routes authenticate a bearer secret. All other application routes require a valid Supabase user.
 
@@ -42,7 +42,7 @@ Application browser roles have no direct insert/update/delete grants for competi
 
 ## Private Team Data
 
-Public team views omit invite codes and member email. `active_team_rosters` exposes display-name snapshots only. `get_my_team_v2()` returns the invite code only for the caller’s current team. Admin pages that need private columns run server-side after `requireAdmin()`.
+Public team views omit invite codes and member email. `active_team_rosters` exposes display-name snapshots only. Profile name corrections synchronize the current non-completed roster snapshot without rewriting departed or completed-season history. `get_my_team_v2()` returns the invite code only for the caller’s current team. Admin pages that need private columns run server-side after `requireAdmin()`.
 
 ## Proof Images
 

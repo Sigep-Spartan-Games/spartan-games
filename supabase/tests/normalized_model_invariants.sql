@@ -177,6 +177,48 @@ begin
     raise exception 'Invariant failed: membership season differs from team season';
   end if;
 
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    where trigger_row.tgrelid = 'public.profiles'::regclass
+      and trigger_row.tgname = 'profiles_sync_current_roster_display_name'
+      and not trigger_row.tgisinternal
+  ) or to_regprocedure('public.sync_current_roster_display_name()') is null then
+    raise exception 'Invariant failed: current roster name synchronization is missing';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'public.sync_current_roster_display_name()',
+    'EXECUTE'
+  ) then
+    raise exception 'Invariant failed: roster name synchronization is directly executable';
+  end if;
+
+  if exists (
+    select 1
+    from public.team_memberships membership
+    join public.profiles profile on profile.id = membership.user_id
+    join public.teams team on team.id = membership.team_id
+      and team.season_id = membership.season_id
+    join public.seasons season on season.id = membership.season_id
+    cross join lateral (
+      select nullif(trim(concat_ws(
+        ' ',
+        nullif(trim(profile.first_name), ''),
+        nullif(trim(profile.last_name), '')
+      )), '') as display_name
+    ) expected
+    where membership.left_at is null
+      and team.archived_at is null
+      and season.archived_at is null
+      and season.status in ('registration', 'active', 'finalizing')
+      and expected.display_name is not null
+      and membership.display_name_snapshot is distinct from expected.display_name
+  ) then
+    raise exception 'Invariant failed: current roster display name differs from profile';
+  end if;
+
   if exists (
     select 1
     from public.submissions s

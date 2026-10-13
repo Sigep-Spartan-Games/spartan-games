@@ -21,6 +21,8 @@ export function SignUpForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
@@ -34,6 +36,15 @@ export function SignUpForm({
     setIsLoading(true);
     setError(null);
 
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
+
+    if (!normalizedFirstName || !normalizedLastName) {
+      setError("First name and last name are required");
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== repeatPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -46,6 +57,10 @@ export function SignUpForm({
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/profile`,
+          data: {
+            first_name: normalizedFirstName,
+            last_name: normalizedLastName,
+          },
         },
       });
       if (error) throw error;
@@ -67,6 +82,36 @@ export function SignUpForm({
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="first-name">First name</Label>
+                    <Input
+                      id="first-name"
+                      name="first-name"
+                      type="text"
+                      autoComplete="given-name"
+                      autoCapitalize="words"
+                      maxLength={100}
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="last-name">Last name</Label>
+                    <Input
+                      id="last-name"
+                      name="last-name"
+                      type="text"
+                      autoComplete="family-name"
+                      autoCapitalize="words"
+                      maxLength={100}
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
