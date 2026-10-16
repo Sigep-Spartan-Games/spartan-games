@@ -1109,27 +1109,36 @@ export type Database = {
       teams: {
         Row: {
           archived_at: string | null
+          color_key: string
           created_at: string
+          emblem_key: string
           id: string
           invite_code: string | null
+          motto: string | null
           name: string
           season_id: string
           tier: string
         }
         Insert: {
           archived_at?: string | null
+          color_key?: string
           created_at?: string
+          emblem_key?: string
           id?: string
           invite_code?: string | null
+          motto?: string | null
           name: string
           season_id: string
           tier?: string
         }
         Update: {
           archived_at?: string | null
+          color_key?: string
           created_at?: string
+          emblem_key?: string
           id?: string
           invite_code?: string | null
+          motto?: string | null
           name?: string
           season_id?: string
           tier?: string
@@ -1241,9 +1250,12 @@ export type Database = {
       }
       active_teams: {
         Row: {
+          color_key: string | null
           created_at: string | null
+          emblem_key: string | null
           id: string | null
           last_activity_date: string | null
+          motto: string | null
           name: string | null
           season_id: string | null
           streak_count: number | null
@@ -1408,9 +1420,12 @@ export type Database = {
       team_standings: {
         Row: {
           archived_at: string | null
+          color_key: string | null
           created_at: string | null
+          emblem_key: string | null
           id: string | null
           last_activity_date: string | null
+          motto: string | null
           name: string | null
           season_id: string | null
           season_points: number | null
@@ -1524,11 +1539,19 @@ export type Database = {
         Args: { p_season_id?: string }
         Returns: Json
       }
+      get_my_achievement_progress_v1: {
+        Args: { p_season_id: string }
+        Returns: Json
+      }
       get_my_season_wrapped_v1: {
         Args: { p_season_id: string }
         Returns: Json
       }
       get_my_team_v2: { Args: never; Returns: Json }
+      get_team_profile_v1: {
+        Args: { p_team_id: string }
+        Returns: Json
+      }
       get_pending_champion_ties_v2: { Args: never; Returns: Json }
       grant_admin_access_v2: { Args: { p_user_id: string }; Returns: undefined }
       is_admin: { Args: { uid: string }; Returns: boolean }
@@ -1557,6 +1580,15 @@ export type Database = {
       rename_team_v2: {
         Args: { p_new_name: string; p_team_id: string }
         Returns: undefined
+      }
+      update_team_style_v1: {
+        Args: {
+          p_color_key: string
+          p_emblem_key: string
+          p_motto: string
+          p_team_id: string
+        }
+        Returns: Json
       }
       request_submission_edit_v2: {
         Args: {

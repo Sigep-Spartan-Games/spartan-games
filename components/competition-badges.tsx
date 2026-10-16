@@ -35,13 +35,14 @@ export function StreakBadge({ count, className }: { count: number; className?: s
   return (
     <span
       className={cn(
-        "inline-flex min-h-6 items-center gap-1 rounded-full border border-competition/20 bg-competition/10 px-2.5 py-0.5 text-xs font-semibold text-competition",
+        "relative inline-flex h-8 w-8 items-center justify-center text-competition",
         className,
       )}
-      title="Active streak"
+      title={`${count} day scoring streak`}
+      aria-label={`${count} day scoring streak`}
     >
-      <Flame aria-hidden="true" className="h-3.5 w-3.5" />
-      {count} day streak
+      <Flame aria-hidden="true" className="absolute inset-0 h-8 w-8 fill-competition/15" />
+      <span aria-hidden="true" className="relative pt-1 text-[11px] font-bold leading-none text-competition">{count}</span>
     </span>
   );
 }

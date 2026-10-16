@@ -22,7 +22,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { WrappedRecap } from "@/components/wrapped-recap";
+import { AchievementRail } from "@/components/achievement-card";
 import { createClient } from "@/lib/supabase/server";
+import { parseAchievementProgress, sortAchievements } from "@/lib/achievements";
 import type { ActivityRule } from "@/lib/types";
 import { parseWrappedResult } from "@/lib/wrapped";
 
@@ -252,12 +254,16 @@ export default async function ProfilePage({
   const wrappedRequest = selectedSeason?.status === "completed"
     ? supabase.rpc("get_my_season_wrapped_v1", { p_season_id: selectedSeason.id })
     : Promise.resolve({ data: null, error: null });
+  const achievementsRequest = selectedSeason
+    ? supabase.rpc("get_my_achievement_progress_v1", { p_season_id: selectedSeason.id })
+    : Promise.resolve({ data: null, error: null });
 
-  const [summaryResult, rulesResult, submissionsResult, wrappedResponse] = await Promise.all([
+  const [summaryResult, rulesResult, submissionsResult, wrappedResponse, achievementsResponse] = await Promise.all([
     summaryRequest,
     supabase.from("current_activity_rules").select("*"),
     submissionsQuery,
     wrappedRequest,
+    achievementsRequest,
   ]);
 
   const summary = parseSummary(summaryResult.data);
@@ -283,6 +289,7 @@ export default async function ProfilePage({
     }),
   );
   const wrapped = parseWrappedResult(wrappedResponse.data);
+  const achievements = parseAchievementProgress(achievementsResponse.data);
 
   const displayName = profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
@@ -392,6 +399,18 @@ export default async function ProfilePage({
       </div>
 
       {wrapped.status === "ready" ? <WrappedRecap data={wrapped} /> : null}
+
+      {selectedSeason && achievements ? (
+        <div className="space-y-7">
+          <AchievementRail title="Personal achievements" cards={sortAchievements(achievements.personal)} />
+          {achievements.team ? <AchievementRail title={`Team achievements · ${achievements.team.name}`} cards={sortAchievements(achievements.team_achievements)} /> : null}
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/profile/achievements?season=${encodeURIComponent(selectedSeason.slug)}`}>View all achievements</Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <section aria-labelledby="profile-submissions-heading" className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">

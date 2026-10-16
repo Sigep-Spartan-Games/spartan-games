@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const [standings, identities, memberships, wins, champions] = await Promise.all([
       fetchAllExportRows<any>((from, to) => {
         let query = supabase.from("team_standings").select(
-          "id,season_id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date,archived_at,weeks_won_count",
+          "id,season_id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date,archived_at,weeks_won_count,emblem_key,color_key,motto",
         );
         if (scope === "current") query = query.eq("season_id", currentSeasonId);
         return query.order("season_id").order("season_points", { ascending: false }).order("id").range(from, to);
@@ -104,6 +104,9 @@ export async function GET(request: Request) {
         total_points: team.season_points ?? 0,
         weekly_points: team.weekly_points ?? 0,
         tier: team.tier,
+        emblem: team.emblem_key,
+        team_color: team.color_key,
+        motto: team.motto ?? "",
         streak_count: team.streak_count ?? 0,
         last_activity_date: team.last_activity_date ?? "",
         weeks_won_count: team.weeks_won_count ?? 0,
@@ -123,7 +126,7 @@ export async function GET(request: Request) {
 
     const headers = [
       "season_name", "season_id", "team_name", "total_points", "weekly_points",
-      "tier", "streak_count", "last_activity_date", "weeks_won_count", "weeks_won",
+      "tier", "emblem", "team_color", "motto", "streak_count", "last_activity_date", "weeks_won_count", "weeks_won",
       "champion", "champion_decision", "captain_name", "teammate_name", "invite_code",
       "team_id", "captain_id", "teammate_id", "team_status", "created_at",
     ];

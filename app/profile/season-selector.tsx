@@ -11,9 +11,15 @@ type SeasonOption = {
 export function ProfileSeasonSelector({
   seasons,
   value,
+  basePath = "/profile",
+  allowAll = true,
+  queryParams = {},
 }: {
   seasons: SeasonOption[];
   value: string;
+  basePath?: string;
+  allowAll?: boolean;
+  queryParams?: Record<string, string>;
 }) {
   const router = useRouter();
 
@@ -24,8 +30,9 @@ export function ProfileSeasonSelector({
         value={value}
         onChange={(event) => {
           const params = new URLSearchParams();
+          Object.entries(queryParams).forEach(([key, value]) => params.set(key, value));
           params.set("season", event.target.value);
-          router.push(`/profile?${params.toString()}`);
+          router.push(`${basePath}?${params.toString()}`);
         }}
         className="h-11 w-full rounded-control border border-input bg-card px-3 text-base text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/30 md:h-10 md:text-sm"
         aria-label="Select profile season"
@@ -35,7 +42,7 @@ export function ProfileSeasonSelector({
             {season.name}{season.is_current ? " (Current)" : ""}
           </option>
         ))}
-        <option value="all">All Seasons</option>
+        {allowAll ? <option value="all">All Seasons</option> : null}
       </select>
     </label>
   );

@@ -19,6 +19,11 @@ function refreshTeams() {
   revalidatePath("/teams");
   revalidatePath("/leaderboard");
   revalidatePath("/submit");
+  revalidatePath("/profile");
+}
+
+function customizeRedirect(error: string): never {
+  redirect(`/teams/customize?error=${encodeURIComponent(error)}`);
 }
 
 export async function createTeamAction(formData: FormData): Promise<void> {
@@ -98,4 +103,31 @@ export async function changeTierAction(formData: FormData): Promise<void> {
 
 export async function leaveTeamActionFormData(formData: FormData): Promise<void> {
   await leaveTeamAction(String(formData.get("teamId") ?? ""));
+}
+
+export async function updateTeamStyleAction(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) customizeRedirect("Sign in required");
+
+  const teamId = String(formData.get("teamId") ?? "");
+  const emblem = String(formData.get("emblem") ?? "");
+  const color = String(formData.get("color") ?? "");
+  const motto = String(formData.get("motto") ?? "").trim();
+  if (!teamId) customizeRedirect("Missing team id");
+  if (!["helmet", "flame", "mountain", "wings", "lightning", "shield", "compass", "trophy"].includes(emblem)) customizeRedirect("Choose a valid emblem");
+  if (!["purple", "crimson", "gold", "navy", "emerald", "slate"].includes(color)) customizeRedirect("Choose a valid color");
+  if (motto.length > 40 || /[\u0000-\u001f\u007f]/.test(motto)) customizeRedirect("Motto must be 40 characters or fewer");
+
+  const { error } = await supabase.rpc("update_team_style_v1", {
+    p_team_id: teamId,
+    p_emblem_key: emblem,
+    p_color_key: color,
+    p_motto: motto,
+  });
+  if (error) customizeRedirect(error.message);
+
+  refreshTeams();
+  revalidatePath(`/teams/${teamId}`);
+  redirect("/teams/customize?success=Team%20style%20updated");
 }
