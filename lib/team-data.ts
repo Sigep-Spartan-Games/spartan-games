@@ -9,6 +9,9 @@ export type TeamDirectoryRow = {
   season_points: number;
   weeks_won_count: number;
   streak_count: number;
+  emblem_key: string;
+  color_key: string;
+  motto: string | null;
   created_at: string;
   captain_id: string | null;
   captain_name: string | null;
@@ -27,6 +30,9 @@ export type MyTeam = {
   total_points: number;
   streak_count: number;
   last_activity_date: string | null;
+  emblem_key: string;
+  color_key: string;
+  motto: string | null;
 };
 
 type RosterRow = {
@@ -53,7 +59,7 @@ export async function getTeamDirectory(
     supabase
       .from("team_standings")
       .select(
-        "id, season_id, name, tier, weekly_points, season_points, weeks_won_count, streak_count, created_at, archived_at",
+        "id, season_id, name, tier, weekly_points, season_points, weeks_won_count, streak_count, created_at, archived_at, emblem_key, color_key, motto",
       )
       .eq("season_id", season.id)
       .is("archived_at", null)
@@ -95,6 +101,9 @@ export async function getTeamDirectory(
       season_points: Number(team.season_points ?? 0),
       weeks_won_count: Number(team.weeks_won_count ?? 0),
       streak_count: Number(team.streak_count ?? 0),
+      emblem_key: team.emblem_key ?? "shield",
+      color_key: team.color_key ?? "purple",
+      motto: team.motto ?? null,
       created_at: team.created_at,
       captain_id: captain?.user_id ?? null,
       captain_name: captain?.display_name ?? null,

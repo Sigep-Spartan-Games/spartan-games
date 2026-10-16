@@ -118,7 +118,7 @@ export async function GET(request: Request) {
       }),
       fetchAllExportRows<any>((from, to) => {
         let query = supabase.from("team_standings").select(
-          "id,season_id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date,archived_at,weeks_won_count",
+          "id,season_id,name,season_points,weekly_points,created_at,tier,streak_count,last_activity_date,archived_at,weeks_won_count,emblem_key,color_key,motto",
         );
         if (scope === "current") query = query.eq("season_id", currentSeasonId);
         return query.order("season_id").order("season_points", { ascending: false }).order("id").range(from, to);
@@ -250,11 +250,12 @@ export async function GET(request: Request) {
 
     addSheet(workbook, "Teams", [
       "Season", "Season ID", "Team", "Team ID", "Tier", "Season Points", "Weekly Points",
-      "Streak", "Last Activity", "Wins", "Win Dates", "Champion", "Champion Decision",
+      "Emblem", "Team Color", "Motto", "Streak", "Last Activity", "Wins", "Win Dates", "Champion", "Champion Decision",
       "Captain", "Teammate", "Captain ID", "Teammate ID", "Invite Code", "Status", "Created At",
     ], teams.map((team) => [
       team.season_name, team.season_id, team.name, team.id, team.tier, team.season_points ?? 0,
-      team.weekly_points ?? 0, team.streak_count ?? 0, team.last_activity_date ?? "",
+      team.weekly_points ?? 0, team.emblem_key, team.color_key, team.motto ?? "",
+      team.streak_count ?? 0, team.last_activity_date ?? "",
       team.weeks_won_count ?? 0, team.weeks_won.join(", "), team.champion ? "TRUE" : "FALSE",
       team.champion?.decision_method ?? "", team.captain_name ?? "", team.teammate_name ?? "",
       team.captain_id ?? "", team.teammate_id ?? "", team.invite_code,

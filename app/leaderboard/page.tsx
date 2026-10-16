@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getTeamDirectory } from "@/lib/team-data";
 import { ChampionCards } from "@/components/champion-cards";
+import { TeamEmblem } from "@/components/team-emblem";
+import { TeamDetailsDialog } from "@/components/team-details-dialog";
 import type { SeasonChampion } from "@/lib/champions";
 
 const tierTabStyles = {
@@ -213,7 +215,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <div
                     key={team.id}
                     className={cn(
-                      "grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-3 px-4 py-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:items-center lg:px-5",
+                      "relative grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-3 px-4 py-4 transition-colors hover:bg-muted/25 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:items-center lg:px-5",
                       isMine && "bg-primary/[0.055]",
                     )}
                   >
@@ -229,8 +231,10 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                     >
                       #{rank}
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="sm" />
+                      <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <p className="truncate font-semibold">{team.name}</p>
                         {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
                         {team.tier && activeTier === "all" ? <TierBadge tier={team.tier} /> : null}
@@ -241,12 +245,13 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                       </p>
                       <div className="mt-2 flex gap-4 text-xs text-muted-foreground lg:hidden">
                         <span>Season <strong className="app-number text-foreground">{seasonTotal}</strong></span>
-                        <span>Wins <strong className="app-number text-foreground">{team.weeks_won_count ?? 0}</strong></span>
+                      </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
                       <p className="text-[11px] text-muted-foreground lg:hidden">weekly pts</p>
+                      <p className="mt-0.5 text-[10px] font-medium text-muted-foreground lg:hidden">{team.weeks_won_count ?? 0} weekly {(team.weeks_won_count ?? 0) === 1 ? "win" : "wins"}</p>
                     </div>
                     <div className="hidden text-right lg:block">
                       <span className="app-number font-semibold text-achievement">{seasonTotal}</span>
@@ -254,6 +259,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                     <div className="hidden text-right lg:block">
                       <span className="app-number text-muted-foreground">{team.weeks_won_count ?? 0}</span>
                     </div>
+                    <TeamDetailsDialog team={team} />
                   </div>
                 );
               })}

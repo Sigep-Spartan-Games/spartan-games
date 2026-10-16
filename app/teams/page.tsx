@@ -1,6 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { KeyRound, UsersRound } from "lucide-react";
+import { KeyRound, Settings, UsersRound } from "lucide-react";
 import { createClient } from "../../lib/supabase/server";
 import {
   createTeamAction,
@@ -15,6 +16,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getMyTeam, getTeamDirectory } from "@/lib/team-data";
+import { TeamEmblem } from "@/components/team-emblem";
+import { Button } from "@/components/ui/button";
 
 const tierOptions = [
   { value: "gold", label: "Gold", description: "Competitive" },
@@ -168,8 +171,12 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
           <div className="border-l-4 border-primary p-5 sm:p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-primary">Your team</p>
-                <h2 id="my-team-heading" className="mt-1 truncate text-2xl font-semibold tracking-tight">{myTeam.name}</h2>
+                <div className="flex items-center gap-3">
+                  <TeamEmblem emblem={myTeam.emblem_key} color={myTeam.color_key} size="md" />
+                  <div className="min-w-0"><p className="text-sm font-semibold text-primary">Your team</p>
+                <h2 id="my-team-heading" className="mt-1 truncate text-2xl font-semibold tracking-tight">{myTeam.name}</h2></div>
+                </div>
+                {myTeam.motto ? <p className="mt-2 text-sm italic text-muted-foreground">{myTeam.motto}</p> : null}
                 <p className="mt-1 text-sm text-muted-foreground">
                     {myTeam.captain_name ?? "Open spot"} / {myTeam.member_name ?? "Open spot"}
                 </p>
@@ -222,6 +229,10 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                     Your roster is locked because you have submitted an activity this season.
                   </p>
                 ) : null}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button asChild variant="outline"><Link href={`/teams/${myTeam.id}`}>Team profile</Link></Button>
+                  {myTeam.role === "captain" && ["registration", "active"].includes(seasonStatus) ? <Button asChild variant="outline"><Link href="/teams/customize"><Settings /> Customize</Link></Button> : null}
+                </div>
               </div>
             </div>
           </div>
@@ -239,8 +250,10 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
         ) : (
           <div className="app-surface grid divide-y overflow-hidden md:grid-cols-2 md:divide-x md:divide-y-0">
             {teams.map((team) => (
-              <div key={team.id} className="flex min-w-0 items-start justify-between gap-4 p-4 sm:p-5">
-                <div className="min-w-0">
+              <Link href={`/teams/${team.id}`} key={team.id} className="flex min-w-0 items-start justify-between gap-4 p-4 transition-colors hover:bg-muted/25 sm:p-5">
+                <div className="flex min-w-0 gap-3">
+                  <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="sm" />
+                  <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="truncate font-semibold">{team.name}</h3>
                     {team.tier ? <TierBadge tier={team.tier} /> : null}
@@ -251,12 +264,13 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                   <p className="mt-2 text-xs font-medium text-muted-foreground">
                     {team.member_id ? "Team full" : "Open spot (invite-only)"}
                   </p>
+                  </div>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
                   <p className="text-xs text-muted-foreground">weekly pts</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
