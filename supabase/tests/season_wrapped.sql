@@ -5,11 +5,16 @@ begin;
 do $$
 declare
   v_admin uuid;
-  v_other_user uuid;
+  v_gold_user uuid;
+  v_purple_user uuid;
+  v_zero_user uuid;
+  v_unrelated_user uuid;
+  v_fixture_users uuid[];
   v_season uuid := gen_random_uuid();
   v_active_season uuid := gen_random_uuid();
   v_team uuid := gen_random_uuid();
   v_other_team uuid := gen_random_uuid();
+  v_purple_team uuid := gen_random_uuid();
   v_active_team uuid := gen_random_uuid();
   v_week_one uuid := gen_random_uuid();
   v_week_two uuid := gen_random_uuid();
@@ -18,6 +23,8 @@ declare
   v_submission_one uuid := gen_random_uuid();
   v_submission_two uuid := gen_random_uuid();
   v_submission_three uuid := gen_random_uuid();
+  v_gold_submission uuid := gen_random_uuid();
+  v_purple_submission uuid := gen_random_uuid();
   v_activity_key text := 'wrapped_' || substr(md5(gen_random_uuid()::text), 1, 20);
   v_result jsonb;
   v_rejected boolean := false;
@@ -48,12 +55,20 @@ begin
     raise exception 'Anonymous role can execute the player Wrapped wrapper';
   end if;
 
-  select profile.id into v_other_user
+  select array_agg(profile.id order by profile.created_at, profile.id)
+  into v_fixture_users
   from public.profiles profile
   where profile.id <> v_admin
-    and not profile.is_admin
-  order by profile.created_at
-  limit 1;
+    and not profile.is_admin;
+
+  if coalesce(cardinality(v_fixture_users), 0) < 4 then
+    raise exception 'Wrapped test requires four non-admin fixture profiles';
+  end if;
+
+  v_gold_user := v_fixture_users[1];
+  v_purple_user := v_fixture_users[2];
+  v_zero_user := v_fixture_users[3];
+  v_unrelated_user := v_fixture_users[4];
 
   insert into public.seasons (
     id, slug, name, status, starts_on, ends_on, archived_at,
@@ -89,18 +104,23 @@ begin
   insert into public.season_tiers (season_id, tier_key, weekly_goal)
   values
     (v_season, 'gold', 25),
+    (v_season, 'purple', 25),
     (v_active_season, 'gold', 25);
 
   insert into public.teams (id, season_id, name, tier)
   values
     (v_team, v_season, 'Wrapped Alpha ' || substr(v_team::text, 1, 8), 'gold'),
     (v_other_team, v_season, 'Wrapped Beta ' || substr(v_other_team::text, 1, 8), 'gold'),
+    (v_purple_team, v_season, 'Wrapped Purple ' || substr(v_purple_team::text, 1, 8), 'purple'),
     (v_active_team, v_active_season, 'Wrapped Live ' || substr(v_active_team::text, 1, 8), 'gold');
 
   insert into public.team_memberships (
     team_id, season_id, user_id, role, display_name_snapshot, joined_at
   ) values
     (v_team, v_season, v_admin, 'captain', 'Wrapped Tester', '2026-01-04 12:00:00+00'),
+    (v_team, v_season, v_zero_user, 'member', 'Wrapped Zero', '2026-01-04 12:01:00+00'),
+    (v_other_team, v_season, v_gold_user, 'captain', 'Wrapped Gold Peer', '2026-01-04 12:02:00+00'),
+    (v_purple_team, v_season, v_purple_user, 'captain', 'Wrapped Purple Leader', '2026-01-04 12:03:00+00'),
     (v_active_team, v_active_season, v_admin, 'captain', 'Wrapped Tester', '2026-02-01 12:00:00+00');
 
   insert into public.competition_weeks (
@@ -141,6 +161,16 @@ begin
       v_submission_three, v_team, v_admin, 'Wrapped Tester', 20, 20,
       v_activity_key, '2026-01-13', 20, 1, 1.5, false,
       v_season, v_week_two, v_activity, v_rule, 'activity', '2026-01-13 12:00:00+00'
+    ),
+    (
+      v_gold_submission, v_other_team, v_gold_user, 'Wrapped Gold Peer', 49, 49,
+      v_activity_key, '2026-01-07', 49, 1, 1.5, false,
+      v_season, v_week_one, v_activity, v_rule, 'activity', '2026-01-07 13:00:00+00'
+    ),
+    (
+      v_purple_submission, v_purple_team, v_purple_user, 'Wrapped Purple Leader', 100, 100,
+      v_activity_key, '2026-01-08', 100, 1, 1.5, false,
+      v_season, v_week_one, v_activity, v_rule, 'activity', '2026-01-08 13:00:00+00'
     );
 
   insert into public.score_events (
@@ -161,6 +191,7 @@ begin
   ) values
     (v_season, v_week_one, v_team, 'gold', 28, 25, 1, true, 2),
     (v_season, v_week_one, v_other_team, 'gold', 20, 25, 2, false, 0),
+    (v_season, v_week_one, v_purple_team, 'purple', 100, 25, 1, true, 1),
     (v_season, v_week_two, v_team, 'gold', 21, 25, 1, true, 1),
     (v_season, v_week_two, v_other_team, 'gold', 10, 25, 2, false, 0);
 
@@ -177,6 +208,8 @@ begin
     weekly_wins, season_points, goals_met, decision_method
   ) values (
     v_season, 'gold', v_team, 'Wrapped Alpha', 2, 49, 1, 'automatic'
+  ), (
+    v_season, 'purple', v_purple_team, 'Wrapped Purple', 1, 100, 1, 'automatic'
   );
 
   update public.seasons
@@ -194,6 +227,13 @@ begin
      or (v_result#>>'{personal,active_days}')::integer <> 3
      or (v_result#>>'{personal,longest_active_day_run}')::integer <> 2
      or (v_result#>>'{personal,teammate_bonus_points}')::integer <> 5
+     or (v_result#>>'{personal,contribution_rank}')::integer <> 2
+     or (v_result#>>'{personal,participant_count}')::integer <> 4
+     or (v_result#>>'{personal,overall_contribution_rank}')::integer <> 2
+     or (v_result#>>'{personal,overall_participant_count}')::integer <> 4
+     or (v_result#>>'{personal,tier_contribution_rank}')::integer <> 1
+     or (v_result#>>'{personal,tier_participant_count}')::integer <> 3
+     or v_result#>>'{personal,contribution_tier}' <> 'gold'
      or (v_result#>>'{team,longest_streak}')::integer <> 2
      or (v_result#>>'{team,weeks_won}')::integer <> 2
      or (v_result#>>'{team,is_champion}')::boolean is not true then
@@ -203,6 +243,30 @@ begin
   if v_result#>>'{personal,top_activity,label}' <> 'Wrapped Miles'
      or (v_result#>>'{personal,top_activity,numeric_total}')::numeric <> 40 then
     raise exception 'Wrapped activity aggregate is incorrect: %', v_result;
+  end if;
+
+  v_result := public.get_season_wrapped_preview_v1(v_season, v_gold_user);
+  if (v_result#>>'{personal,overall_contribution_rank}')::integer <> 2
+     or (v_result#>>'{personal,tier_contribution_rank}')::integer <> 1 then
+    raise exception 'Tied contributor ranks are incorrect: %', v_result;
+  end if;
+
+  v_result := public.get_season_wrapped_preview_v1(v_season, v_purple_user);
+  if (v_result#>>'{personal,overall_contribution_rank}')::integer <> 1
+     or (v_result#>>'{personal,overall_participant_count}')::integer <> 4
+     or (v_result#>>'{personal,tier_contribution_rank}')::integer <> 1
+     or (v_result#>>'{personal,tier_participant_count}')::integer <> 1
+     or v_result#>>'{personal,contribution_tier}' <> 'purple' then
+    raise exception 'Cross-tier contributor ranks are incorrect: %', v_result;
+  end if;
+
+  v_result := public.get_season_wrapped_preview_v1(v_season, v_zero_user);
+  if (v_result#>>'{personal,points}')::integer <> 0
+     or (v_result#>>'{personal,overall_contribution_rank}')::integer <> 4
+     or (v_result#>>'{personal,overall_participant_count}')::integer <> 4
+     or (v_result#>>'{personal,tier_contribution_rank}')::integer <> 3
+     or (v_result#>>'{personal,tier_participant_count}')::integer <> 3 then
+    raise exception 'Zero-point eligible participant was not ranked and counted correctly: %', v_result;
   end if;
 
   v_result := public.get_my_season_wrapped_v1(v_active_season);
@@ -216,8 +280,8 @@ begin
     raise exception 'Admin live preview failed: %', v_result;
   end if;
 
-  if v_other_user is not null then
-    perform set_config('request.jwt.claim.sub', v_other_user::text, true);
+  if v_unrelated_user is not null then
+    perform set_config('request.jwt.claim.sub', v_unrelated_user::text, true);
     perform set_config('request.jwt.claim.role', 'authenticated', true);
 
     v_result := public.get_my_season_wrapped_v1(v_season);

@@ -107,8 +107,10 @@ app/admin/layout.tsx (Admin sub-layout)
 | `time-duration-input.tsx` | Client | Hours/minutes duration picker |
 | `update-password-form.tsx` | Client | New password entry form |
 | `weekly-progress-bar.tsx` | Server | Progress bar toward weekly tier goal |
-| `wrapped-recap.tsx` | Server | Persistent completed-season recap card used on profile/admin preview |
-| `wrapped-story.tsx` | Client | Keyboard-, button-, and swipe-navigable full-screen Wrapped story |
+| `wrapped-recap.tsx` | Server | Persistent completed-season recap card with overall-rank, tier-rank, then team-share priority |
+| `wrapped-story.tsx` | Client | Keyboard-, button-, and swipe-navigable personal-first/team-second Wrapped story |
+
+Wrapped copy selection is deterministic. `lib/wrapped-copy.ts` selects from achievement-aware title and subtitle pools using the season ID, player ID, and slide state, so a replay is stable for one player while copy can vary between players. Numeric facts, statistic labels, rank scopes, and accessibility text are never randomized. The final story order is cover, individual contribution, personal favorite, personal consistency, personal teamwork, team result, team highlights, compact stat sheet, and finale. The stat sheet is the only story slide that intentionally repeats prior statistics.
 
 ### UI Components (`components/ui/`)
 

@@ -134,7 +134,7 @@ Application reads should prefer these views. `get_my_team_v2()` returns the call
 
 ## Derived Season Wrapped Aggregate
 
-Season Wrapped is derived on demand rather than stored. `build_season_wrapped_v1(...)` composes immutable completed-season facts from `score_events`, non-voided `submissions`, `team_memberships`, `team_week_results`, and `season_champions`. Players access only their own completed-season payload through `get_my_season_wrapped_v1(...)`; administrators can inspect the same calculation before completion through the guarded preview wrapper. The application deliberately presents only positive rank callouts.
+Season Wrapped is derived on demand rather than stored. `build_season_wrapped_v1(...)` composes immutable completed-season facts from `score_events`, non-voided `submissions`, `team_memberships`, `team_week_results`, and `season_champions`. Players access only their own completed-season payload through `get_my_season_wrapped_v1(...)`; administrators can inspect the same calculation before completion through the guarded preview wrapper. Contribution ranks are calculated both across all eligible season players and within the player's team tier. Active zero-point members remain in participant counts, while the application only displays numeric ranks 1 through 10 for players with positive contribution points.
 
 ## Retired Compatibility Layer
 

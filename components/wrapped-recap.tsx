@@ -3,8 +3,9 @@ import { Activity, ArrowRight, Crown, Flame, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  compactContributionHighlight,
   formatWrappedNumber,
-  positiveContributionCallout,
+  titleCaseTier,
   type WrappedReady,
 } from "@/lib/wrapped";
 
@@ -17,10 +18,8 @@ export function WrappedRecap({
   href?: string;
   actionLabel?: string;
 }) {
-  const callout = positiveContributionCallout(
-    data.personal.contribution_rank,
-    data.personal.participant_count,
-  );
+  const contributionHighlight = compactContributionHighlight(data.personal);
+  const tier = titleCaseTier(data.team.tier);
 
   return (
     <section
@@ -40,7 +39,7 @@ export function WrappedRecap({
           </div>
           <h2 id="wrapped-recap-heading" className="mt-2 text-2xl font-semibold tracking-tight">
             {data.team.is_champion
-              ? `${data.team.name} finished as champions.`
+              ? `${data.team.name} finished as ${tier} tier champions.`
               : `Relive your season with ${data.team.name}.`}
           </h2>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -69,7 +68,7 @@ export function WrappedRecap({
           <div>
             <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Activity aria-hidden="true" className="h-3.5 w-3.5" />
-              Activities
+              Submissions logged
             </dt>
             <dd className="app-number mt-1 text-2xl font-semibold">
               {data.personal.activity_count}
@@ -78,18 +77,18 @@ export function WrappedRecap({
           <div>
             <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Flame aria-hidden="true" className="h-3.5 w-3.5" />
-              Active days
+              Longest streak
             </dt>
             <dd className="app-number mt-1 text-2xl font-semibold">
-              {data.personal.active_days}
+              {data.personal.longest_active_day_run}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-muted-foreground">
-              {callout ?? "Team share"}
+              {contributionHighlight.label}
             </dt>
             <dd className="app-number mt-1 text-2xl font-semibold text-primary">
-              {callout ? `#${data.personal.contribution_rank}` : `${formatWrappedNumber(data.personal.team_score_share_percent)}%`}
+              {contributionHighlight.value}
             </dd>
           </div>
         </dl>

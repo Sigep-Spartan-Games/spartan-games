@@ -60,6 +60,11 @@ export type WrappedReady = {
     team_score_share_percent: number;
     contribution_rank: number | null;
     participant_count: number;
+    overall_contribution_rank: number | null;
+    overall_participant_count: number;
+    tier_contribution_rank: number | null;
+    tier_participant_count: number;
+    contribution_tier: string | null;
     top_activity: WrappedActivity | null;
     best_day: WrappedBestDay | null;
     best_week: WrappedBestWeek | null;
@@ -114,7 +119,20 @@ export function parseWrappedResult(value: unknown): WrappedResult {
 
   const result = value as Partial<WrappedResult>;
   if (result.status === "ready" && "season" in result && "personal" in result && "team" in result) {
-    return result as WrappedReady;
+    const ready = result as WrappedReady;
+    return {
+      ...ready,
+      personal: {
+        ...ready.personal,
+        overall_contribution_rank:
+          ready.personal.overall_contribution_rank ?? ready.personal.contribution_rank ?? null,
+        overall_participant_count:
+          ready.personal.overall_participant_count ?? ready.personal.participant_count ?? 0,
+        tier_contribution_rank: ready.personal.tier_contribution_rank ?? null,
+        tier_participant_count: ready.personal.tier_participant_count ?? 0,
+        contribution_tier: ready.personal.contribution_tier ?? ready.team.tier ?? null,
+      },
+    };
   }
   if (
     result.status === "locked"
@@ -126,32 +144,94 @@ export function parseWrappedResult(value: unknown): WrappedResult {
   return { version: 1, status: "not_found" };
 }
 
-export function positiveContributionCallout(
-  rank: number | null,
-  participantCount: number,
-) {
-  if (!rank || participantCount < 1) return null;
-  if (rank === 1) return "#1 contributor";
-  if (rank <= 3) return "Top 3 contributor";
-  if (rank <= Math.max(1, Math.ceil(participantCount * 0.1))) {
-    return "Top 10% contributor";
-  }
-  return null;
+export function titleCaseTier(tier: string | null) {
+  if (!tier) return "Open";
+  return tier
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
 }
 
-export function positiveTeamFinishCallout(
-  rank: number | null,
-  teamCount: number | null,
-) {
-  if (!rank || !teamCount || teamCount < 1) return null;
-  if (rank === 1) return "#1 in the tier";
-  if (rank <= 3) return "a Top 3 finish";
-  if (rank <= Math.max(1, Math.ceil(teamCount * 0.1))) {
-    return "a Top 10% finish";
+type ContributionRankFacts = Pick<
+  WrappedReady["personal"],
+  | "points"
+  | "overall_contribution_rank"
+  | "overall_participant_count"
+  | "tier_contribution_rank"
+  | "tier_participant_count"
+  | "contribution_tier"
+>;
+
+export function isTopTenContribution(rank: number | null, points: number) {
+  return points > 0 && rank !== null && rank >= 1 && rank <= 10;
+}
+
+export function contributionRankCallouts(personal: ContributionRankFacts) {
+  if (personal.points <= 0) return [];
+
+  const callouts: string[] = [];
+  if (isTopTenContribution(personal.tier_contribution_rank, personal.points)) {
+    callouts.push(
+      `#${personal.tier_contribution_rank} of ${personal.tier_participant_count} contributors in the ${titleCaseTier(personal.contribution_tier)} tier.`,
+    );
   }
-  return null;
+  if (isTopTenContribution(personal.overall_contribution_rank, personal.points)) {
+    callouts.push(
+      `#${personal.overall_contribution_rank} of ${personal.overall_participant_count} contributors across Spartan Games.`,
+    );
+  }
+  return callouts;
+}
+
+export function compactContributionHighlight(
+  personal: ContributionRankFacts & { team_score_share_percent: number },
+) {
+  if (isTopTenContribution(personal.overall_contribution_rank, personal.points)) {
+    return {
+      label: "Overall contributor",
+      value: `#${personal.overall_contribution_rank}`,
+    };
+  }
+  if (isTopTenContribution(personal.tier_contribution_rank, personal.points)) {
+    return {
+      label: `${titleCaseTier(personal.contribution_tier)} tier contributor`,
+      value: `#${personal.tier_contribution_rank}`,
+    };
+  }
+  return {
+    label: "Team score share",
+    value: `${formatWrappedNumber(personal.team_score_share_percent)}%`,
+  };
+}
+
+export function selectStableWrappedCopy<T>(
+  seasonId: string,
+  playerId: string,
+  slideId: string,
+  options: readonly T[],
+) {
+  if (options.length === 0) {
+    throw new Error("Wrapped copy options cannot be empty.");
+  }
+
+  const seed = `${seasonId}:${playerId}:${slideId}`;
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return options[(hash >>> 0) % options.length];
 }
 
 export function formatWrappedNumber(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
+}
+
+export function formatWrappedDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
 }

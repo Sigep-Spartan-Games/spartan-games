@@ -6,6 +6,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:wrapped": "node --experimental-strip-types --test tests/wrapped.test.ts",
     "db:types": "supabase gen types typescript --linked --schema public > lib/database.types.ts",
     "db:lint": "supabase db lint --linked --level warning",
     "db:migrations": "supabase migration list --linked",
