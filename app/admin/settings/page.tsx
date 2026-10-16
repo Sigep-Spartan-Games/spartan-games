@@ -1,5 +1,6 @@
 // app/admin/settings/page.tsx
 import { Suspense } from "react";
+import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import {
@@ -28,6 +29,7 @@ import ChampionResolution from "./champion-resolution";
 import { ChampionCards } from "@/components/champion-cards";
 import { parseSeasonCompletionResult } from "@/lib/champions";
 import ExportLinks from "./export-links";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 function SettingsSkeleton() {
   return (
@@ -173,6 +175,29 @@ async function AdminSettingsInner({
         ) : (
           <StreakSettingsSection />
         )}
+      </CollapsibleSection>
+
+      {/* Wrapped preview */}
+      <CollapsibleSection
+        title="Wrapped Preview"
+        description="Review private player and team recaps before release"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Use current or completed season data to inspect Wrapped without changing scores, status, or player access.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/admin/wrapped">
+              Open preview
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </CollapsibleSection>
 
       {/* Export */}

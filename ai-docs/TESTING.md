@@ -1,7 +1,7 @@
 # Testing and Verification
 
 > **Purpose:** Required checks for application and database changes.
-> **Last reviewed:** 2026-09-16
+> **Last reviewed:** 2026-10-15
 
 ## Standard Checks
 
@@ -28,6 +28,14 @@ npm.cmd run db:verify
 `supabase/tests/season_start_activation.sql` is a rollback-only behavior test. It
 confirms that activation records the season-local date, pre-start submissions
 are rejected, and pre-season finalization does not create an empty week.
+
+`supabase/tests/season_wrapped.sql` is a rollback-only fixture for the Wrapped
+aggregates and authorization boundary. Run it after applying
+`20261015010000_add_season_wrapped.sql` in a disposable database, or concatenate
+the migration and test inside one explicit rollback transaction when validating
+against an existing linked schema. It checks personal/team totals, streaks,
+champions, completed-season access, active-season lockout, admin preview, and
+non-admin rejection.
 
 `db:verify` requires the normalized migrations to be deployed. Do not expect it to pass against the legacy schema.
 
@@ -80,6 +88,15 @@ Local Supabase requires Docker or another supported container runtime. If that i
 - All-zero tiers produce no champion; solo and two-person teams rank identically.
 - Exact ties enter `finalizing`, reject invalid selections, and require one selected finalist per tied tier.
 - Completed champions and scoring data reject updates/deletes, and new-season rollover cannot bypass a pending tie.
+
+### Season Wrapped
+
+- Players receive a recap only for a completed season in which they participated.
+- A participant cannot request another user's recap.
+- Active/finalizing seasons return a locked result through the player RPC.
+- Administrators can preview active-season calculations without changing season state.
+- Voided submissions and their removed ledger events do not affect recap totals.
+- Sparse histories (one-person team, no favorite activity, no finalized weeks) return a usable payload without fabricated rankings.
 
 ### Exports
 

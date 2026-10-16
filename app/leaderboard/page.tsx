@@ -9,10 +9,12 @@ import { StreakBadge, TierBadge, TIER_LABELS } from "@/components/competition-ba
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getTeamDirectory } from "@/lib/team-data";
 import { ChampionCards } from "@/components/champion-cards";
 import type { SeasonChampion } from "@/lib/champions";
+import { isWrappedEnabled } from "@/lib/wrapped-server";
 
 const tierTabStyles = {
   all: "border-primary bg-primary text-primary-foreground",
@@ -51,7 +53,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
     getTeamDirectory(supabase),
     supabase
       .from("current_season_settings")
-      .select("id, status")
+      .select("id, slug, status")
       .maybeSingle(),
   ]);
 
@@ -128,6 +130,17 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
 
         {season?.status === "completed" ? (
           <ChampionCards champions={champions} />
+        ) : null}
+
+        {isWrappedEnabled() && season?.status === "completed" && season.slug && myTeam ? (
+          <StatusBanner variant="success" title="Your season Wrapped is ready">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>Relive your personal highlights and your team&apos;s season.</span>
+              <Button asChild size="sm" variant="competition">
+                <Link href={`/wrapped/${encodeURIComponent(season.slug)}`}>Open Wrapped</Link>
+              </Button>
+            </div>
+          </StatusBanner>
         ) : null}
 
         {error ? (

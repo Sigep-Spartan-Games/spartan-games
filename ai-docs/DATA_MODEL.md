@@ -2,7 +2,7 @@
 
 > **Purpose:** Canonical database entities, relationships, derived views, and lifecycle rules.
 > **Source of truth:** `supabase/migrations/`.
-> **Last reviewed:** 2026-10-13
+> **Last reviewed:** 2026-10-15
 
 ## Design Rules
 
@@ -131,6 +131,10 @@ Stores immutable audit metadata for admin-UI and Slack-command broadcasts: actor
 - `team_standings` — ledger-derived weekly/season totals and win counts.
 
 Application reads should prefer these views. `get_my_team_v2()` returns the caller’s own invite code and role without exposing every team’s invite code.
+
+## Derived Season Wrapped Aggregate
+
+Season Wrapped is derived on demand rather than stored. `build_season_wrapped_v1(...)` composes immutable completed-season facts from `score_events`, non-voided `submissions`, `team_memberships`, `team_week_results`, and `season_champions`. Players access only their own completed-season payload through `get_my_season_wrapped_v1(...)`; administrators can inspect the same calculation before completion through the guarded preview wrapper. The application deliberately presents only positive rank callouts.
 
 ## Retired Compatibility Layer
 

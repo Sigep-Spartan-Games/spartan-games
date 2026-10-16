@@ -1,7 +1,7 @@
 # Backend and APIs
 
 > **Purpose:** Server boundaries, write APIs, route handlers, and failure behavior.
-> **Last reviewed:** 2026-09-16
+> **Last reviewed:** 2026-10-15
 
 ## Architecture
 
@@ -43,6 +43,7 @@ Prefer these database read contracts:
 - `change_team_tier_v2(team_id, tier)`
 - `create_activity_submission_v2(...)`
 - `request_submission_edit_v2(submission_id, changes, reason)`
+- `get_my_season_wrapped_v1(season_id)`
 
 ### Admin workflows
 
@@ -63,8 +64,11 @@ Prefer these database read contracts:
 - `resolve_submission_edit_request_v2(...)`
 - `get_all_user_emails()`
 - `finalize_competition_week(week_id)`
+- `get_season_wrapped_preview_v1(season_id, user_id)`
 
 Admin RPCs are callable by the authenticated role but assert `profiles.is_admin` inside the security-definer function. Granting execute is not equivalent to granting authority.
+
+`get_my_season_wrapped_v1(...)` returns a private JSON aggregate only for the authenticated caller and only after the season is completed. `get_season_wrapped_preview_v1(...)` uses the same calculation for administrators and may inspect an in-progress season, returning `preview: true`. Both delegate to the non-client `build_season_wrapped_v1(...)`; direct execution of that internal builder is revoked. The payload is computed from canonical ledger, submission, membership, weekly-result, and champion records rather than introducing a mutable summary table.
 
 `set_season_controls_v2` enforces the one-way season lifecycle. Starting active play opens submissions, keeps late registration open, and atomically replaces the provisional registration date with the activation date in the season timezone; a completed season cannot be reopened. Submission writes reject activity dates before that start date, and default weekly finalization skips weeks that ended before it. `prepare_season_completion_v2()` closes both controls, finalizes all weeks, and either records automatic champions or pauses in `finalizing` for exact ties. `complete_season_champions_v2(...)` validates one selected finalist per tied tier and atomically completes the season. `start_new_season_v2(...)` cannot bypass unresolved ties. `resolve_submission_edit_request_v2(...)` invokes `void_submission_v2(...)` when approving a deletion request, keeping request resolution, point removal, and attachment cleanup state atomic.
 

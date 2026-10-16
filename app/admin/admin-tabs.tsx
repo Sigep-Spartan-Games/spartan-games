@@ -23,7 +23,9 @@ export default function AdminTabs() {
         {TABS.map((t) => {
           const Icon = t.icon;
           const active =
-            pathname === t.href || pathname.startsWith(t.href + "/");
+            pathname === t.href
+            || pathname.startsWith(t.href + "/")
+            || (t.href === "/admin/settings" && pathname.startsWith("/admin/wrapped"));
           return (
             <Link
               key={t.href}

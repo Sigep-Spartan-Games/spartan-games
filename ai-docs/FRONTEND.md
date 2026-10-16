@@ -3,7 +3,7 @@
 > **Purpose:** Document routes, components, styling, and UI patterns.
 > **Audience:** Developers making UI changes, AI agents.
 > **Source of truth:** `app/` directory, `components/` directory, `app/globals.css`, `tailwind.config.ts`.
-> **Last reviewed:** 2026-09-15
+> **Last reviewed:** 2026-10-15
 
 ## Route Table
 
@@ -14,6 +14,8 @@
 | `/submit` | Activity submission form | Yes | No | `app/submit/page.tsx` | current season/rule views, `get_my_team_v2` |
 | `/teams` | Team management (create/join/leave/rename) | Yes | No | `app/teams/page.tsx` | standings/roster views, team RPCs |
 | `/profile` | User's submissions and edit requests | Yes | No | `app/profile/page.tsx` | `submissions`, `submission_edit_requests`, `teams` |
+| `/wrapped` | Redirects to the caller's newest eligible completed-season recap | Yes | No | `app/wrapped/page.tsx` | profile season RPCs, Wrapped RPC |
+| `/wrapped/[seasonSlug]` | Full-screen private personal/team season story | Yes | No | `app/wrapped/[seasonSlug]/page.tsx` | `get_my_season_wrapped_v1` |
 | `/rules` | Static game-play explanation (not dynamic scoring values) | Yes | No | `app/rules/page.tsx` | None |
 | `/protected` | Compatibility redirect to `/profile` for old links | Yes | No | `app/protected/page.tsx` | None |
 | `/auth/login` | Email/password login | No | No | `app/auth/login/page.tsx` | — |
@@ -31,6 +33,8 @@
 | `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `team_week_results`, `competition_weeks`, standings |
 | `/admin/announcements` | Send validated notices via Slack/Email | Yes | Yes | `app/admin/announcements/page.tsx` | `announcement_events` audit metadata |
 | `/admin/settings` | Season controls, admin access, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | profiles, current season/tier views, owner/admin RPCs |
+| `/admin/wrapped` | Select a season and participant for a private Wrapped data preview | Yes | Yes | `app/admin/wrapped/page.tsx` | seasons, memberships, `get_season_wrapped_preview_v1` |
+| `/admin/wrapped/preview` | Full-screen story rendering of the selected admin preview | Yes | Yes | `app/admin/wrapped/preview/page.tsx` | `get_season_wrapped_preview_v1` |
 | `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | canonical submissions, memberships, standings, rules, weeks/results |
 | `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions`, `team_memberships` |
 | `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `team_standings`, `team_memberships`, `team_week_results` |
@@ -103,6 +107,8 @@ app/admin/layout.tsx (Admin sub-layout)
 | `time-duration-input.tsx` | Client | Hours/minutes duration picker |
 | `update-password-form.tsx` | Client | New password entry form |
 | `weekly-progress-bar.tsx` | Server | Progress bar toward weekly tier goal |
+| `wrapped-recap.tsx` | Server | Persistent completed-season recap card used on profile/admin preview |
+| `wrapped-story.tsx` | Client | Keyboard-, button-, and swipe-navigable full-screen Wrapped story |
 
 ### UI Components (`components/ui/`)
 

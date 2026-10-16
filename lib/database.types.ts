@@ -1466,6 +1466,14 @@ export type Database = {
       assert_admin: { Args: never; Returns: undefined }
       assert_current_scoring_rules_mutable: { Args: never; Returns: string }
       assert_owner: { Args: never; Returns: undefined }
+      build_season_wrapped_v1: {
+        Args: {
+          p_allow_incomplete?: boolean
+          p_season_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       change_team_tier_v2: {
         Args: { p_team_id: string; p_tier_key: string }
         Returns: undefined
@@ -1516,8 +1524,16 @@ export type Database = {
         Args: { p_season_id?: string }
         Returns: Json
       }
+      get_my_season_wrapped_v1: {
+        Args: { p_season_id: string }
+        Returns: Json
+      }
       get_my_team_v2: { Args: never; Returns: Json }
       get_pending_champion_ties_v2: { Args: never; Returns: Json }
+      get_season_wrapped_preview_v1: {
+        Args: { p_season_id: string; p_user_id: string }
+        Returns: Json
+      }
       grant_admin_access_v2: { Args: { p_user_id: string }; Returns: undefined }
       is_admin: { Args: { uid: string }; Returns: boolean }
       is_in_current_week: { Args: { d: string }; Returns: boolean }

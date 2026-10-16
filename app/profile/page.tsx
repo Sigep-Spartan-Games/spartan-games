@@ -21,8 +21,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBanner } from "@/components/ui/status-banner";
+import { WrappedRecap } from "@/components/wrapped-recap";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityRule } from "@/lib/types";
+import { parseWrappedResult } from "@/lib/wrapped";
+import { isWrappedEnabled } from "@/lib/wrapped-server";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -247,10 +250,16 @@ export default async function ProfilePage({
     ? supabase.rpc("get_my_profile_summary_v1", { p_season_id: selectedSeason.id })
     : supabase.rpc("get_my_profile_summary_v1");
 
-  const [summaryResult, rulesResult, submissionsResult] = await Promise.all([
+  const wrappedRequest = isWrappedEnabled()
+    && selectedSeason?.status === "completed"
+    ? supabase.rpc("get_my_season_wrapped_v1", { p_season_id: selectedSeason.id })
+    : Promise.resolve({ data: null, error: null });
+
+  const [summaryResult, rulesResult, submissionsResult, wrappedResponse] = await Promise.all([
     summaryRequest,
     supabase.from("current_activity_rules").select("*"),
     submissionsQuery,
+    wrappedRequest,
   ]);
 
   const summary = parseSummary(summaryResult.data);
@@ -275,6 +284,7 @@ export default async function ProfilePage({
       return { ...submission, proof_url: data?.signedUrl ?? null };
     }),
   );
+  const wrapped = parseWrappedResult(wrappedResponse.data);
 
   const displayName = profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
@@ -382,6 +392,8 @@ export default async function ProfilePage({
           </CardContent>
         </Card>
       </div>
+
+      {wrapped.status === "ready" ? <WrappedRecap data={wrapped} /> : null}
 
       <section aria-labelledby="profile-submissions-heading" className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
