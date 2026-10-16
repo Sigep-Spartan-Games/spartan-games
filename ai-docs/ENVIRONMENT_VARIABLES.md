@@ -3,7 +3,7 @@
 > **Purpose:** Complete catalog of every environment variable used in the application.
 > **Audience:** Developers setting up the project, deployment engineers, AI agents.
 > **Source of truth:** All `process.env` references in source code, `.gitignore`, `README.md`.
-> **Last reviewed:** 2026-10-15
+> **Last reviewed:** 2026-10-16
 
 > [!CAUTION]
 > Never commit actual secret values to this file or any file tracked by Git. Store all secrets in a password manager or the Vercel/Supabase dashboard.
@@ -35,7 +35,6 @@
 | Variable | Required | Public | Purpose | Format | Where to Get | Used In |
 |----------|----------|--------|---------|--------|--------------|---------|
 | `NEXT_PUBLIC_SITE_URL` | No | Yes (client) | Site URL for email links | `https://spartan-games.vercel.app` | Known | `app/admin/settings/actions.ts` |
-| `WRAPPED_ENABLED` | No | No | Enables completed-season Wrapped routes, profile/leaderboard discovery, and Wrapped completion-email links. Disabled unless exactly `"true"` | `"true"` or `"false"` | Manual rollout control | `lib/wrapped-server.ts`, Wrapped/profile/leaderboard/admin settings routes |
 | `VERCEL_URL` | No | No (auto) | Auto-set by Vercel deployment | `spartan-games-xxx.vercel.app` | Auto-injected by Vercel | `app/layout.tsx` |
 | `NODE_ENV` | Framework-managed | No | Next.js runtime mode | `development`, `production`, or `test` | Set by Next.js/runtime | Next.js |
 
@@ -70,7 +69,6 @@
 | `SLACK_ALLOWED_TEAM_ID` / `SLACK_ALLOWED_USER_IDS` | Slack commands are rejected; no announcement is sent |
 | `SLACK_ALLOWED_CHANNEL_IDS` | No channel restriction is applied |
 | `NEXT_PUBLIC_SITE_URL` | Email links fall back to `https://spartan-games.vercel.app` |
-| `WRAPPED_ENABLED` | Player-facing Wrapped routes and discovery stay disabled; administrators can still inspect live/completed calculations from the guarded preview page |
 | `EMAIL_TEST_MODE=true` without `EMAIL_TEST_RECIPIENT` | Email delivery fails closed; lifecycle actions remain committed and the admin UI reports the configuration failure |
 
 ## `.env.local` Template
@@ -83,7 +81,6 @@ SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 
 # === Application ===
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-WRAPPED_ENABLED=false
 
 # === Email (SMTP) ===
 SMTP_HOST=smtp-relay.brevo.com

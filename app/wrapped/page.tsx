@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/server";
 import { parseWrappedResult } from "@/lib/wrapped";
-import { isWrappedEnabled } from "@/lib/wrapped-server";
 
 type ProfileSeason = {
   id: string;
@@ -14,8 +13,6 @@ type ProfileSeason = {
 };
 
 export default async function LatestWrappedPage() {
-  if (!isWrappedEnabled()) notFound();
-
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/auth/login?next=/wrapped");

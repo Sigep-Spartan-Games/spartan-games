@@ -3,7 +3,7 @@
 > **Purpose:** Document routes, components, styling, and UI patterns.
 > **Audience:** Developers making UI changes, AI agents.
 > **Source of truth:** `app/` directory, `components/` directory, `app/globals.css`, `tailwind.config.ts`.
-> **Last reviewed:** 2026-10-15
+> **Last reviewed:** 2026-10-16
 
 ## Route Table
 
@@ -33,8 +33,6 @@
 | `/admin/history` | Weekly finalization history | Yes | Yes | `app/admin/history/page.tsx` | `team_week_results`, `competition_weeks`, standings |
 | `/admin/announcements` | Send validated notices via Slack/Email | Yes | Yes | `app/admin/announcements/page.tsx` | `announcement_events` audit metadata |
 | `/admin/settings` | Season controls, admin access, goals, exports, rollover | Yes | Yes | `app/admin/settings/page.tsx` | profiles, current season/tier views, owner/admin RPCs |
-| `/admin/wrapped` | Select a season and participant for a private Wrapped data preview | Yes | Yes | `app/admin/wrapped/page.tsx` | seasons, memberships, `get_season_wrapped_preview_v1` |
-| `/admin/wrapped/preview` | Full-screen story rendering of the selected admin preview | Yes | Yes | `app/admin/wrapped/preview/page.tsx` | `get_season_wrapped_preview_v1` |
 | `/admin/settings/export/spartan-games.xlsx` | Excel export download | Yes | Yes | Route handler | canonical submissions, memberships, standings, rules, weeks/results |
 | `/admin/settings/export/submissions.csv` | CSV export download | Yes | Yes | Route handler | `submissions`, `team_memberships` |
 | `/admin/settings/export/teams.csv` | CSV export download | Yes | Yes | Route handler | `team_standings`, `team_memberships`, `team_week_results` |
@@ -111,6 +109,8 @@ app/admin/layout.tsx (Admin sub-layout)
 | `wrapped-story.tsx` | Client | Keyboard-, button-, and swipe-navigable personal-first/team-second Wrapped story |
 
 Wrapped copy selection is deterministic. `lib/wrapped-copy.ts` selects from achievement-aware title and subtitle pools using the season ID, player ID, and slide state, so a replay is stable for one player while copy can vary between players. Numeric facts, statistic labels, rank scopes, and accessibility text are never randomized. The final story order is cover, individual contribution, personal favorite, personal consistency, personal teamwork, team result, team highlights, compact stat sheet, and finale. The stat sheet is the only story slide that intentionally repeats prior statistics.
+
+Wrapped becomes available automatically when an eligible player’s season is completed. The primary call-to-action appears directly beneath the tier winners on the leaderboard, and completed-season profiles retain a compact recap and replay link for historical access.
 
 ### UI Components (`components/ui/`)
 

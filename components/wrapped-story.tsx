@@ -463,13 +463,6 @@ export function WrappedStory({
           </Link>
         </div>
 
-        {data.preview ? (
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#f2cf76]">
-            <span className="rounded-control border border-[#f2cf76]/30 bg-[#f2cf76]/10 px-2.5 py-1">Admin preview</span>
-            <span className="text-[#c5b8ca]">Live data may change before completion.</span>
-          </div>
-        ) : null}
-
         <section
           key={slides[index].id}
           aria-live="polite"

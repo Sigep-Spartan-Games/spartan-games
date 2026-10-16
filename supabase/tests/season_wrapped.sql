@@ -27,7 +27,6 @@ declare
   v_purple_submission uuid := gen_random_uuid();
   v_activity_key text := 'wrapped_' || substr(md5(gen_random_uuid()::text), 1, 20);
   v_result jsonb;
-  v_rejected boolean := false;
 begin
   select profile.id into v_admin
   from public.profiles profile
@@ -53,6 +52,10 @@ begin
        'EXECUTE'
      ) then
     raise exception 'Anonymous role can execute the player Wrapped wrapper';
+  end if;
+
+  if to_regprocedure('public.get_season_wrapped_preview_v1(uuid, uuid)') is not null then
+    raise exception 'Retired administrator Wrapped preview RPC still exists';
   end if;
 
   select array_agg(profile.id order by profile.created_at, profile.id)
@@ -245,13 +248,13 @@ begin
     raise exception 'Wrapped activity aggregate is incorrect: %', v_result;
   end if;
 
-  v_result := public.get_season_wrapped_preview_v1(v_season, v_gold_user);
+  v_result := public.build_season_wrapped_v1(v_season, v_gold_user, false);
   if (v_result#>>'{personal,overall_contribution_rank}')::integer <> 2
      or (v_result#>>'{personal,tier_contribution_rank}')::integer <> 1 then
     raise exception 'Tied contributor ranks are incorrect: %', v_result;
   end if;
 
-  v_result := public.get_season_wrapped_preview_v1(v_season, v_purple_user);
+  v_result := public.build_season_wrapped_v1(v_season, v_purple_user, false);
   if (v_result#>>'{personal,overall_contribution_rank}')::integer <> 1
      or (v_result#>>'{personal,overall_participant_count}')::integer <> 4
      or (v_result#>>'{personal,tier_contribution_rank}')::integer <> 1
@@ -260,7 +263,7 @@ begin
     raise exception 'Cross-tier contributor ranks are incorrect: %', v_result;
   end if;
 
-  v_result := public.get_season_wrapped_preview_v1(v_season, v_zero_user);
+  v_result := public.build_season_wrapped_v1(v_season, v_zero_user, false);
   if (v_result#>>'{personal,points}')::integer <> 0
      or (v_result#>>'{personal,overall_contribution_rank}')::integer <> 4
      or (v_result#>>'{personal,overall_participant_count}')::integer <> 4
@@ -274,12 +277,6 @@ begin
     raise exception 'Active season was not locked for a player: %', v_result;
   end if;
 
-  v_result := public.get_season_wrapped_preview_v1(v_active_season, v_admin);
-  if v_result->>'status' <> 'ready'
-     or coalesce((v_result->>'preview')::boolean, false) is not true then
-    raise exception 'Admin live preview failed: %', v_result;
-  end if;
-
   if v_unrelated_user is not null then
     perform set_config('request.jwt.claim.sub', v_unrelated_user::text, true);
     perform set_config('request.jwt.claim.role', 'authenticated', true);
@@ -287,21 +284,6 @@ begin
     v_result := public.get_my_season_wrapped_v1(v_season);
     if v_result->>'status' <> 'not_eligible' then
       raise exception 'Unrelated user received a Wrapped payload: %', v_result;
-    end if;
-
-    begin
-      perform public.get_season_wrapped_preview_v1(v_season, v_admin);
-    exception
-      when others then
-        if sqlstate = '42501' or sqlerrm like '%Administrator access required%' then
-          v_rejected := true;
-        else
-          raise;
-        end if;
-    end;
-
-    if not v_rejected then
-      raise exception 'Non-admin was allowed to call Wrapped preview';
     end if;
   end if;
 end;

@@ -7,15 +7,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { createClient } from "@/lib/supabase/server";
 import { parseWrappedResult } from "@/lib/wrapped";
-import { isWrappedEnabled } from "@/lib/wrapped-server";
 
 export default async function SeasonWrappedPage({
   params,
 }: {
   params: Promise<{ seasonSlug: string }>;
 }) {
-  if (!isWrappedEnabled()) notFound();
-
   const { seasonSlug } = await params;
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();

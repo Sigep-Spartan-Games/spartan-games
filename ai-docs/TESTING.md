@@ -30,14 +30,13 @@ confirms that activation records the season-local date, pre-start submissions
 are rejected, and pre-season finalization does not create an empty week.
 
 `supabase/tests/season_wrapped.sql` is a rollback-only fixture for the Wrapped
-aggregates and authorization boundary. Run it after applying
-`20261015010000_add_season_wrapped.sql` and
-`20261016010000_refine_season_wrapped.sql` in a disposable database, or
+aggregates and authorization boundary. Run it after applying the Wrapped
+migrations through `20261016020000_retire_wrapped_preview.sql` in a disposable database, or
 concatenate the unapplied migration and test inside one explicit rollback
 transaction when validating against an existing linked schema. It checks
 personal/team totals, cross-tier and overall contribution ranks, ties,
 zero-point participant counts, streaks, champions, completed-season access,
-active-season lockout, admin preview, and non-admin rejection.
+active-season lockout, retired preview-RPC absence, and client denial of the internal builder.
 
 `npm.cmd run test:wrapped` covers the exact displayed-rank cutoff at positions 1,
 10, and 11, zero-point callout suppression, compact-recap rank priority, and

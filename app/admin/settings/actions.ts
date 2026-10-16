@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/admin";
 import { parseSeasonCompletionResult } from "@/lib/champions";
-import { isWrappedEnabled } from "@/lib/wrapped-server";
 import {
   sendBulkEmail,
   type BulkEmailDeliveryReport,
@@ -75,9 +74,6 @@ async function sendLifecycleNotification(
   try {
     const emails = await getAllUserEmails(supabase);
     const started = kind === "started";
-    const wrappedEnabled = isWrappedEnabled();
-    const completedDestination = wrappedEnabled ? "/wrapped" : "/leaderboard";
-    const completedLabel = wrappedEnabled ? "View Your Wrapped" : "View Leaderboard";
     const report = await sendBulkEmail({
       recipients: emails,
       subject: started ? "Spartan Games Have Started!" : "Spartan Games Have Ended",
@@ -103,10 +99,10 @@ async function sendLifecycleNotification(
               <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 8px 0;">Submissions are now closed</p>
               <p style="color: #cbd5e1; font-size: 14px; margin: 0;">Champions and final standings are permanently preserved.</p>
             </div>
-            <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">${wrappedEnabled ? "If you competed this season, your personal highlights and team recap are ready." : "Visit the leaderboard to see each tier champion."}</p>
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}${completedDestination}"
+            <p style="color: #94a3b8; font-size: 14px; margin: 0 0 20px 0;">If you competed this season, your personal highlights and team recap are ready beneath the winners.</p>
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://spartan-games.vercel.app"}/leaderboard"
                style="display: inline-block; background: #6366f1; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-              ${completedLabel}
+              View Winners &amp; Your Wrapped
             </a>
           </div>
           <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 16px;">

@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { getTeamDirectory } from "@/lib/team-data";
 import { ChampionCards } from "@/components/champion-cards";
 import type { SeasonChampion } from "@/lib/champions";
-import { isWrappedEnabled } from "@/lib/wrapped-server";
 
 const tierTabStyles = {
   all: "border-primary bg-primary text-primary-foreground",
@@ -132,7 +131,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
           <ChampionCards champions={champions} />
         ) : null}
 
-        {isWrappedEnabled() && season?.status === "completed" && season.slug && myTeam ? (
+        {season?.status === "completed" && season.slug && myTeam ? (
           <StatusBanner variant="success" title="Your season Wrapped is ready">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>Relive your personal highlights and your team&apos;s season.</span>

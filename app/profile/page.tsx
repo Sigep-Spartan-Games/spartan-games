@@ -25,7 +25,6 @@ import { WrappedRecap } from "@/components/wrapped-recap";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityRule } from "@/lib/types";
 import { parseWrappedResult } from "@/lib/wrapped";
-import { isWrappedEnabled } from "@/lib/wrapped-server";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -250,8 +249,7 @@ export default async function ProfilePage({
     ? supabase.rpc("get_my_profile_summary_v1", { p_season_id: selectedSeason.id })
     : supabase.rpc("get_my_profile_summary_v1");
 
-  const wrappedRequest = isWrappedEnabled()
-    && selectedSeason?.status === "completed"
+  const wrappedRequest = selectedSeason?.status === "completed"
     ? supabase.rpc("get_my_season_wrapped_v1", { p_season_id: selectedSeason.id })
     : Promise.resolve({ data: null, error: null });
 

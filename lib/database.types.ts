@@ -1530,10 +1530,6 @@ export type Database = {
       }
       get_my_team_v2: { Args: never; Returns: Json }
       get_pending_champion_ties_v2: { Args: never; Returns: Json }
-      get_season_wrapped_preview_v1: {
-        Args: { p_season_id: string; p_user_id: string }
-        Returns: Json
-      }
       grant_admin_access_v2: { Args: { p_user_id: string }; Returns: undefined }
       is_admin: { Args: { uid: string }; Returns: boolean }
       is_in_current_week: { Args: { d: string }; Returns: boolean }
