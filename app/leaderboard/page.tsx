@@ -215,43 +215,44 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <div
                     key={team.id}
                     className={cn(
-                      "relative grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-3 px-4 py-4 transition-colors hover:bg-muted/25 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:items-center lg:px-5",
+                      "relative grid grid-cols-[32px_minmax(0,1fr)_52px] items-center gap-1 px-2 py-4 transition-colors hover:bg-muted/25 sm:gap-3 sm:px-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:px-5",
                       isMine && "bg-primary/[0.055]",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "app-number flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold lg:h-auto lg:w-auto lg:justify-start lg:rounded-none",
-                        rank === 1
-                          ? "bg-achievement/10 text-achievement"
-                          : rank <= 3
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground lg:bg-transparent",
-                      )}
-                    >
-                      #{rank}
+                    <div className="flex items-center">
+                      <span
+                        className={cn(
+                          "app-number flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold lg:h-9 lg:w-9",
+                          rank === 1
+                            ? "bg-achievement/10 text-achievement"
+                            : rank <= 3
+                              ? "bg-primary/10 text-primary"
+                              : "bg-muted text-muted-foreground lg:bg-transparent",
+                        )}
+                      >
+                        #{rank}
+                      </span>
                     </div>
-                    <div className="flex min-w-0 items-start gap-2.5">
+                    <div className="flex min-w-0 items-center gap-2">
                       <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="sm" />
                       <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate font-semibold">{team.name}</p>
-                        {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
-                        {team.tier && activeTier === "all" ? <TierBadge tier={team.tier} /> : null}
-                        <StreakBadge count={team.streak_count ?? 0} />
-                      </div>
-                      <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
-                        {team.captain_name || "Open spot"} / {team.member_name || "Open spot"}
-                      </p>
-                      <div className="mt-2 flex gap-4 text-xs text-muted-foreground lg:hidden">
-                        <span>Season <strong className="app-number text-foreground">{seasonTotal}</strong></span>
-                      </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="min-w-0 break-words font-semibold leading-tight">{team.name}</p>
+                          <StreakBadge count={team.streak_count ?? 0} />
+                          {team.tier && activeTier === "all" ? <TierBadge tier={team.tier} /> : null}
+                          {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
+                        </div>
+                        <p className="mt-1 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
+                          {team.captain_name || "Open spot"} / {team.member_name || "Open spot"}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
                       <p className="text-[11px] text-muted-foreground lg:hidden">weekly pts</p>
-                      <p className="mt-0.5 text-[10px] font-medium text-muted-foreground lg:hidden">{team.weeks_won_count ?? 0} weekly {(team.weeks_won_count ?? 0) === 1 ? "win" : "wins"}</p>
+                      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground lg:hidden">
+                        Wins <strong className="app-number text-foreground">{team.weeks_won_count ?? 0}</strong>
+                      </p>
                     </div>
                     <div className="hidden text-right lg:block">
                       <span className="app-number font-semibold text-achievement">{seasonTotal}</span>
