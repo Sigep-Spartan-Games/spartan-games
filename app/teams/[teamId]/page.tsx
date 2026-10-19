@@ -40,9 +40,18 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ te
                 {team.tier ? <TierBadge tier={team.tier} /> : null}
               </div>
               <p className="mt-2 text-sm italic text-muted-foreground">{team.motto || "No team motto yet."}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {team.roster.map((member) => <span key={`${member.role}-${member.display_name}`} className="rounded-full border bg-muted/25 px-3 py-1 text-sm"><strong>{member.display_name}</strong> <span className="capitalize text-muted-foreground">· {member.role}</span></span>)}
-                {team.roster.length < 2 ? <span className="rounded-full border border-dashed px-3 py-1 text-sm text-muted-foreground">Open spot</span> : null}
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                {team.roster.map((member) => (
+                  <span
+                    key={`${member.role}-${member.display_name}`}
+                    className="min-w-0 truncate rounded-full border bg-muted/25 px-2 py-1 text-center text-xs sm:px-3 sm:text-left sm:text-sm"
+                    title={`${member.display_name} · ${member.role}`}
+                  >
+                    <strong>{member.display_name}</strong>
+                    <span className="hidden capitalize text-muted-foreground sm:inline"> · {member.role}</span>
+                  </span>
+                ))}
+                {team.roster.length < 2 ? <span className="min-w-0 truncate rounded-full border border-dashed px-2 py-1 text-center text-xs text-muted-foreground sm:px-3 sm:text-left sm:text-sm">Open spot</span> : null}
               </div>
             </div>
             {canCustomize ? <Button asChild variant="outline"><Link href="/teams/customize"><Settings /> Customize team</Link></Button> : null}
@@ -56,7 +65,7 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ te
           { label: "Season points", value: team.season_points, icon: Trophy },
           { label: "Weekly wins", value: team.weeks_won_count, icon: Trophy },
           { label: "Scoring streak", value: `${team.streak_count} days`, icon: UsersRound },
-        ].map(({ label, value, icon: Icon }) => <Card key={label}><CardContent className="p-4"><Icon className="h-4 w-4 text-primary" /><p className="app-number mt-3 text-xl font-semibold">{typeof value === "number" ? value.toLocaleString() : value}</p><p className="mt-0.5 text-xs text-muted-foreground">{label}</p></CardContent></Card>)}
+        ].map(({ label, value, icon: Icon }) => <Card key={label}><CardContent className="p-4 pt-4 sm:p-5 sm:pt-5"><Icon className="h-4 w-4 text-primary" /><p className="app-number mt-3 text-xl font-semibold">{typeof value === "number" ? value.toLocaleString() : value}</p><p className="mt-0.5 text-xs text-muted-foreground">{label}</p></CardContent></Card>)}
       </div>
 
       <AchievementRail title="Team achievements" cards={sortAchievements(team.achievements)} />
