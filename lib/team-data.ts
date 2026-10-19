@@ -17,6 +17,7 @@ export type TeamDirectoryRow = {
   captain_name: string | null;
   member_id: string | null;
   member_name: string | null;
+  is_full: boolean;
 };
 
 export type MyTeam = {
@@ -109,6 +110,7 @@ export async function getTeamDirectory(
       captain_name: captain?.display_name ?? null,
       member_id: teammate?.user_id ?? null,
       member_name: teammate?.display_name ?? null,
+      is_full: members.length >= 2,
     } satisfies TeamDirectoryRow;
   });
 

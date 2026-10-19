@@ -251,7 +251,7 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                     {team.captain_name ?? "Open spot"} / {team.member_name ?? "Open spot"}
                   </p>
                   <p className="mt-2 text-xs font-medium text-muted-foreground">
-                    {team.member_id ? "Team full" : "Open spot (invite-only)"}
+                    {team.is_full ? "Team full" : "Open spot (invite-only)"}
                   </p>
                   </div>
                 </div>
