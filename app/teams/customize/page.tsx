@@ -20,10 +20,10 @@ export default async function CustomizeTeamPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Customize team" description="Choose a recognizable emblem, color, and short motto." actions={<Button asChild variant="outline" size="sm"><Link href={`/teams/${result.team.id}`}><ArrowLeft /> Team profile</Link></Button>} />
-      {feedback.error ? <StatusBanner variant="error" title="Style update failed">{decodeURIComponent(feedback.error)}</StatusBanner> : null}
-      {feedback.success ? <StatusBanner variant="success" title="Team style saved">Your new identity is live across Spartan Games.</StatusBanner> : null}
-      {locked ? <StatusBanner variant="warning" title="Team identity is locked">Team styles freeze when a season begins finalizing.</StatusBanner> : (
+      <PageHeader title="Customize team" description="Update your team name, emblem, color, and motto." actions={<Button asChild variant="outline" size="sm"><Link href={`/teams/${result.team.id}`}><ArrowLeft /> Team profile</Link></Button>} />
+      {feedback.error ? <StatusBanner variant="error" title="Team customization failed">{decodeURIComponent(feedback.error)}</StatusBanner> : null}
+      {feedback.success ? <StatusBanner variant="success" title="Team customization saved">Your new identity is live across Spartan Games.</StatusBanner> : null}
+      {locked ? <StatusBanner variant="warning" title="Team customization is locked">Team names and styles freeze when a season begins finalizing.</StatusBanner> : (
         <TeamStyleForm team={result.team} />
       )}
     </div>

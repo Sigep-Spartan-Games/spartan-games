@@ -16,6 +16,7 @@ import { ChampionCards } from "@/components/champion-cards";
 import { TeamEmblem } from "@/components/team-emblem";
 import { TeamDetailsDialog } from "@/components/team-details-dialog";
 import type { SeasonChampion } from "@/lib/champions";
+import { Trophy } from "lucide-react";
 
 const tierTabStyles = {
   all: "border-primary bg-primary text-primary-foreground",
@@ -215,7 +216,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <div
                     key={team.id}
                     className={cn(
-                      "relative grid grid-cols-[32px_minmax(0,1fr)_52px] items-center gap-1 px-2 py-4 transition-colors hover:bg-muted/25 sm:gap-3 sm:px-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:px-5",
+                      "relative grid grid-cols-[32px_minmax(0,1fr)_48px] items-center gap-2 px-2 py-4 transition-colors hover:bg-muted/25 sm:gap-3 sm:px-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:px-5",
                       isMine && "bg-primary/[0.055]",
                     )}
                   >
@@ -233,7 +234,7 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                         #{rank}
                       </span>
                     </div>
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
                       <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="sm" />
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -245,14 +246,16 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                         <p className="mt-1 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
                           {team.captain_name || "Open spot"} / {team.member_name || "Open spot"}
                         </p>
+                        <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground lg:hidden">
+                          <Trophy aria-hidden="true" className="h-3.5 w-3.5 text-achievement" />
+                          <span className="app-number text-foreground">{team.weeks_won_count ?? 0}</span>
+                          {(team.weeks_won_count ?? 0) === 1 ? "win" : "wins"}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
                       <p className="text-[11px] text-muted-foreground lg:hidden">weekly pts</p>
-                      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground lg:hidden">
-                        Wins <strong className="app-number text-foreground">{team.weeks_won_count ?? 0}</strong>
-                      </p>
                     </div>
                     <div className="hidden text-right lg:block">
                       <span className="app-number font-semibold text-achievement">{seasonTotal}</span>

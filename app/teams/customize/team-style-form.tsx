@@ -14,11 +14,27 @@ export function TeamStyleForm({
   const [emblem, setEmblem] = React.useState(team.emblem_key);
   const [color, setColor] = React.useState(team.color_key);
   const [motto, setMotto] = React.useState(team.motto ?? "");
+  const [name, setName] = React.useState(team.name);
 
   return (
     <form action={updateTeamStyleAction} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <input type="hidden" name="teamId" value={team.id} />
       <div className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="newName" className="app-section-heading">Team name</label>
+          <input
+            id="newName"
+            name="newName"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            minLength={2}
+            maxLength={40}
+            required
+            className="h-11 w-full rounded-control border border-input bg-card px-3 text-base shadow-sm focus:ring-2 focus:ring-ring/30"
+          />
+          <p className="text-sm text-muted-foreground">Use between 2 and 40 characters.</p>
+        </div>
+
         <fieldset>
           <legend className="app-section-heading">Choose an emblem</legend>
           <p className="mt-1 text-sm text-muted-foreground">A compact mark that appears beside your team everywhere.</p>
@@ -61,9 +77,9 @@ export function TeamStyleForm({
           <div className="h-2 bg-primary" />
           <div className="p-5 text-center">
             <TeamEmblem emblem={emblem} color={color} size="lg" />
-            <h2 className="mt-4 text-xl font-semibold">{team.name}</h2>
+            <h2 className="mt-4 text-xl font-semibold">{name.trim() || team.name}</h2>
             <p className="mt-1 min-h-5 text-sm italic text-muted-foreground">{motto || "Your motto will appear here"}</p>
-            <Button className="mt-6 w-full" type="submit">Save team style</Button>
+            <Button className="mt-6 w-full" type="submit">Save team customization</Button>
           </div>
         </div>
       </aside>

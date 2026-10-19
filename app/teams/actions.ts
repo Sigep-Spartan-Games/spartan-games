@@ -111,10 +111,12 @@ export async function updateTeamStyleAction(formData: FormData): Promise<void> {
   if (!data.user) customizeRedirect("Sign in required");
 
   const teamId = String(formData.get("teamId") ?? "");
+  const name = String(formData.get("newName") ?? "").trim();
   const emblem = String(formData.get("emblem") ?? "");
   const color = String(formData.get("color") ?? "");
   const motto = String(formData.get("motto") ?? "").trim();
   if (!teamId) customizeRedirect("Missing team id");
+  if (name.length < 2 || name.length > 40) customizeRedirect("Team name must be between 2 and 40 characters");
   if (!["helmet", "flame", "mountain", "wings", "lightning", "shield", "compass", "trophy"].includes(emblem)) customizeRedirect("Choose a valid emblem");
   if (!["purple", "crimson", "gold", "navy", "emerald", "slate"].includes(color)) customizeRedirect("Choose a valid color");
   if (motto.length > 40 || /[\u0000-\u001f\u007f]/.test(motto)) customizeRedirect("Motto must be 40 characters or fewer");
@@ -127,7 +129,13 @@ export async function updateTeamStyleAction(formData: FormData): Promise<void> {
   });
   if (error) customizeRedirect(error.message);
 
+  const { error: renameError } = await supabase.rpc("rename_team_v2", {
+    p_team_id: teamId,
+    p_new_name: name,
+  });
+  if (renameError) customizeRedirect(renameError.message);
+
   refreshTeams();
   revalidatePath(`/teams/${teamId}`);
-  redirect("/teams/customize?success=Team%20style%20updated");
+  redirect("/teams/customize?success=Team%20customization%20updated");
 }

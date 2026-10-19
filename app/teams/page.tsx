@@ -6,7 +6,6 @@ import { createClient } from "../../lib/supabase/server";
 import {
   createTeamAction,
   joinByCodeAction,
-  renameTeamAction,
   changeTierAction,
   leaveTeamActionFormData,
 } from "./actions";
@@ -203,16 +202,6 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                 ) : null}
               </div>
               <div className="w-full space-y-3 border-t pt-5 lg:w-auto lg:min-w-72 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                {myTeam.role === "captain" ? (
-                  <form action={renameTeamAction} className="space-y-2">
-                    <input type="hidden" name="teamId" value={myTeam.id} />
-                    <label htmlFor="newName" className="app-label">Rename team</label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input id="newName" name="newName" className={fieldClass} maxLength={40} required />
-                      <button className="h-11 shrink-0 rounded-control border px-4 text-sm font-semibold md:h-10">Rename</button>
-                    </div>
-                  </form>
-                ) : null}
                 <ConfirmDeleteButton
                   action={leaveTeamActionFormData}
                   payload={{ teamId: myTeam.id }}

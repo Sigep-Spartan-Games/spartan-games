@@ -42,7 +42,7 @@ export function StreakBadge({ count, className }: { count: number; className?: s
       aria-label={`${count} day scoring streak`}
     >
       <Flame aria-hidden="true" className="absolute inset-0 h-7 w-7 fill-competition text-competition drop-shadow-sm" />
-      <span aria-hidden="true" className="relative pt-1 text-[10px] font-extrabold leading-none text-competition-foreground drop-shadow-sm">{count}</span>
+      <span aria-hidden="true" className="absolute left-[52%] top-[58%] -translate-x-1/2 -translate-y-1/2 text-[10px] font-extrabold leading-none text-competition-foreground drop-shadow-sm">{count}</span>
     </span>
   );
 }
