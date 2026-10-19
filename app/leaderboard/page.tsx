@@ -234,38 +234,31 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                         #{rank}
                       </span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="md" />
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="min-w-0 break-words text-sm font-semibold leading-tight sm:text-base">{team.name}</p>
-                            <div className="hidden items-center gap-1.5 lg:flex">
-                              {team.tier && activeTier === "all" ? <TierBadge tier={team.tier} /> : null}
-                              <StreakBadge count={team.streak_count ?? 0} />
-                            </div>
-                            {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
-                          </div>
-                          <p className="mt-1 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
-                            {team.captain_name || "Open spot"} / {team.member_name || "Open spot"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex min-h-7 items-center gap-2 lg:hidden">
-                        <p className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                          <Trophy aria-hidden="true" className="h-3.5 w-3.5 text-achievement" />
-                          <span className="app-number text-foreground">{team.weeks_won_count ?? 0}</span>
-                          {(team.weeks_won_count ?? 0) === 1 ? "win" : "wins"}
-                        </p>
-                        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="md" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="min-w-0 break-words text-sm font-semibold leading-tight sm:text-base">{team.name}</p>
                           {team.tier && activeTier === "all" ? (
-                            <TierBadge tier={team.tier} className="min-h-5 gap-0.5 px-1.5 py-0 text-[10px]" />
+                            <TierBadge tier={team.tier} className="min-h-5 gap-0.5 px-1.5 py-0 text-[10px] lg:min-h-6 lg:gap-1 lg:px-2.5 lg:py-0.5 lg:text-xs" />
                           ) : null}
+                          <StreakBadge count={team.streak_count ?? 0} className="hidden lg:inline-flex" />
+                          {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
+                        </div>
+                        <p className="mt-1 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
+                          {team.captain_name || "Open spot"} / {team.member_name || "Open spot"}
+                        </p>
+                        <div className="mt-1.5 flex min-h-7 items-center gap-2 lg:hidden">
+                          <p className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                            <Trophy aria-hidden="true" className="h-3.5 w-3.5 text-achievement" />
+                            <span className="app-number text-foreground">{team.weeks_won_count ?? 0}</span>
+                            {(team.weeks_won_count ?? 0) === 1 ? "win" : "wins"}
+                          </p>
                           <StreakBadge count={team.streak_count ?? 0} />
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="self-start text-right lg:self-center">
                       <p className="app-number text-xl font-semibold">{team.weekly_points ?? 0}</p>
                       <p className="text-[11px] text-muted-foreground lg:hidden">weekly pts</p>
                     </div>
