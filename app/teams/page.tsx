@@ -202,6 +202,10 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                 ) : null}
               </div>
               <div className="w-full space-y-3 border-t pt-5 lg:w-auto lg:min-w-72 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button asChild variant="outline"><Link href={`/teams/${myTeam.id}`}>Team profile</Link></Button>
+                  {myTeam.role === "captain" && ["registration", "active"].includes(seasonStatus) ? <Button asChild variant="outline"><Link href="/teams/customize"><Settings /> Customize</Link></Button> : null}
+                </div>
                 <ConfirmDeleteButton
                   action={leaveTeamActionFormData}
                   payload={{ teamId: myTeam.id }}
@@ -218,10 +222,6 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                     Your roster is locked because you have submitted an activity this season.
                   </p>
                 ) : null}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button asChild variant="outline"><Link href={`/teams/${myTeam.id}`}>Team profile</Link></Button>
-                  {myTeam.role === "captain" && ["registration", "active"].includes(seasonStatus) ? <Button asChild variant="outline"><Link href="/teams/customize"><Settings /> Customize</Link></Button> : null}
-                </div>
               </div>
             </div>
           </div>
