@@ -49,16 +49,16 @@ export function AchievementCard({ card, compact = false, className }: { card: Ac
 
   return (
     <article className={cn("flex shrink-0 snap-start flex-col rounded-xl border p-3 sm:p-3.5", tone, compact ? "w-[12.5rem]" : "w-[calc((100%-0.5rem)/2)] sm:w-[15rem]", className)}>
-      <div className="flex items-start gap-2 sm:gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70 shadow-sm sm:h-9 sm:w-9">
-          <Icon aria-hidden="true" className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+      <div className={cn("flex items-start", compact ? "gap-3" : "flex-col gap-2 sm:flex-row sm:gap-3")}>
+        <span className={cn("flex shrink-0 items-center justify-center rounded-lg bg-background/70 shadow-sm", compact ? "h-9 w-9" : "h-8 w-8 sm:h-9 sm:w-9")}>
+          <Icon aria-hidden="true" className={cn(compact ? "h-5 w-5" : "h-[18px] w-[18px] sm:h-5 sm:w-5")} />
         </span>
         <div className="min-w-0">
-          <p className="truncate font-semibold text-foreground">{card.name}</p>
+          <p className={cn("font-semibold text-foreground", compact ? "truncate" : "line-clamp-2 min-h-9 text-sm leading-tight sm:min-h-0 sm:truncate sm:text-base sm:leading-normal")}>{card.name}</p>
           <p className="mt-0.5 text-xs font-bold uppercase tracking-wide">{levelLabel(card.level, standalone, card.earned)}</p>
         </div>
       </div>
-      {!compact ? <p className="mt-3 line-clamp-2 min-h-10 text-xs leading-relaxed text-muted-foreground">{card.description}</p> : null}
+      {!compact ? <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground sm:line-clamp-2 sm:min-h-10 sm:text-xs">{card.description}</p> : null}
       {card.detail ? <p className="mt-2 text-xs font-semibold text-foreground">{card.detail}</p> : null}
       {!compact && card.tier_history?.length ? (
         <div className="mt-3 flex flex-wrap gap-1" aria-label="Tier history">
