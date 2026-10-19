@@ -48,10 +48,10 @@ export function AchievementCard({ card, compact = false, className }: { card: Ac
   const tone = card.level ? levelStyles[card.level] : card.earned ? "border-primary/25 bg-primary/10 text-primary" : "border-border bg-muted/25 text-muted-foreground";
 
   return (
-    <article className={cn("flex shrink-0 snap-start flex-col rounded-xl border p-3.5", tone, compact ? "w-[12.5rem]" : "w-[15rem]", className)}>
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/70 shadow-sm">
-          <Icon aria-hidden="true" className="h-5 w-5" />
+    <article className={cn("flex shrink-0 snap-start flex-col rounded-xl border p-3 sm:p-3.5", tone, compact ? "w-[12.5rem]" : "w-[calc((100%-0.5rem)/2)] sm:w-[15rem]", className)}>
+      <div className="flex items-start gap-2 sm:gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70 shadow-sm sm:h-9 sm:w-9">
+          <Icon aria-hidden="true" className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
         </span>
         <div className="min-w-0">
           <p className="truncate font-semibold text-foreground">{card.name}</p>
@@ -72,7 +72,7 @@ export function AchievementCard({ card, compact = false, className }: { card: Ac
       {!compact && standalone && card.earned_at ? <p className="mt-3 text-[11px] text-muted-foreground">Earned {new Date(card.earned_at).toLocaleDateString()}</p> : null}
       {!standalone ? (
         <div className="mt-auto pt-3">
-          <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
+          <div className="mb-1.5 flex items-center justify-between gap-1 text-[10px] font-medium text-muted-foreground sm:gap-2 sm:text-[11px]">
             <span>{card.value.toLocaleString()} {card.unit}</span>
             <span>{card.next_threshold ? `${card.next_threshold.toLocaleString()} next` : "Max tier"}</span>
           </div>
@@ -93,7 +93,7 @@ export function AchievementRail({ title, cards, compact = false }: { title: stri
         <h2 className="app-section-heading">{title}</h2>
         <span className="text-xs text-muted-foreground">Swipe to explore</span>
       </div>
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:gap-3 sm:px-0">
         {cards.map((card) => <AchievementCard key={card.key} card={card} compact={compact} />)}
       </div>
     </section>
