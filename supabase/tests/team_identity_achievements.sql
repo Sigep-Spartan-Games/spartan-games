@@ -25,6 +25,14 @@ begin
   if has_function_privilege('anon', 'public.get_team_profile_v1(uuid)', 'EXECUTE') then
     raise exception 'Anonymous role can read team profiles';
   end if;
+  if not has_column_privilege('authenticated', 'public.teams', 'emblem_key', 'SELECT')
+    or not has_column_privilege('authenticated', 'public.teams', 'color_key', 'SELECT')
+    or not has_column_privilege('authenticated', 'public.teams', 'motto', 'SELECT') then
+    raise exception 'Authenticated users cannot read the public team identity columns';
+  end if;
+  if has_column_privilege('authenticated', 'public.teams', 'invite_code', 'SELECT') then
+    raise exception 'Authenticated users can read private team invite codes directly';
+  end if;
 
   insert into public.seasons (
     id, slug, name, status, starts_on, ends_on, registration_open,
