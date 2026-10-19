@@ -25,6 +25,12 @@ const tierTabStyles = {
   red: "border-competition/30 bg-competition/10 text-competition",
 };
 
+const tierInlineStyles = {
+  gold: "text-achievement",
+  purple: "text-primary",
+  red: "text-competition",
+};
+
 function LeaderboardSkeleton() {
   return (
     <div className="space-y-6" aria-label="Loading leaderboard">
@@ -216,14 +222,14 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                   <div
                     key={team.id}
                     className={cn(
-                      "relative grid grid-cols-[32px_minmax(0,1fr)_48px] items-center gap-2 px-2 py-4 transition-colors hover:bg-muted/25 sm:gap-3 sm:px-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:px-5",
+                      "relative grid grid-cols-[28px_minmax(0,1fr)_40px] items-center gap-2 px-2 py-4 transition-colors hover:bg-muted/25 sm:grid-cols-[32px_minmax(0,1fr)_48px] sm:gap-3 sm:px-4 lg:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem_7rem] lg:px-5",
                       isMine && "bg-primary/[0.055]",
                     )}
                   >
                     <div className="flex items-center">
                       <span
                         className={cn(
-                          "app-number flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold lg:h-9 lg:w-9",
+                          "app-number flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold sm:h-8 sm:w-8 lg:h-9 lg:w-9",
                           rank === 1
                             ? "bg-achievement/10 text-achievement"
                             : rank <= 3
@@ -237,10 +243,17 @@ async function LeaderboardInner({ searchParams }: { searchParams: SearchParams }
                     <div className="flex min-w-0 items-center gap-2.5">
                       <TeamEmblem emblem={team.emblem_key} color={team.color_key} size="sm" />
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="min-w-0 break-words font-semibold leading-tight">{team.name}</p>
-                          <StreakBadge count={team.streak_count ?? 0} />
-                          {team.tier && activeTier === "all" ? <TierBadge tier={team.tier} /> : null}
+                        <div className="flex flex-wrap items-center gap-0.5 sm:gap-1.5">
+                          <p className="min-w-0 break-words text-[13px] font-semibold leading-tight sm:text-base">{team.name}</p>
+                          {team.tier && activeTier === "all" ? (
+                            <>
+                              <span className={cn("ml-0.5 shrink-0 text-[10px] font-semibold sm:hidden", tierInlineStyles[team.tier])}>
+                                {TIER_LABELS[team.tier]}
+                              </span>
+                              <TierBadge tier={team.tier} className="hidden sm:inline-flex" />
+                            </>
+                          ) : null}
+                          <StreakBadge count={team.streak_count ?? 0} className="-mx-0.5 scale-[0.86] sm:mx-0 sm:scale-100" />
                           {isMine ? <span className="text-xs font-semibold text-primary">Your team</span> : null}
                         </div>
                         <p className="mt-1 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
