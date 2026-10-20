@@ -34,11 +34,11 @@ export type TeamColorKey = (typeof TEAM_COLORS)[number]["key"];
 
 function HelmetIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M6 20v-9a6 6 0 0 1 12 0v9l-4-2.5V13h-4v4.5z" />
-      <path d="m7.5 10.5 3 1.25M16.5 10.5l-3 1.25" />
-      <path d="M12 12v9" />
-      <path d="M9 5V3.5C10 2.5 11 2 12 2s2 .5 3 1.5V5" />
+    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M21 62 2 57c1.5-2.5 2-5 2-8v-7c2.2-1.6 3.6-3.3 4-5.5C10.5 26 17.5 20 27 18.5c1.4-.2 1.8-1.4.6-2.1L22 7 32 2l10 5-5.6 9.4c-1.2.7-.8 1.9.6 2.1 9.5 1.5 16.5 7.5 19 18 .4 2.2 1.8 3.9 4 5.5v7c0 3 .5 5.5 2 8l-19 5" />
+      <path d="M12 41.5v6.5c4 2.6 8.5 4.6 13.5 5.8L27 62" />
+      <path d="M12 41.5c5 2.7 10.5 4.4 16.5 5.2L28 56l4 5 4-5-.5-9.3c6-.8 11.5-2.5 16.5-5.2" />
+      <path d="M52 41.5V48c-4 2.6-8.5 4.6-13.5 5.8L37 62" />
     </svg>
   );
 }
