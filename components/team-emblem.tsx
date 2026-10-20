@@ -34,11 +34,13 @@ export type TeamColorKey = (typeof TEAM_COLORS)[number]["key"];
 
 function HelmetIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="-4 -4 108 108" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M39 98 2 73c3-5 4-11 4-18V44c3-2 5-4 5.5-7C15 30 26 24 42 22c2-.3 2.4-1.5.5-2.3-1.8-.8-1.6-2 .4-3L32 10l18-8 18 8-10.9 6.7c2 1 2.2 2.2.4 3-1.9.8-1.5 2 .5 2.3 16 2 27 8 30.5 15 .5 3 2.5 5 5.5 7v11c0 7 1 13 4 18L61 98" />
-      <path d="M18 54v6l19 9 2 29" />
-      <path d="M18 54c10 5 18 7 27 8l-3 11 8 7 8-7-3-11c9-1 17-3 27-8" />
-      <path d="M82 54v6l-19 9-2 29" />
+    <svg viewBox="-4 -4 108 110" preserveAspectRatio="xMidYMid meet" className={className} aria-hidden="true">
+      <path fill="currentColor" d="M10 39C12 23 25 13 41 7c4.5-1.7 7.5-4.6 9-7 1.8 2.7 5.1 5.4 9.8 7.2C75 13 86 24 90 39L50 26Z" />
+      <path fill="currentColor" fillRule="evenodd" d="M8 42 50 28l42 14-2 11c-9 3.4-20 6.8-33 10l1 10-8 8-8-8 1-10c-13-3.2-24-6.6-33-10Zm8 6c7 3.3 16.2 6.5 27 9.4l-.4 6.2c-7.5-2.8-14.2-5.5-20.2-8.2C18.8 53.8 16.5 51.2 16 48Zm68 0c-7 3.3-16.2 6.5-27 9.4l.4 6.2c7.5-2.8 14.2-5.5 20.2-8.2 3.6-1.6 5.9-4.2 6.4-7.4Z" />
+      <path fill="currentColor" d="M17 57c5.6 3.5 12.5 6.5 20.5 9L41 102 22 86c-3.6-10.5-5.3-20.2-5-29Z" />
+      <path fill="currentColor" d="M83 57c-5.6 3.5-12.5 6.5-20.5 9L59 102l19-16c3.6-10.5 5.3-20.2 5-29Z" />
+      <path fill="currentColor" d="M12 54c1.7 8.6.2 16.2-5 23l11 11-2-20c-.8-5.8-2.1-10.5-4-14Z" />
+      <path fill="currentColor" d="M88 54c-1.7 8.6-.2 16.2 5 23L82 88l2-20c.8-5.8 2.1-10.5 4-14Z" />
     </svg>
   );
 }
@@ -96,9 +98,7 @@ export function TeamEmblem({
       <Icon
         className={cn(
           "shrink-0",
-          validEmblem === "helmet"
-            ? size === "sm" ? "h-[18px] w-[18px]" : size === "md" ? "h-6 w-6" : "h-9 w-9"
-            : size === "sm" ? "h-5 w-5" : size === "md" ? "h-7 w-7" : "h-11 w-11",
+          size === "sm" ? "h-5 w-5" : size === "md" ? "h-7 w-7" : "h-11 w-11",
         )}
       />
     </span>
