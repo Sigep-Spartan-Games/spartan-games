@@ -53,7 +53,7 @@ export function TeamDetailsDialog({ team }: { team: TeamDirectoryRow }) {
               <TeamEmblem emblem={shown.emblem_key} color={shown.color_key} size="md" />
               <div className="min-w-0">
                 <DialogTitle className="truncate">{shown.name}</DialogTitle>
-                <DialogDescription>{shown.motto || "Meet the team behind the score."}</DialogDescription>
+                <DialogDescription>{shown.motto ?? ""}</DialogDescription>
               </div>
             </div>
           </DialogHeader>

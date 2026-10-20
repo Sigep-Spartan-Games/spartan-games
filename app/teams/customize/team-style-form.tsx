@@ -78,7 +78,7 @@ export function TeamStyleForm({
           <div className="p-5 text-center">
             <TeamEmblem emblem={emblem} color={color} size="lg" />
             <h2 className="mt-4 text-xl font-semibold">{name.trim() || team.name}</h2>
-            <p className="mt-1 min-h-5 text-sm italic text-muted-foreground">{motto || "Your motto will appear here"}</p>
+            <p className="mt-1 min-h-5 text-sm italic text-muted-foreground">{motto}</p>
             <Button className="mt-6 w-full" type="submit">Save team customization</Button>
           </div>
         </div>

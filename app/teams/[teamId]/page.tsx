@@ -39,7 +39,7 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ te
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{team.name}</h1>
                 {team.tier ? <TierBadge tier={team.tier} /> : null}
               </div>
-              <p className="mt-2 text-sm italic text-muted-foreground">{team.motto || "No team motto yet."}</p>
+              <p className="mt-2 text-sm italic text-muted-foreground">{team.motto ?? ""}</p>
               <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 {team.roster.map((member) => (
                   <span
