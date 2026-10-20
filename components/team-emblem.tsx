@@ -34,13 +34,11 @@ export type TeamColorKey = (typeof TEAM_COLORS)[number]["key"];
 
 function HelmetIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="-4 -4 108 108" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <g transform="translate(10 0) scale(.8 1)">
-        <path vectorEffect="non-scaling-stroke" d="M39 98 2 73c3-5 4-11 4-18V44c3-2 5-4 5.5-7C15 30 26 24 42 22c2-.3 2.4-1.5.5-2.3-1.8-.8-1.6-2 .4-3L32 10l18-8 18 8-10.9 6.7c2 1 2.2 2.2.4 3-1.9.8-1.5 2 .5 2.3 16 2 27 8 30.5 15 .5 3 2.5 5 5.5 7v11c0 7 1 13 4 18L61 98" />
-        <path vectorEffect="non-scaling-stroke" d="M18 54v6l19 9 2 29" />
-        <path vectorEffect="non-scaling-stroke" d="M18 54c10 5 18 7 27 8l-3 11 8 7 8-7-3-11c9-1 17-3 27-8" />
-        <path vectorEffect="non-scaling-stroke" d="M82 54v6l-19 9-2 29" />
-      </g>
+    <svg viewBox="-4 -4 108 108" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M39 98 2 73c3-5 4-11 4-18V44c3-2 5-4 5.5-7C15 30 26 24 42 22c2-.3 2.4-1.5.5-2.3-1.8-.8-1.6-2 .4-3L32 10l18-8 18 8-10.9 6.7c2 1 2.2 2.2.4 3-1.9.8-1.5 2 .5 2.3 16 2 27 8 30.5 15 .5 3 2.5 5 5.5 7v11c0 7 1 13 4 18L61 98" />
+      <path d="M18 54v6l19 9 2 29" />
+      <path d="M18 54c10 5 18 7 27 8l-3 11 8 7 8-7-3-11c9-1 17-3 27-8" />
+      <path d="M82 54v6l-19 9-2 29" />
     </svg>
   );
 }
@@ -97,8 +95,10 @@ export function TeamEmblem({
     >
       <Icon
         className={cn(
-          "shrink-0 overflow-visible",
-          size === "sm" ? "h-5 w-5" : size === "md" ? "h-7 w-7" : "h-11 w-11",
+          "shrink-0",
+          validEmblem === "helmet"
+            ? size === "sm" ? "h-[18px] w-[18px]" : size === "md" ? "h-6 w-6" : "h-9 w-9"
+            : size === "sm" ? "h-5 w-5" : size === "md" ? "h-7 w-7" : "h-11 w-11",
         )}
       />
     </span>
