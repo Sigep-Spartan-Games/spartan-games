@@ -34,11 +34,11 @@ export type TeamColorKey = (typeof TEAM_COLORS)[number]["key"];
 
 function HelmetIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="-3 -3 70 70" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M21 60 3 55c1-2.2 1.5-4.5 1.5-7v-6c2.1-1.5 3.4-3.2 3.9-5.4C10.7 26.1 17.6 20 27 18.5c1.4-.2 1.8-1.4.6-2.1L22 7 32 2l10 5-5.6 9.4c-1.2.7-.8 1.9.6 2.1 9.4 1.5 16.3 7.6 18.6 18.1.5 2.2 1.8 3.9 3.9 5.4v6c0 2.5.5 4.8 1.5 7l-18 5" />
-      <path d="M12 40.5V47c3.4 2.3 7.2 4.1 11.4 5.3L21 60" />
-      <path d="M12 40.5c5 2.7 10.5 4.4 16.5 5.2L28 51l4 5 4-5-.5-5.3c6-.8 11.5-2.5 16.5-5.2" />
-      <path d="M52 40.5V47c-3.4 2.3-7.2 4.1-11.4 5.3L43 60" />
+    <svg viewBox="-4 -4 108 108" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M39 98 2 73c3-5 4-11 4-18V44c3-2 5-4 5.5-7C15 30 26 24 42 22c2-.3 2.4-1.5.5-2.3-1.8-.8-1.6-2 .4-3L32 10l18-8 18 8-10.9 6.7c2 1 2.2 2.2.4 3-1.9.8-1.5 2 .5 2.3 16 2 27 8 30.5 15 .5 3 2.5 5 5.5 7v11c0 7 1 13 4 18L61 98" />
+      <path d="M18 54v6l19 9 2 29" />
+      <path d="M18 54c10 5 18 7 27 8l-3 11 8 7 8-7-3-11c9-1 17-3 27-8" />
+      <path d="M82 54v6l-19 9-2 29" />
     </svg>
   );
 }
