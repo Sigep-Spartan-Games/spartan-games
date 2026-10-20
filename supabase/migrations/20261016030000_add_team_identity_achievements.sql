@@ -52,15 +52,15 @@ values
   ('first_step', 'personal', 'standalone', 'First Step', 'Log your first valid activity submission.', 'flag', 'achievement', '{}', 80),
   ('better_together', 'personal', 'standalone', 'Better Together', 'Log your first activity with a teammate.', 'handshake', 'achievement', '{}', 90),
   ('season_finisher', 'personal', 'standalone', 'Season Finisher', 'Finish an eligible season with at least one valid submission.', 'trophy', 'achievement', '{}', 100),
-  ('tier_standout', 'personal', 'standalone', 'Tier Standout', 'Finish in the top ten contributors in your tier.', 'laurel', 'achievement', '{}', 110),
-  ('spartan_standout', 'personal', 'standalone', 'Spartan Standout', 'Finish in the top ten contributors across Spartan Games.', 'helmet', 'achievement', '{}', 120),
+  ('tier_standout', 'personal', 'standalone', 'Tier Standout', 'Finish among the top ten contributors in your tier at the end of the games.', 'laurel', 'achievement', '{}', 110),
+  ('spartan_standout', 'personal', 'standalone', 'Spartan Standout', 'Finish among the top ten contributors overall at the end of the games.', 'helmet', 'achievement', '{}', 120),
   ('team_points', 'team', 'tiered', 'Team Points', 'Build a high team season score.', 'medal', 'points', array[500,1000,2000,3000], 10),
   ('goal_crusher', 'team', 'tiered', 'Goal Crusher', 'Meet the team goal in finalized weeks.', 'target', 'goals met', array[1,3,5,0], 20),
   ('weekly_winners', 'team', 'tiered', 'Weekly Winners', 'Win finalized competition weeks.', 'crown', 'weekly wins', array[1,2,3,5], 30),
   ('team_scoring_streak', 'team', 'tiered', 'Team Scoring Streak', 'Keep the team scoring on consecutive calendar days.', 'flame', 'days', array[7,14,21,30], 40),
   ('perfect_partners', 'team', 'tiered', 'Perfect Partners', 'Have both teammates active in the same finalized week.', 'users', 'shared weeks', array[2,4,6,0], 50),
   ('perfect_week', 'team', 'standalone', 'Perfect Week', 'Have both teammates participate and meet the finalized weekly goal.', 'calendar-check', 'achievement', '{}', 60),
-  ('balanced_duo', 'team', 'standalone', 'Balanced Duo', 'Finish with both teammates contributing at least 35% of the team score.', 'scale', 'achievement', '{}', 70),
+  ('balanced_duo', 'team', 'standalone', 'Balanced Duo', 'Finish with each teammate contributing at least 35% of the team score.', 'scale', 'achievement', '{}', 70),
   ('comeback_crew', 'team', 'standalone', 'Comeback Crew', 'Move from the bottom half of the tier to first the following week.', 'trending-up', 'achievement', '{}', 80),
   ('tier_champion', 'team', 'standalone', 'Tier Champion', 'Win the team tier at season completion.', 'trophy', 'achievement', '{}', 90);
 
@@ -383,7 +383,7 @@ begin
     and (v_membership.id is null or week.ends_on >= v_membership.joined_at::date)
     and (v_membership.left_at is null or week.starts_on <= v_membership.left_at::date);
 
-  if v_personal_points > 0 then
+  if v_season.status = 'completed' and v_personal_points > 0 then
     with participants as (
       select membership.user_id, team.tier,
         coalesce(sum(event.points), 0)::integer as points
@@ -496,8 +496,10 @@ begin
         when 'first_step' then v_submission_count > 0
         when 'better_together' then v_teammate_submissions > 0
         when 'season_finisher' then v_season.status = 'completed' and v_submission_count > 0
-        when 'tier_standout' then v_personal_points > 0 and v_tier_rank between 1 and 10
-        when 'spartan_standout' then v_personal_points > 0 and v_overall_rank between 1 and 10
+        when 'tier_standout' then v_season.status = 'completed'
+          and v_personal_points > 0 and v_tier_rank between 1 and 10
+        when 'spartan_standout' then v_season.status = 'completed'
+          and v_personal_points > 0 and v_overall_rank between 1 and 10
         else false end;
       v_detail := case v_rule.achievement_key when 'tier_standout' then case when v_tier_rank is not null then '#' || v_tier_rank || ' in ' || initcap(v_team.tier) || ' tier' end when 'spartan_standout' then case when v_overall_rank is not null then '#' || v_overall_rank || ' overall' end end;
       v_earned_at := case v_rule.achievement_key

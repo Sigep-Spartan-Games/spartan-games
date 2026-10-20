@@ -58,7 +58,7 @@ export function AchievementCard({ card, compact = false, className }: { card: Ac
           <p className="mt-0.5 text-xs font-bold uppercase tracking-wide">{levelLabel(card.level, standalone, card.earned)}</p>
         </div>
       </div>
-      {!compact ? <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground sm:line-clamp-2 sm:min-h-10 sm:text-xs">{card.description}</p> : null}
+      {!compact ? <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground sm:line-clamp-3 sm:min-h-12 sm:text-xs">{card.description}</p> : null}
       {card.detail ? <p className="mt-2 text-xs font-semibold text-foreground">{card.detail}</p> : null}
       {!compact && card.tier_history?.length ? (
         <div className="mt-3 flex flex-wrap gap-1" aria-label="Tier history">

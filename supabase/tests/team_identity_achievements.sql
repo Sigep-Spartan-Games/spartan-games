@@ -8,6 +8,9 @@ declare
   v_member uuid;
   v_season uuid := gen_random_uuid();
   v_team uuid := gen_random_uuid();
+  v_activity uuid := gen_random_uuid();
+  v_rule uuid := gen_random_uuid();
+  v_submission uuid := gen_random_uuid();
   v_progress jsonb;
   v_profile jsonb;
   v_level text;
@@ -78,6 +81,36 @@ begin
     'finalized', now()
   from generate_series(0, 4) week_number;
 
+  insert into public.activities (
+    id, key, label, measurement_type, unit_label, min_value, step_value
+  ) values (
+    v_activity, 'achievement_test_' || substr(md5(v_activity::text), 1, 12),
+    'Achievement Test Activity', 'number', 'reps', 1, 1
+  );
+
+  insert into public.scoring_rule_versions (
+    id, activity_id, season_id, points_per_unit, teammate_multiplier, effective_from
+  ) values (
+    v_rule, v_activity, v_season, 1, 1, '2026-01-01 00:00:00+00'
+  );
+
+  insert into public.submissions (
+    id, team_id, submitted_by, submitted_by_name, base_points, points_awarded,
+    activity_key, activity_date, activity_value_number, points_per_unit,
+    teammate_bonus, did_with_teammate, season_id, week_id, activity_id,
+    scoring_rule_version_id, submission_kind, created_at
+  ) select
+    v_submission, v_team, v_captain, 'Test Captain', 10, 10,
+    activity.key, '2026-01-05', 10, 1,
+    1, false, v_season, week.id, v_activity,
+    v_rule, 'activity', '2026-01-05 12:00:00+00'
+  from public.activities activity
+  cross join lateral (
+    select id from public.competition_weeks
+    where season_id = v_season order by starts_on limit 1
+  ) week
+  where activity.id = v_activity;
+
   insert into public.team_week_results (
     season_id, week_id, team_id, tier_key, points, goal_points, rank, won, streak_count
   )
@@ -98,6 +131,13 @@ begin
     or jsonb_array_length(v_progress->'team_achievements') <> 9 then
     raise exception 'Unexpected achievement family counts: %', v_progress;
   end if;
+  if exists (
+    select 1 from jsonb_array_elements(v_progress->'personal') card
+    where card->>'key' in ('tier_standout', 'spartan_standout')
+      and ((card->>'earned')::boolean or card->>'detail' is not null)
+  ) then
+    raise exception 'Contributor placement achievements were revealed before season completion';
+  end if;
   select card->>'level' into v_level
   from jsonb_array_elements(v_progress->'team_achievements') card
   where card->>'key' = 'weekly_winners';
@@ -113,6 +153,18 @@ begin
   from jsonb_array_elements(v_progress->'team_achievements') card
   where card->>'key' = 'weekly_winners';
   if v_level <> 'gold' then raise exception 'Corrected weekly win did not downgrade to Gold: %', v_level; end if;
+
+  update public.seasons
+  set status = 'completed', registration_open = false, submissions_open = false
+  where id = v_season;
+  v_progress := public.get_my_achievement_progress_v1(v_season);
+  if (
+    select count(*) from jsonb_array_elements(v_progress->'personal') card
+    where card->>'key' in ('tier_standout', 'spartan_standout')
+      and (card->>'earned')::boolean
+  ) <> 2 then
+    raise exception 'Final top-ten contributor achievements were not awarded at season completion';
+  end if;
 
   v_profile := public.get_team_profile_v1(v_team);
   if v_profile ? 'invite_code' or v_profile ? 'email' or v_profile ? 'submissions' then
