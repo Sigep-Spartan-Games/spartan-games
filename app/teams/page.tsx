@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getMyTeam, getTeamDirectory } from "@/lib/team-data";
 import { TeamEmblem } from "@/components/team-emblem";
 import { Button } from "@/components/ui/button";
+import { TeamTierForm } from "./team-tier-form";
 
 const tierOptions = [
   { value: "gold", label: "Gold", description: "Competitive" },
@@ -189,16 +190,12 @@ async function TeamsInner({ searchParams }: { searchParams: Promise<SearchFeedba
                   ) : null}
                 </div>
                 {myTeam.role === "captain" && seasonStatus === "registration" ? (
-                  <form action={changeTierAction} className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end">
-                    <input type="hidden" name="teamId" value={myTeam.id} />
-                    <label className="flex-1 space-y-2">
-                      <span className="app-label">Change tier</span>
-                      <select name="tier" defaultValue={myTeam.tier ?? ""} className={fieldClass}>
-                        {tierOptions.map((tier) => <option key={tier.value} value={tier.value}>{tier.label} ({tier.description})</option>)}
-                      </select>
-                    </label>
-                    <button type="submit" className="h-11 rounded-control border px-4 text-sm font-semibold md:h-10">Update tier</button>
-                  </form>
+                  <TeamTierForm
+                    action={changeTierAction}
+                    teamId={myTeam.id}
+                    currentTier={myTeam.tier}
+                    options={tierOptions}
+                  />
                 ) : null}
               </div>
               <div className="w-full space-y-3 border-t pt-5 lg:w-auto lg:min-w-72 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
